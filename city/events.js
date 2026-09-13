@@ -1,53 +1,53 @@
 // Decision events for the rich life. Stakes scale with net worth; some choices pay off months later.
 import {hashRoll} from './rng.js';
-const money=n=>'₲'+Math.round(n).toLocaleString('ko-KR');
+const money=n=>'₲'+Math.round(n).toLocaleString('en-US');
 const pct=(wealth,p,min=0)=>Math.max(min,Math.round(wealth*p));
 export const EVENT_INTERVAL=4;
 export const RICH_EVENTS=[
- {id:'tax_audit',title:'국세청 세무조사 통지',text:'자산 규모가 커지자 정밀 세무조사가 시작됐습니다. 어떻게 대응할까요?',build:(s,c)=>[
-  {label:'성실하게 납부한다',cost:pct(c.wealth,.03),fame:10,desc:`순자산 3% (${money(pct(c.wealth,.03))}) 납부 · 명성 +10`},
-  {label:'절세 컨설팅을 받는다',cost:pct(c.wealth,.01),stress:8,later:{months:4,amount:-pct(c.wealth,.06),chance:.35,label:'추징 과세'},desc:`지금 1% (${money(pct(c.wealth,.01))}) · 4개월 뒤 35% 확률로 6% 추징 · 스트레스 +8`},
-  ...(c.fame>=150?[{label:'로펌을 동원한다',cost:pct(c.wealth,.005),fame:-15,desc:`0.5% (${money(pct(c.wealth,.005))}) 지출 · 명성 −15 · 유명세가 가져온 선택지`}]:[])]},
- {id:'rate_hike',title:'기준금리 인상',text:'중앙은행이 금리를 올렸습니다. 대출 문턱이 높아지고 임대 시장이 식습니다.',build:(s,c)=>[
-  {label:'고금리 채권을 산다',cost:pct(c.wealth,.05),later:{months:6,amount:pct(c.wealth,.05)+pct(c.wealth,.004)*6,chance:1,label:'채권 만기 상환'},desc:`5% (${money(pct(c.wealth,.05))}) 투자 · 6개월 뒤 원금 + 이자 2.4% 확정 회수`},
-  {label:'관망한다',multiplier:.9,months:3,desc:'3개월 동안 임대·숙박 매출 −10%'}]},
- {id:'tourist_boom',title:'국제 행사 유치 · 관광객 급증',text:'도시가 대형 국제 행사를 유치했습니다. 숙박 수요가 폭발할 예정입니다.',build:(s,c)=>[
-  {label:'프로모션에 투자한다',cost:pct(c.wealth,.02),multiplier:1.3,months:3,desc:`2% (${money(pct(c.wealth,.02))}) 지출 · 3개월 동안 임대·숙박 매출 +30%`},
-  {label:'있는 그대로 맞이한다',multiplier:1.1,months:1,desc:'1개월 동안 매출 +10% · 비용 없음'}]},
- {id:'scandal',title:'타블로이드 스캔들',text:'파티에서 찍힌 사진이 가십지에 실렸습니다. 여론이 술렁입니다.',build:(s,c)=>[
-  {label:'공식 사과와 기부로 수습한다',cost:pct(c.wealth,.02),fame:-10,desc:`2% (${money(pct(c.wealth,.02))}) 기부 · 명성 −10에서 방어`},
-  {label:'무대응한다',fame:-40,stress:15,desc:'비용 없음 · 명성 −40 · 스트레스 +15'}]},
- {id:'charity_gala',title:'자선 갈라 초청장',text:'도시 최대 자선 갈라의 메인 후원자 자리가 비었습니다. 사교계가 당신을 보고 있습니다.',build:(s,c)=>[
-  {label:'메인 후원자가 된다',cost:pct(c.wealth,.015),fame:40,memories:1,stress:-10,desc:`1.5% (${money(pct(c.wealth,.015))}) 후원 · 명성 +40 · 추억 +1`},
-  {label:'참석만 한다',cost:pct(c.wealth,.002),fame:10,desc:`0.2% (${money(pct(c.wealth,.002))}) 테이블 · 명성 +10`},
-  {label:'불참한다',fame:-5,stress:-5,desc:'명성 −5 · 스트레스 −5'}]},
- {id:'insider_tip',title:'은밀한 내부자 정보',text:'오랜 지인이 상장 전 정보를 흘립니다. 확실하다고 하지만, 적발되면 명예가 무너집니다.',build:(s,c)=>[
-  {label:'정중히 거절한다',fame:5,desc:'명성 +5 · 잃을 것이 없습니다'},
-  {label:'조용히 베팅한다',cost:pct(c.wealth,.03),stress:12,later:{months:2,amount:pct(c.wealth,.09),chance:.5,label:'비공개 정보 베팅',penalty:{fame:-60}},desc:`3% (${money(pct(c.wealth,.03))}) 베팅 · 2개월 뒤 50%: +9% 회수 / 50%: 전액 손실과 명성 −60`}]},
- {id:'family_request',title:'가족의 사업 자금 요청',text:'동생이 창업 자금을 부탁합니다. 계획서는 그럴듯하지만 보장은 없습니다.',build:(s,c)=>[
-  {label:'흔쾌히 지원한다',cost:pct(c.wealth,.02),stress:-10,fame:5,later:{months:9,amount:pct(c.wealth,.03),chance:.4,label:'동생의 첫 배당'},desc:`2% (${money(pct(c.wealth,.02))}) 지원 · 스트레스 −10 · 9개월 뒤 40% 확률로 3% 회수`},
-  {label:'거절한다',stress:15,desc:'비용 없음 · 스트레스 +15'}]},
- {id:'travel_slump',title:'관광객 급감 · 항공 노선 중단',text:'주요 항공 노선이 끊기며 숙박업이 얼어붙었습니다. 직원들의 눈이 당신을 향합니다.',build:(s,c)=>[
-  {label:'직원을 모두 지킨다',cost:pct(c.wealth,.01),fame:15,multiplier:.8,months:3,desc:`1% (${money(pct(c.wealth,.01))}) 지출 · 명성 +15 · 3개월 매출 −20%`},
-  {label:'인력을 감축한다',fame:-15,multiplier:.65,months:2,desc:'비용 없음 · 명성 −15 · 2개월 매출 −35%'}]},
- {id:'museum_loan',title:'미술관의 대여 요청',text:'국립미술관이 당신의 소장품을 특별전에 대여해 달라고 요청합니다.',when:(s)=>(s.artCollection?.owned.length||0)>0,build:()=>[
-  {label:'대여한다',fame:25,memories:1,desc:'명성 +25 · 추억 +1 · 작품은 3개월 뒤 돌아옵니다'},
-  {label:'거절한다',desc:'변화 없음'}]},
- {id:'zoning',title:'강변 재개발 계획 발표',text:'시가 강변 재개발을 예고했습니다. 발표 전 선매입 컨소시엄이 당신을 초대합니다.',build:(s,c)=>[
-  {label:'컨소시엄에 참여한다',cost:pct(c.wealth,.04),later:{months:6,amount:pct(c.wealth,.09),chance:.6,label:'재개발 컨소시엄 정산',fallback:pct(c.wealth,.02)},desc:`4% (${money(pct(c.wealth,.04))}) 투자 · 6개월 뒤 60%: 9% 회수 / 40%: 2%만 회수`},
-  {label:'관망한다',desc:'변화 없음'}]},
- {id:'burnout',title:'건강 검진 경고',text:'주치의가 과로를 경고합니다. 지금 쉬지 않으면 더 크게 쉬게 될 겁니다.',when:s=>s.stress>=45,build:(s,c)=>[
-  {label:'한 달 요양을 떠난다',cost:pct(c.wealth,.01),stress:-40,multiplier:.9,months:1,desc:`1% (${money(pct(c.wealth,.01))}) · 스트레스 −40 · 1개월 매출 −10%`},
-  {label:'무시하고 일한다',stress:20,later:{months:3,amount:-pct(c.wealth,.02),chance:.6,label:'입원 치료비'},desc:'스트레스 +20 · 3개월 뒤 60% 확률로 2% 치료비'}]},
- {id:'market_crash',title:'증시 급락',text:'해외발 악재로 증시가 하루 만에 무너졌습니다. 공포에 팔 것인가, 담을 것인가.',build:(s,c)=>[
-  {label:'저가에 담는다',cost:pct(c.wealth,.03),prices:.9,later:{months:3,amount:pct(c.wealth,.03)+pct(c.wealth,.02),chance:.75,label:'저가 매수 반등'},desc:`주가 −10% · 3% (${money(pct(c.wealth,.03))}) 추가 매수 · 3개월 뒤 75% 확률로 5% 회수`},
-  {label:'지켜본다',prices:.9,desc:'주가 −10% · 추가 지출 없음'}]},
- {id:'networking',title:'업계 네트워킹 초대',text:'새 고객과 파트너를 만날 기회입니다. 생활의 여유와 성장 중 무엇에 투자할까요?',build:(s,c)=>[
-  {label:'참가하고 배운다',cost:pct(c.wealth,.002),skill:4,fame:8,stress:4,desc:`0.2% (${money(pct(c.wealth,.002))}) 지출 · 전문성 +4 · 명성 +8 · 스트레스 +4`},
-  {label:'충분히 쉬어간다',stress:-12,desc:'비용 없음 · 스트레스 −12'}]},
- {id:'rival_offer',title:'라이벌의 인수 제안',text:'라이벌이 당신의 건물을 시세보다 비싸게 사겠다고 제안합니다. 현금을 챙길까요, 자존심을 지킬까요?',hidden:true,build:(s,c)=>[
-  {label:'프리미엄에 매각한다',money:c.offer,action:'sell-to-rival',tile:c.tile,desc:`${c.tileName} 매각 · 시세의 130% (${money(c.offer)}) 현금 회수`},
-  {label:'거절한다',fame:10,desc:'명성 +10 · 라이벌의 다음 제안은 1년 뒤'}]}
+ {id:'tax_audit',title:'Tax audit notice',text:'Your growing wealth triggered a full tax audit. How do you respond?',build:(s,c)=>[
+  {label:'Pay in full',cost:pct(c.wealth,.03),fame:10,desc:`Pay 3% of net worth (${money(pct(c.wealth,.03))}) · Reputation +10`},
+  {label:'Hire a tax consultant',cost:pct(c.wealth,.01),stress:8,later:{months:4,amount:-pct(c.wealth,.06),chance:.35,label:'Back taxes'},desc:`1% now (${money(pct(c.wealth,.01))}) · 35% chance of a 6% back-tax bill in 4 months · Stress +8`},
+  ...(c.fame>=150?[{label:'Bring in the law firm',cost:pct(c.wealth,.005),fame:-15,desc:`0.5% (${money(pct(c.wealth,.005))}) spent · Reputation −15 · An option only fame unlocks`}]:[])]},
+ {id:'rate_hike',title:'Rate hike',text:'The central bank raised rates. Loans get harder and the rental market cools.',build:(s,c)=>[
+  {label:'Buy high-yield bonds',cost:pct(c.wealth,.05),later:{months:6,amount:pct(c.wealth,.05)+pct(c.wealth,.004)*6,chance:1,label:'Bond matured'},desc:`5% (${money(pct(c.wealth,.05))}) invested · Principal + 2.4% interest guaranteed back in 6 months`},
+  {label:'Wait and see',multiplier:.9,months:3,desc:'Rental & hotel revenue −10% for 3 months'}]},
+ {id:'tourist_boom',title:'Global event · Tourist surge',text:'The city landed a major international event. Lodging demand is about to explode.',build:(s,c)=>[
+  {label:'Invest in promotion',cost:pct(c.wealth,.02),multiplier:1.3,months:3,desc:`2% (${money(pct(c.wealth,.02))}) spent · Rental & hotel revenue +30% for 3 months`},
+  {label:'Welcome them as is',multiplier:1.1,months:1,desc:'Revenue +10% for 1 month · No cost'}]},
+ {id:'scandal',title:'Tabloid scandal',text:'A party photo landed in the gossip pages. Public opinion is stirring.',build:(s,c)=>[
+  {label:'Apologize and donate',cost:pct(c.wealth,.02),fame:-10,desc:`2% (${money(pct(c.wealth,.02))}) donated · Limits the hit to Reputation −10`},
+  {label:'Ignore it',fame:-40,stress:15,desc:'No cost · Reputation −40 · Stress +15'}]},
+ {id:'charity_gala',title:'Charity gala invitation',text:'The biggest charity gala in the city needs a headline sponsor. High society is watching you.',build:(s,c)=>[
+  {label:'Become headline sponsor',cost:pct(c.wealth,.015),fame:40,memories:1,stress:-10,desc:`1.5% (${money(pct(c.wealth,.015))}) sponsored · Reputation +40 · Memories +1`},
+  {label:'Just attend',cost:pct(c.wealth,.002),fame:10,desc:`0.2% (${money(pct(c.wealth,.002))}) for a table · Reputation +10`},
+  {label:'Skip it',fame:-5,stress:-5,desc:'Reputation −5 · Stress −5'}]},
+ {id:'insider_tip',title:'Insider tip',text:'An old friend leaks pre-IPO info. They swear it\'s a sure thing, but getting caught would ruin your name.',build:(s,c)=>[
+  {label:'Politely decline',fame:5,desc:'Reputation +5 · Nothing to lose'},
+  {label:'Bet quietly',cost:pct(c.wealth,.03),stress:12,later:{months:2,amount:pct(c.wealth,.09),chance:.5,label:'Insider bet',penalty:{fame:-60}},desc:`3% (${money(pct(c.wealth,.03))}) bet · In 2 months, 50%: +9% return / 50%: total loss and Reputation −60`}]},
+ {id:'family_request',title:'Family asks for startup money',text:'Your younger sibling asks for startup funding. The plan looks solid, but there are no guarantees.',build:(s,c)=>[
+  {label:'Fund them gladly',cost:pct(c.wealth,.02),stress:-10,fame:5,later:{months:9,amount:pct(c.wealth,.03),chance:.4,label:'Sibling\'s first dividend'},desc:`2% (${money(pct(c.wealth,.02))}) funded · Stress −10 · 40% chance of a 3% return in 9 months`},
+  {label:'Decline',stress:15,desc:'No cost · Stress +15'}]},
+ {id:'travel_slump',title:'Tourism slump · Flights suspended',text:'Major air routes are cut and the hotel trade has frozen. Your staff are looking to you.',build:(s,c)=>[
+  {label:'Keep every employee',cost:pct(c.wealth,.01),fame:15,multiplier:.8,months:3,desc:`1% (${money(pct(c.wealth,.01))}) spent · Reputation +15 · Revenue −20% for 3 months`},
+  {label:'Cut staff',fame:-15,multiplier:.65,months:2,desc:'No cost · Reputation −15 · Revenue −35% for 2 months'}]},
+ {id:'museum_loan',title:'Museum loan request',text:'The national museum asks to borrow your collection for a special exhibition.',when:(s)=>(s.artCollection?.owned.length||0)>0,build:()=>[
+  {label:'Lend it',fame:25,memories:1,desc:'Reputation +25 · Memories +1 · The works return in 3 months'},
+  {label:'Decline',desc:'No change'}]},
+ {id:'zoning',title:'Riverfront redevelopment announced',text:'The city has hinted at riverfront redevelopment. A pre-announcement buying consortium invites you in.',build:(s,c)=>[
+  {label:'Join the consortium',cost:pct(c.wealth,.04),later:{months:6,amount:pct(c.wealth,.09),chance:.6,label:'Redevelopment consortium payout',fallback:pct(c.wealth,.02)},desc:`4% (${money(pct(c.wealth,.04))}) invested · In 6 months, 60%: 9% return / 40%: only 2% back`},
+  {label:'Wait and see',desc:'No change'}]},
+ {id:'burnout',title:'Health checkup warning',text:'Your doctor warns you\'re overworked. Rest now, or you\'ll be forced to rest much longer later.',when:s=>s.stress>=45,build:(s,c)=>[
+  {label:'Take a month off to recover',cost:pct(c.wealth,.01),stress:-40,multiplier:.9,months:1,desc:`1% (${money(pct(c.wealth,.01))}) · Stress −40 · Revenue −10% for 1 month`},
+  {label:'Ignore it and keep working',stress:20,later:{months:3,amount:-pct(c.wealth,.02),chance:.6,label:'Hospital bill'},desc:'Stress +20 · 60% chance of a 2% hospital bill in 3 months'}]},
+ {id:'market_crash',title:'Stock market plunge',text:'Bad news from abroad crashed the market in a day. Sell in panic, or buy the dip?',build:(s,c)=>[
+  {label:'Buy the dip',cost:pct(c.wealth,.03),prices:.9,later:{months:3,amount:pct(c.wealth,.03)+pct(c.wealth,.02),chance:.75,label:'Dip-buy rebound'},desc:`Stock prices −10% · 3% (${money(pct(c.wealth,.03))}) extra buying · 75% chance of a 5% return in 3 months`},
+  {label:'Hold',prices:.9,desc:'Stock prices −10% · No extra spending'}]},
+ {id:'networking',title:'Industry networking invite',text:'A chance to meet new clients and partners. Invest in growth, or in some breathing room?',build:(s,c)=>[
+  {label:'Attend and learn',cost:pct(c.wealth,.002),skill:4,fame:8,stress:4,desc:`0.2% (${money(pct(c.wealth,.002))}) spent · Skill +4 · Reputation +8 · Stress +4`},
+  {label:'Take a proper rest',stress:-12,desc:'No cost · Stress −12'}]},
+ {id:'rival_offer',title:'Rival\'s buyout offer',text:'Your rival offers to buy your building above market price. Take the cash, or keep your pride?',hidden:true,build:(s,c)=>[
+  {label:'Sell at a premium',money:c.offer,action:'sell-to-rival',tile:c.tile,desc:`${c.tileName} sold · 130% of market (${money(c.offer)}) in cash`},
+  {label:'Decline',fame:10,desc:'Reputation +10 · Rival\'s next offer comes in a year'}]}
 ];
 const eventById=id=>RICH_EVENTS.find(e=>e.id===id);
 export function buildRichEvent(s,id,ctx){
@@ -84,7 +84,7 @@ export function resolvePending(s){
  for(const p of due){
   const win=p.roll<p.chance,amount=win?p.amount:p.fallback||0;
   s.money+=amount;if(!win&&p.penalty?.fame)s.prestige=Math.max(0,(s.prestige||0)+p.penalty.fame);
-  s.log.unshift(`${amount>=0?'✦':'⚠'} ${p.label} · ${win?'성공':'무산'} · ${amount>=0?'+':'−'}${money(Math.abs(amount))}${!win&&p.penalty?.fame?' · 명성 '+p.penalty.fame:''}`);
+  s.log.unshift(`${amount>=0?'✦':'⚠'} ${p.label} · ${win?'Success':'Fell through'} · ${amount>=0?'+':'−'}${money(Math.abs(amount))}${!win&&p.penalty?.fame?' · Reputation '+p.penalty.fame:''}`);
   resolved.push({...p,win,amount});
  }
  s.pending=s.pending.filter(p=>p.month>s.month);s.log=s.log.slice(0,25);

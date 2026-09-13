@@ -1,14 +1,14 @@
-# SUPER RICH — 수퍼 리치 라이프 (v2.0)
+# SUPER RICH — Super Rich Life (v2.0)
 
-이미 부자인 사람이 되어 자산을 불리고, 라이벌 부호와 경쟁하고, 무엇을 남길지 고르는 브라우저 경제 게임입니다.
+A browser economy game where you are already rich: grow your assets, race a rival tycoon, and decide what you leave behind.
 
-**▶ 플레이:** https://aseptichc-rgb.github.io/super-rich-play/
+**▶ Play:** https://aseptichc-rgb.github.io/super-rich-play/
 
-- 설치 없이 PC·모바일 브라우저에서 바로 실행됩니다. 진행은 브라우저에 자동 저장됩니다.
-- 게임 속 돈(₲)과 투자 결과는 모두 가상이며 실제 돈과 무관합니다. 투자 조언이 아닙니다.
+- Runs in any desktop or mobile browser with no install. Progress is saved in your browser.
+- All in-game money (₲) and investment results are fictional and unrelated to real money. Nothing here is financial advice.
 
-## 의견 보내기
+## Sending feedback
 
-게임 안의 **의견 보내기**를 누르면 질문 몇 개와 익명 플레이 기록이 정리됩니다. 복사해서 게시글 댓글에 붙여넣거나, 이 저장소의 [Issues](https://github.com/aseptichc-rgb/super-rich-play/issues)에 올려 주세요.
+Press **Send Feedback** in the game to get a few short questions and an anonymous play record. Paste it as a comment wherever you found the game, or open an [issue](https://github.com/aseptichc-rgb/super-rich-play/issues) here.
 
-이 저장소는 배포용 빌드입니다. 이슈와 의견은 환영하지만 코드 풀 리퀘스트는 받지 않습니다.
+This repository only holds the deployed build. Issues and feedback are welcome; code pull requests are not accepted.

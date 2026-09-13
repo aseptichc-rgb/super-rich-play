@@ -5,7 +5,7 @@ export function validLandmarks(s){
  const rewards=s?.empire?.landmarkFame;
  if(rewards!==undefined&&(!rewards||typeof rewards!=='object'||Array.isArray(rewards)||!Object.entries(rewards).every(([i,n])=>/^(0|[1-9]\d*)$/.test(i)&&Number(i)<(s?.tiles?.length||0)&&[500,600,700,800,1000,1300].includes(n))))return false;
  return !Array.isArray(s?.tiles)||s.tiles.every(t=>t?.landmark===undefined||(validLandmark(t.landmark)&&t.owner==='player'&&t.type===t.landmark.type));}
-export function landmarkPreview(d){if(!validLandmark(d))return '';const name=d.name.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));return `<section class="landmark-preview"><img src="${landmarkURL(d.id)}" alt="${name} 설계 이미지"><h3>${name}</h3><p>나만의 랜드마크 · ${d.type==='hotel'?'호텔':'임대 빌딩'}</p></section>`;}
+export function landmarkPreview(d){if(!validLandmark(d))return '';const name=d.name.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));return `<section class="landmark-preview"><img src="${landmarkURL(d.id)}" alt="${name} design image"><h3>${name}</h3><p>My landmark · ${d.type==='hotel'?'Hotel':'Office Building'}</p></section>`;}
 const images=new Map();
 export function landmarkBounds(t,p,zoom,imageWidth,imageHeight){
  const width=t.footprint?.width||1,height=t.footprint?.height||1;

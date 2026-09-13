@@ -6,12 +6,12 @@ export function landmarkQuote(s,i,type,footprint){
  return {...q,fame,baseConstruction:q.construction,construction,total:construction+q.land,revenue,profit:revenue-q.cost};
 }
 export function landmarkBuildError(s,i,design,footprint){
- if(!validLandmark(design))return '유효한 설계를 선택하세요.';
+ if(!validLandmark(design))return 'Select a valid design.';
  const cells=footprintCells(i,footprint);
- if(!cells.length)return '가로·세로 1~3칸의 지도 안쪽 부지를 선택하세요.';
- if(cells.some(j=>s.tiles[j].terrain!=='land'||s.tiles[j].type||s.tiles[j].owner))return '선택한 크기의 전체 부지가 비어 있어야 합니다.';
+ if(!cells.length)return 'Select a lot inside the map, 1–3 tiles wide and tall.';
+ if(cells.some(j=>s.tiles[j].terrain!=='land'||s.tiles[j].type||s.tiles[j].owner))return 'The entire footprint of the selected size must be empty.';
  const error=canBuild(s,i,design.type,'buy',footprint);if(error)return error;
- if(s.mode!=='sandbox'&&s.money<landmarkQuote(s,i,design.type,footprint).total)return '랜드마크 건설 자금이 부족합니다.';
+ if(s.mode!=='sandbox'&&s.money<landmarkQuote(s,i,design.type,footprint).total)return 'Not enough cash to build the landmark.';
  return null;
 }
 export function buildLandmark(s,i,design,footprint){
@@ -22,6 +22,6 @@ export function buildLandmark(s,i,design,footprint){
  t.constructionCost=q.construction;t.assetLedger.initial+=extra;t.assetLedger.buildingValue*=100;t.landmark={...design};
  s.empire??={owned:[]};s.empire.landmarkFame??={};
  s.empire.landmarkFame[i]=(s.empire.landmarkFame[i]||0)+q.fame;s.empire.earnedFame=(s.empire.earnedFame||0)+q.fame;
- s.log=[`${design.name} 랜드마크 ${footprint.width}×${footprint.height}칸 건설 · ₲${q.total.toLocaleString()} 투자 · 완공 명성 +${q.fame}`,...previousLog].slice(0,25);
- return {ok:true,fame:q.fame,msg:`랜드마크 완공! 명성 +${q.fame.toLocaleString('ko-KR')}`};
+ s.log=[`${design.name} landmark built on ${footprint.width}×${footprint.height} tiles · ₲${q.total.toLocaleString()} invested · Completion reputation +${q.fame}`,...previousLog].slice(0,25);
+ return {ok:true,fame:q.fame,msg:`Landmark complete! Reputation +${q.fame.toLocaleString('en-US')}`};
 }

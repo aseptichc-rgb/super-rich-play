@@ -29,7 +29,7 @@ export function createWorldLife(ctx,screen,box,circle,line,getState,getAnalysis)
   const z=a===hero?1.3:1,base=screen(x,y),step=moving?Math.sin(time*.016+a.id)*.07:0;
   circle(base,2.7*z,'#203c3330');line(screen(x-step,y,1),screen(x,y,6*z+bob),'#3e535c',1.6*z);line(screen(x+step,y,1),screen(x,y,6*z+bob),'#3e535c',1.6*z);
   line(screen(x,y,6*z+bob),screen(x,y,12*z+bob),a.color,4*z);circle(screen(x,y,15*z+bob),2.5*z,'#edc59d');circle(screen(x-.01,y,17*z+bob),2.1*z,'#5d5449');
-  if(a===hero){const p=screen(x,y,29);ctx.font='bold 10px sans-serif';ctx.textAlign='center';ctx.fillStyle='#264a3b';ctx.fillText('나',p.x,p.y);}
+  if(a===hero){const p=screen(x,y,29);ctx.font='bold 10px sans-serif';ctx.textAlign='center';ctx.fillStyle='#264a3b';ctx.fillText('Me',p.x,p.y);}
  }
  function drawTile(i,time){for(const a of buckets.get(i)||[])person(a,time);}
  function drawFront(time,phase=0){
@@ -38,8 +38,8 @@ export function createWorldLife(ctx,screen,box,circle,line,getState,getAnalysis)
   const owned=getAnalysis().owned;
   for(const{t,i}of owned){const{x,y}=coords(i),r=getAnalysis().reports[i];if(!r||t.type==='plot')continue;const p=screen(x+.5,y+.5,57+t.level*10),pulse=reduce.matches?1:.7+Math.sin(time*.003+i)*.3;
    if(dusk>.06){const glow=ctx.createRadialGradient(p.x,p.y+20,1,p.x,p.y+20,34);glow.addColorStop(0,'#ffe4a55c');glow.addColorStop(1,'#ffe4a500');ctx.fillStyle=glow;ctx.fillRect(p.x-34,p.y-15,68,70);}
-   ctx.font='bold 9px sans-serif';ctx.textAlign='center';const label=TYPES[t.type].name+' · '+(t.type==='atelier'?'창작 +15%':r.profit>=0?'수익 중':'점검 필요'),width=ctx.measureText(label).width+16;ctx.fillStyle=t.type==='atelier'||r.profit>=0?'#284d42e8':'#954f44e8';ctx.beginPath();ctx.roundRect(p.x-width/2,p.y-10,width,19,5);ctx.fill();ctx.fillStyle='#fff6d9';ctx.fillText(label,p.x,p.y+3);
-   if(!reduce.matches&&TYPES[t.type].group==='business'){const cycle=(time/1000+i*.17)%5;if(cycle<2){const q=screen(x+.6,y+.5,78+t.level*10+cycle*12);ctx.globalAlpha=Math.min(1,2-cycle);ctx.fillStyle='#426e4b';ctx.font='bold 11px sans-serif';ctx.fillText(r.demand>85?'♥ 또 올게요!':r.demand>55?'포장 부탁해요':'손님을 기다려요',q.x,q.y);ctx.globalAlpha=1;}}
+   ctx.font='bold 9px sans-serif';ctx.textAlign='center';const label=TYPES[t.type].name+' · '+(t.type==='atelier'?'Creative +15%':r.profit>=0?'Profitable':'Needs attention'),width=ctx.measureText(label).width+16;ctx.fillStyle=t.type==='atelier'||r.profit>=0?'#284d42e8':'#954f44e8';ctx.beginPath();ctx.roundRect(p.x-width/2,p.y-10,width,19,5);ctx.fill();ctx.fillStyle='#fff6d9';ctx.fillText(label,p.x,p.y+3);
+   if(!reduce.matches&&TYPES[t.type].group==='business'){const cycle=(time/1000+i*.17)%5;if(cycle<2){const q=screen(x+.6,y+.5,78+t.level*10+cycle*12);ctx.globalAlpha=Math.min(1,2-cycle);ctx.fillStyle='#426e4b';ctx.font='bold 11px sans-serif';ctx.fillText(r.demand>85?'♥ Be back soon!':r.demand>55?'To go, please':'Waiting for customers',q.x,q.y);ctx.globalAlpha=1;}}
   }
   for(const p of particles){const age=(time-p.start)/p.life,center=screen(p.x,p.y,35),dx=p.dx*age,dy=p.dy*age+50*age*age;ctx.globalAlpha=1-age;if(p.text){ctx.font='bold 16px sans-serif';ctx.textAlign='center';ctx.fillStyle=p.color;ctx.fillText(p.text,center.x,center.y-age*65);}else{ctx.fillStyle=p.color;ctx.fillRect(center.x+dx,center.y+dy,4,6);}ctx.globalAlpha=1;}
   // A flock moves across the open river, away from interactive controls.

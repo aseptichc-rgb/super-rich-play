@@ -275,7 +275,7 @@ export function createRenderer(canvas,getState,getAnalysis,onTile,onHover){
    else if(t.type&&t.type!=='road'&&!a.active[i]){const p=screen(x+.5,y+.5,52);circle(p,6,'#dcb166');ctx.fillStyle='#544532';ctx.font=`${9*zoom}px sans-serif`;ctx.textAlign='center';ctx.fillText('↯',p.x,p.y+3*zoom);}
   }
   const target=s.rival?.target??-1;
-  if(target>=0){const{x,y}=coords(target),pulse=.5+.5*Math.sin(time*.006);tile(x,y,`rgba(200,80,70,${(.15+.3*pulse).toFixed(2)})`,'#c0574d',2);const p=screen(x+.5,y+.5,34);ctx.fillStyle='#a83d37';ctx.font=`bold ${10*zoom}px sans-serif`;ctx.textAlign='center';ctx.fillText('⚑ 라이벌 매입 예정',p.x,p.y);}
+  if(target>=0){const{x,y}=coords(target),pulse=.5+.5*Math.sin(time*.006);tile(x,y,`rgba(200,80,70,${(.15+.3*pulse).toFixed(2)})`,'#c0574d',2);const p=screen(x+.5,y+.5,34);ctx.fillStyle='#a83d37';ctx.font=`bold ${10*zoom}px sans-serif`;ctx.textAlign='center';ctx.fillText('⚑ Rival buy incoming',p.x,p.y);}
   if(selected>=0){for(const j of footprintCells(selected,s.tiles[selected].footprint)){const{x,y}=coords(j);tile(x,y,'#f8f0b42b','#f5e6a5',1);}}
   if(hover>=0){const{x,y}=coords(hover);const ok=tool==='inspect'||tool==='pan'||!canBuild(s,hover,tool,TYPES[tool]?.group==='property'?'buy':'lease');tile(x,y,ok?'#f6ffe255':'#e9947755',ok?'#f8ffe0':'#bb604f',2);
    if(TYPES[tool]?.radius){const radius=TYPES[tool].radius;for(let yy=0;yy<SIZE;yy++)for(let xx=0;xx<SIZE;xx++)if(Math.hypot(xx-x,yy-y)<=radius)tile(xx,yy,'#fff8ba12','#e8e8b344',1);}
@@ -299,7 +299,7 @@ export function createRenderer(canvas,getState,getAnalysis,onTile,onHover){
    if(d.pool)box(2.05,21.10,1.65,.72,3,'#62bdcc','#4f98a8','#9be0e2');if(d.garden){for(const [xx,yy]of[[1.45,20],[1.45,21],[4.1,21.5],[5.25,20.2]])tree(xx,yy,.72);}
    if(d.golf){tile(2,22,'#72a969');tile(3,22,'#83b679');line(screen(3.3,22.4),screen(3.3,22.4,18),'#fff4d3',1);circle(screen(2.4,22.3),3,'#e6d7a5');}
    if(d.cinema)box(4.2,20.2,.6,.6,18,'#626d80','#414c62','#7a8794');if(d.spa)box(4.2,21.1,.6,.6,12,'#86c6c4');if(d.helipad){tile(4,22,'#899c99');const hp=screen(4.5,22.5,2);ctx.fillStyle='#fff1bf';ctx.font='bold 15px sans-serif';ctx.fillText('H',hp.x,hp.y);}
-   const p=screen(3.25,20.45,z+38);circle(p,12,'#fff1bd88');ctx.font=`bold ${12*zoom}px sans-serif`;ctx.textAlign='center';ctx.fillStyle='#60451c';ctx.fillText(`♛ PRIVATE ESTATE · ${d.floors}층 ${d.rooms}개 방`,p.x,p.y+4*zoom);
+   const p=screen(3.25,20.45,z+38);circle(p,12,'#fff1bd88');ctx.font=`bold ${12*zoom}px sans-serif`;ctx.textAlign='center';ctx.fillStyle='#60451c';ctx.fillText(`♛ PRIVATE ESTATE · ${d.floors} floors · ${d.rooms} rooms`,p.x,p.y+4*zoom);
   }
   if(collection.includes('yacht')){const yy=12+(reducedMotion.matches?0:Math.sin(time*.0005)*.15),model=selectedModel(s,'yacht');drawMapYacht(ctx,screen,23.4,yy+.7,model,time);const design=YACHT_DESIGNS[model.id],p=screen(23.4,yy+.7,design.roof+Math.max(0,design.levels-1)*7+26);ctx.font='bold 11px sans-serif';ctx.textAlign='center';ctx.fillStyle='#21485a';ctx.fillText('✦ '+model.name,p.x,p.y);}
   life.drawFront(time,phase);

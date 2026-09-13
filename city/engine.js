@@ -18,42 +18,42 @@ import {wageQuote,validCareer} from './careers.js';
 import {investmentReport,recordTrade,validInvestment} from './investment.js';
 import {projectReport,advanceProjects,validProjects} from './projects.js';
 import {validShift} from './activity.js';
-import {advanceVentures,validVentures} from './venture.js';
+import {advanceVentures,validVentures,repairVentureNames} from './venture.js';
 import {empireSummary,validEmpire,settleOwnerBenefits} from './empire.js';
 import {acquisitionSummary,validAcquisitions} from './acquisitions.js';
 import {lifestyleCostReport} from './living-costs.js';
 // Personal wealth simulation. All money is fictional G; one tick is one month.
 export const SIZE=26,SAVE_KEY='super-rich-life-v2';
 export const TYPES={
- extension:{name:'통합 건물 부지',color:'#c8bb88'},
- golf:{name:'골프장',group:'property',icon:'⛳',cost:1000000,upkeep:18000,color:'#78aa58',shape:'golf',base:100000,staff:0,managed:true,desc:'클럽하우스와 코스를 갖춘 골프장. 입지에 따라 이용 수익이 달라져요 · 자동 운영 · 3단계 확장 가능.'},
- plot:{name:'보유 부지',group:'land',icon:'▱',cost:0,upkeep:0,color:'#c8bb88',base:0,staff:0,desc:'미리 매입한 빈 땅. 자동 개발되지 않으며 원하는 건물을 지을 수 있습니다.'},
- hotel:{name:'호텔',group:'property',icon:'🏨',cost:250000,upkeep:5000,color:'#d6b16c',shape:'shop',base:20000,staff:0,managed:true,desc:'건설하면 바로 개장! 입지와 경기에 따라 수익이 달라져요 · 근처 호텔·리조트와 클러스터를 이루면 매출이 오릅니다.'},
- resort:{name:'리조트',group:'property',icon:'🏝',cost:600000,upkeep:10000,color:'#6fb8ab',shape:'home',base:56000,staff:0,managed:true,unlock:10000000,desc:'디벨로퍼 챕터(최고 순자산 ₲10,000,000)에 해금. 강변·공원 근처에서 수익이 높아요 · 운영은 자동, 수익은 현금으로 들어옵니다.'},
- office:{name:'임대 빌딩',group:'property',icon:'🏢',cost:350000,upkeep:5000,color:'#85aabe',shape:'tower',base:28000,staff:0,managed:true,desc:'매달 월세가 들어오는 내 빌딩. 유동인구가 많을수록 월세가 높아요 · 불황엔 공실이 늘어 월세가 줄어듭니다.'},
- hq:{name:'본사 타워',group:'property',icon:'🏛',cost:5000000,upkeep:80000,color:'#c9a24a',shape:'tower',base:220000,staff:0,managed:true,unlock:30000000,unique:true,desc:'타이쿤 챕터(최고 순자산 ₲30,000,000)에 해금. 보유 중 모든 관리형 자산 매출 +5% · 매월 명성 +10 · 도시에 하나만 세울 수 있습니다.'},
- monument:{name:'도시 기념탑',group:'property',icon:'✦',cost:30000000,upkeep:300000,color:'#e0c46a',shape:'tower',base:900000,staff:0,managed:true,unlock:150000000,unique:true,desc:'레거시 챕터(최고 순자산 ₲150,000,000)에 해금. 관리형 자산 매출 +10% · 매월 명성 +30 · 레거시 점수 800 · 도시에 하나만 세울 수 있습니다.'},
- atelier:{name:'내 작업실',group:'homebase',icon:'⚒',cost:1200,upkeep:35,color:'#e3ad69',shape:'school',base:0,staff:0,desc:'첫 거래로 마련한 작업실. 현장 수리비 20% 절감 · 창작 효율 +15%. 월 임대료가 발생합니다.'},
- cafe:{name:'카페',group:'business',icon:'♨',cost:2400,upkeep:240,color:'#d1aa85',shape:'shop',base:2400,staff:1,desc:'유동 인구가 많은 곳에 유리합니다. 가격·품질·직원 수를 직접 결정하세요.'},
- market:{name:'동네 마켓',group:'business',icon:'▤',cost:4200,upkeep:380,color:'#86b7a4',shape:'shop',base:3800,staff:2,desc:'주거지 근처에서 안정적인 매출. 인건비와 상품 원가를 관리해야 합니다.'},
- studio:{name:'디자인 스튜디오',group:'business',icon:'✧',cost:3500,upkeep:180,color:'#b3a6ca',shape:'school',base:3100,staff:1,desc:'실력이 수익을 만듭니다. 학습으로 전문성을 키우면 계약 매출이 증가합니다.'},
- workshop:{name:'제작 공방',group:'business',icon:'⚒',cost:5000,upkeep:320,color:'#d8bb7c',shape:'factory',base:4200,staff:2,desc:'유동 인구 의존도는 낮고 전문성과 품질이 중요합니다.'},
- rental:{name:'임대 주택',group:'property',icon:'⌂',cost:7000,upkeep:90,color:'#b2c498',shape:'home',base:620,staff:0,desc:'땅을 매입한 뒤 건설합니다. 월세가 높을수록 공실이 늘어납니다.'},
- condo:{name:'임대 아파트',group:'property',icon:'▥',cost:18000,upkeep:230,color:'#88b8cb',shape:'shop',base:1800,staff:0,unlock:50000,desc:'최고 순자산 ₲50,000에 해금. 큰 투자와 높은 임대 수익을 갖는 자산입니다.'},
- garden:{name:'프라이빗 정원',group:'property',icon:'♣',cost:1600,upkeep:35,color:'#80ae77',shape:'park',base:0,staff:0,desc:'주변 4칸의 내 상권과 임대 선호도를 높입니다. 정원 자체는 수익이 없습니다.'},
- home:{name:'주거지',color:'#afc897'},shop:{name:'상점',color:'#8abcc4'},factory:{name:'물류 회사',color:'#c8b38a'},park:{name:'공원',color:'#83b17b'},hall:{name:'커뮤니티 센터',color:'#eee0b8'},wind:{name:'풍력 발전소',color:'#dbe4d6'},water:{name:'급수탑',color:'#8fbcc6'},school:{name:'학교',color:'#d9b699'},clinic:{name:'병원',color:'#e0b2a5'},fire:{name:'소방서',color:'#c99580'},road:{name:'도로',color:'#8b988d'},plaza:{name:'광장',color:'#b6a3cf'},tower:{name:'오피스',color:'#d7cfb0'}
+ extension:{name:'Combined building lot',color:'#c8bb88'},
+ golf:{name:'Golf Course',group:'property',icon:'⛳',cost:1000000,upkeep:18000,color:'#78aa58',shape:'golf',base:100000,staff:0,managed:true,desc:'A golf course with a clubhouse and full course. Green-fee income depends on location · Runs automatically · Expands up to 3 tiers.'},
+ plot:{name:'Owned Lot',group:'land',icon:'▱',cost:0,upkeep:0,color:'#c8bb88',base:0,staff:0,desc:'Empty land you bought early. It never auto-develops, so build whatever you like here.'},
+ hotel:{name:'Hotel',group:'property',icon:'🏨',cost:250000,upkeep:5000,color:'#d6b16c',shape:'shop',base:20000,staff:0,managed:true,desc:'Opens as soon as it is built! Profit depends on location and the economy · Clustering with nearby hotels and resorts lifts revenue.'},
+ resort:{name:'Resort',group:'property',icon:'🏝',cost:600000,upkeep:10000,color:'#6fb8ab',shape:'home',base:56000,staff:0,managed:true,unlock:10000000,desc:'Unlocks in the Developer chapter (peak net worth ₲10,000,000). Earns more near the river and parks · Runs itself and pays profit in cash.'},
+ office:{name:'Office Building',group:'property',icon:'🏢',cost:350000,upkeep:5000,color:'#85aabe',shape:'tower',base:28000,staff:0,managed:true,desc:'Your own building paying rent every month. More foot traffic means higher rent · Vacancies rise and rent falls in a bust.'},
+ hq:{name:'HQ Tower',group:'property',icon:'🏛',cost:5000000,upkeep:80000,color:'#c9a24a',shape:'tower',base:220000,staff:0,managed:true,unlock:30000000,unique:true,desc:'Unlocks in the Tycoon chapter (peak net worth ₲30,000,000). All managed assets +5% revenue while owned · Reputation +10 monthly · Only one per city.'},
+ monument:{name:'City Monument',group:'property',icon:'✦',cost:30000000,upkeep:300000,color:'#e0c46a',shape:'tower',base:900000,staff:0,managed:true,unlock:150000000,unique:true,desc:'Unlocks in the Legacy chapter (peak net worth ₲150,000,000). Managed assets +10% revenue · Reputation +30 monthly · Legacy score 800 · Only one per city.'},
+ atelier:{name:'My Workshop',group:'homebase',icon:'⚒',cost:1200,upkeep:35,color:'#e3ad69',shape:'school',base:0,staff:0,desc:'The workshop from your first deal. On-site repair costs −20% · Creative output +15%. Charges monthly rent.'},
+ cafe:{name:'Cafe',group:'business',icon:'♨',cost:2400,upkeep:240,color:'#d1aa85',shape:'shop',base:2400,staff:1,desc:'Thrives where foot traffic is high. You set the price, quality and staff count.'},
+ market:{name:'Corner Market',group:'business',icon:'▤',cost:4200,upkeep:380,color:'#86b7a4',shape:'shop',base:3800,staff:2,desc:'Steady revenue near homes. Keep labor and goods costs under control.'},
+ studio:{name:'Design Studio',group:'business',icon:'✧',cost:3500,upkeep:180,color:'#b3a6ca',shape:'school',base:3100,staff:1,desc:'Skill makes the money here. Raise your skill through study and contract revenue grows.'},
+ workshop:{name:'Maker Workshop',group:'business',icon:'⚒',cost:5000,upkeep:320,color:'#d8bb7c',shape:'factory',base:4200,staff:2,desc:'Barely depends on foot traffic; skill and quality matter most.'},
+ rental:{name:'Rental House',group:'property',icon:'⌂',cost:7000,upkeep:90,color:'#b2c498',shape:'home',base:620,staff:0,desc:'Buy the land, then build. Higher rent means more vacancies.'},
+ condo:{name:'Rental Apartments',group:'property',icon:'▥',cost:18000,upkeep:230,color:'#88b8cb',shape:'shop',base:1800,staff:0,unlock:50000,desc:'Unlocks at peak net worth ₲50,000. A big investment with high rental income.'},
+ garden:{name:'Private Garden',group:'property',icon:'♣',cost:1600,upkeep:35,color:'#80ae77',shape:'park',base:0,staff:0,desc:'Boosts your businesses and rental appeal within 4 tiles. The garden itself earns nothing.'},
+ home:{name:'Homes',color:'#afc897'},shop:{name:'Shop',color:'#8abcc4'},factory:{name:'Logistics Co.',color:'#c8b38a'},park:{name:'Park',color:'#83b17b'},hall:{name:'Community Center',color:'#eee0b8'},wind:{name:'Wind Farm',color:'#dbe4d6'},water:{name:'Water Tower',color:'#8fbcc6'},school:{name:'School',color:'#d9b699'},clinic:{name:'Hospital',color:'#e0b2a5'},fire:{name:'Fire Station',color:'#c99580'},road:{name:'Road',color:'#8b988d'},plaza:{name:'Plaza',color:'#b6a3cf'},tower:{name:'Office',color:'#d7cfb0'}
 };
-export const STOCKS=[{id:'local',name:'타운 리테일',base:100,risk:.06,annualRate:.20},{id:'tech',name:'넥스트 테크',base:160,risk:.13,annualRate:.30},{id:'estate',name:'리버 리츠',base:80,risk:.035,annualRate:.10}];
-export const MILESTONES=[{wealth:20000,name:'첫 자산가'},{wealth:50000,name:'동네 사업가'},{wealth:100000,name:'자산 포트폴리오'},{wealth:300000,name:'슈퍼 리치'}];
+export const STOCKS=[{id:'local',name:'Town Retail',base:100,risk:.06,annualRate:.20},{id:'tech',name:'Next Tech',base:160,risk:.13,annualRate:.30},{id:'estate',name:'River REIT',base:80,risk:.035,annualRate:.10}];
+export const MILESTONES=[{wealth:20000,name:'First Fortune'},{wealth:50000,name:'Local Entrepreneur'},{wealth:100000,name:'Asset Portfolio'},{wealth:300000,name:'Super Rich'}];
 export const EVENTS=[];
 // Retained only to recognize and clear pending events in older saves.
 const RETIRED_EVENTS=[
- {title:'업계 네트워킹 초대',text:'새 고객과 파트너를 만날 기회입니다. 생활의 여유와 성장 중 무엇에 투자할까요?',options:[{label:'참가하고 배운다',cost:450,skill:8,stress:4,desc:'₲450 지출 · 전문성 +8 · 스트레스 +4'},{label:'충분히 쉬어간다',cost:0,skill:0,stress:-12,desc:'비용 없음 · 스트레스 −12'}]},
- {title:'단체 주문이 들어왔어요',text:'지역 행사에서 대량 주문을 제안했습니다. 선투자와 추가 운영 시간이 필요합니다.',options:[{label:'주문을 맡는다',cost:500,bonus:420,stress:8,desc:'지금 ₲500 지출 · 2개월 사업 수익 +₲420 · 스트레스 +8'},{label:'현재 고객에 집중한다',cost:0,bonus:0,stress:-6,desc:'추가 지출 없음 · 스트레스 −6'}]},
- {title:'원자재 공동 구매',text:'다음 두 달 동안 사용할 상품을 공동 구매하면 할인받을 수 있습니다.',options:[{label:'선결제한다',cost:400,bonus:280,stress:0,desc:'지금 ₲400 지출 · 2개월 사업 수익 +₲280'},{label:'현금을 보유한다',cost:0,bonus:0,stress:0,desc:'추가 지출과 수익 없음'}]}
+ {title:'Industry networking invite',text:'A chance to meet new clients and partners. Invest in growth, or in some breathing room?',options:[{label:'Attend and learn',cost:450,skill:8,stress:4,desc:'Spend ₲450 · Skill +8 · Stress +4'},{label:'Take a proper rest',cost:0,skill:0,stress:-12,desc:'No cost · Stress −12'}]},
+ {title:'A bulk order came in',text:'A local event wants a bulk order. It needs upfront spending and extra operating hours.',options:[{label:'Take the order',cost:500,bonus:420,stress:8,desc:'Spend ₲500 now · Business profit +₲420 over 2 months · Stress +8'},{label:'Focus on current customers',cost:0,bonus:0,stress:-6,desc:'No extra spending · Stress −6'}]},
+ {title:'Group buy on supplies',text:'Buy the next two months of stock together and get a discount.',options:[{label:'Prepay',cost:400,bonus:280,stress:0,desc:'Spend ₲400 now · Business profit +₲280 over 2 months'},{label:'Keep the cash',cost:0,bonus:0,stress:0,desc:'No extra spending or profit'}]}
 ];
 export function migrateSave(s){
- if(s){ensureEconomy(s);s.growthStartMonth??=s.month;if(s.tiles?.length===SIZE*SIZE)installBoulevards(s);}
+ if(s){ensureEconomy(s);s.growthStartMonth??=s.month;if(s.tiles?.length===SIZE*SIZE)installBoulevards(s);repairVentureNames(s);}
  if(s&&RETIRED_EVENTS.some(e=>JSON.stringify(e)===JSON.stringify(s.event)))s.event=null;
  return s;
 }
@@ -70,7 +70,7 @@ export function createGame(mode='standard',seed=42){
  for(const[x,y,l]of[[5,5,1],[5,6,2],[7,5,1],[8,6,1],[9,6,2],[4,8,1],[5,8,1],[7,8,1],[8,8,2],[12,5,2],[13,6,1],[15,6,2],[16,6,1],[12,12,2],[13,12,1],[16,12,2],[18,12,1],[7,17,1],[8,17,2],[12,17,1],[15,17,2],[16,17,1]])put(x,y,'home',l);
  put(9,10,'hall');put(10,8,'park');put(8,10,'shop',2);put(13,10,'shop',2);put(18,8,'factory');put(19,8,'factory');put(12,8,'school');put(16,14,'park');put(4,15,'park');put(10,17,'clinic');put(18,17,'tower');
  installBoulevards({tiles});
- return{economy:ensureEconomy({month:0,seed}),version:2,growthStartMonth:0,name:'리버사이드',mode,seed,tiles,money:12000,debt:0,month:0,skill:10,stress:12,plan:{work:80,manage:40,learn:20,create:0},career:'flexible',costBasis:{local:0,tech:0,estate:0},realizedGains:0,holdings:{local:0,tech:0,estate:0},prices:{local:100,tech:160,estate:80},history:[],log:['리버사이드에 도착했습니다. 일하며 종잣돈을 만들고 첫 가게의 입지를 골라보세요.'],event:null,effect:null,highestWealth:12000,milestones:[],lastReport:null};
+ return{economy:ensureEconomy({month:0,seed}),version:2,growthStartMonth:0,name:'Riverside',mode,seed,tiles,money:12000,debt:0,month:0,skill:10,stress:12,plan:{work:80,manage:40,learn:20,create:0},career:'flexible',costBasis:{local:0,tech:0,estate:0},realizedGains:0,holdings:{local:0,tech:0,estate:0},prices:{local:100,tech:160,estate:80},history:[],log:['You\'ve arrived in Riverside. Work to build seed money and pick a spot for your first shop.'],event:null,effect:null,highestWealth:12000,milestones:[],lastReport:null};
 }
 export const BOULEVARD={axis:11,land:1.5,rent:1.3};
 // Upgrade existing streets and vacant parcels; never displace saved buildings or owned land.
@@ -94,7 +94,7 @@ function connectBuildingRoad(s,i){
   if(neighbors(j).some(n=>s.tiles[n].type==='road')){
    let count=0;
    for(let n=j;n!==null;n=previous.get(n)){Object.assign(s.tiles[n],{type:'road',owner:'npc',level:1,tree:false});count++;}
-   s.log.unshift(`도로 자동 연결 · ${coords(i).x+1}번가 ${coords(i).y+1}번지까지 ${count}칸 확장`);
+   s.log.unshift(`Road auto-connected · ${count} tiles extended to (${coords(i).x+1}, ${coords(i).y+1})`);
    return;
   }
   for(const n of neighbors(j))if(vacant(n)&&!previous.has(n)){previous.set(n,j);queue.push(n);}
@@ -115,7 +115,7 @@ export function advanceNeighborhood(s){
   const choices=price>=4800&&loc.footfall>=70?['condo','office','hotel','market']:loc.residents>=60?['rental','condo','market','cafe']:['rental','rental','cafe','garden'];
   const type=choices[Math.floor(r*choices.length)];
   Object.assign(s.tiles[i],{type,owner:'npc',level:1,tree:false,constructionCost:developmentQuote(s,i,type).construction});
-  s.log.unshift(`동네 개발 · ${coords(i).x+1}번가 ${coords(i).y+1}번지에 ${TYPES[type].name} 완공`);
+  s.log.unshift(`Neighborhood growth · ${TYPES[type].name} completed at (${coords(i).x+1}, ${coords(i).y+1})`);
  }
  // Each six additional buildings supports one new connected road tile.
  const buildings=s.tiles.filter(t=>t.type&&!['road','plot','extension','garden','park'].includes(t.type)).length;
@@ -124,7 +124,7 @@ export function advanceNeighborhood(s){
   const extensions=s.tiles.map((t,j)=>j).filter(j=>vacant(j)&&neighbors(j).some(n=>s.tiles[n].type==='road')&&neighbors(j).some(vacant));
   const score=j=>neighbors(j).filter(vacant).length*20+s.tiles.reduce((n,t,k)=>n+(t.type&&!['road','plot'].includes(t.type)&&dist(j,k)<=3?1:0),0)+roll(j)*10;
   extensions.sort((a,b)=>score(b)-score(a));
-  if(extensions.length){const j=extensions[0];Object.assign(s.tiles[j],{type:'road',owner:'npc',level:1,tree:false});s.log.unshift(`도로 확장 · ${coords(j).x+1}번가 ${coords(j).y+1}번지까지 연결`);}
+  if(extensions.length){const j=extensions[0];Object.assign(s.tiles[j],{type:'road',owner:'npc',level:1,tree:false});s.log.unshift(`Road extended · Connected to (${coords(j).x+1}, ${coords(j).y+1})`);}
  }
  s.log=s.log.slice(0,25);
 }
@@ -137,14 +137,14 @@ export function parcelQuote(s,i){
  return{type,construction,level:t.level,land:landPrice(s,i),total:landPrice(s,i)+marketPrice(s,construction*t.level)};
 }
 export function buyParcel(s,i){
- const q=parcelQuote(s,i);if(!q)return{ok:false,msg:'매입 가능한 빈 땅이나 민간 시설을 선택하세요.'};
- if(s.mode!=='sandbox'&&s.money<q.total)return{ok:false,msg:'부지를 매입할 현금이 부족합니다.'};
+ const q=parcelQuote(s,i);if(!q)return{ok:false,msg:'Select an empty lot or private building that\'s for sale.'};
+ if(s.mode!=='sandbox'&&s.money<q.total)return{ok:false,msg:'Not enough cash to buy this lot.'};
  if(s.mode!=='sandbox')s.money-=q.total;
  const wasRival=s.tiles[i].owner==='rival';
  Object.assign(s.tiles[i],{type:q.type,owner:'player',tenure:'buy',deposit:0,constructionCost:q.construction,level:q.level,tree:false,price:100,quality:1,staff:TYPES[q.type].staff,marketing:false,assetLedger:{initial:q.total,upgrades:0,operating:0,since:s.month,estimated:false,buildingValue:q.construction*q.level*.7,valuationMonth:s.month}});
  if(wasRival&&s.rival){s.rival.tiles=s.rival.tiles.filter(j=>j!==i);s.prestige=Math.max(0,(s.prestige||0)+15);}
- awardAssetFame(s,`parcel:${i}`,q.total,TYPES[q.type].name+' 취득');
- const msg=wasRival?`라이벌의 ${TYPES[q.type].name} 인수 · ₲${q.total.toLocaleString()} (프리미엄 50%) · 명성 +15`:`${TYPES[q.type].name} 매입 완료 · ₲${q.total.toLocaleString()}`;s.log.unshift(msg);s.log=s.log.slice(0,25);return{ok:true,msg};
+ awardAssetFame(s,`parcel:${i}`,q.total,TYPES[q.type].name+' acquired');
+ const msg=wasRival?`Acquired rival's ${TYPES[q.type].name} · ₲${q.total.toLocaleString()} (50% premium) · Reputation +15`:`${TYPES[q.type].name} purchased · ₲${q.total.toLocaleString()}`;s.log.unshift(msg);s.log=s.log.slice(0,25);return{ok:true,msg};
 }
 export function location(s,i){let residents=0,competition=0,amenity=0;for(let j=0;j<s.tiles.length;j++){const t=s.tiles[j],d=dist(i,j);if(d<=4&&['home','rental','condo'].includes(t.type))residents+=t.level*12;if(d<=4&&['park','garden'].includes(t.type))amenity+=12*t.level;if(d<=4&&j!==i&&t.type===s.tiles[i].type)competition++;}const access=hasRoadAccess(s,i,s.tiles[i].footprint);return{residents,competition,amenity:Math.min(36,amenity),access,boulevard:hasBoulevardAccess(s,i,s.tiles[i].footprint),footfall:Math.round(clamp(35+residents*.32+amenity,20,100))};}
 export function footprintCells(i,footprint={width:1,height:1}){
@@ -188,7 +188,7 @@ export function developmentQuote(s,i,type,level=1,footprint=s.tiles[i]?.footprin
   const report=businessReport(virtual,i);revenue=report.revenue;cost=report.cost;
  }
  revenue=Math.round(revenue);cost=Math.round(cost);
- return{loc,waterfront,score,factor,cells,area,label:score>=.8?'핵심 입지':score>=.55?'인기 입지':'실속 입지',construction,land,total:construction+land,revenue,cost,profit:revenue-cost,synergy,premium,cycle,attention,boost};
+ return{loc,waterfront,score,factor,cells,area,label:score>=.8?'Prime location':score>=.55?'Popular location':'Value location',construction,land,total:construction+land,revenue,cost,profit:revenue-cost,synergy,premium,cycle,attention,boost};
 }
 // Game-only appreciation: annual 20%, with the legacy rate preserved before migration.
 export const BUILDING_GROWTH=Math.pow(1.20,1/12)-1;
@@ -232,25 +232,25 @@ export function analyze(s){
 export function canBuild(s,i,type,tenure='lease',footprint){
  if(footprint){
   const cells=footprintCells(i,footprint),d=TYPES[type];
-  if(!cells.length)return'가로·세로 1~3칸, 지도 안쪽 부지를 선택하세요.';
-  if(!d?.group||['plot','atelier'].includes(type))return'건설 가능한 사업을 선택하세요.';
-  if(tenure!=='buy')return'통합 부지는 토지를 소유해야 건설할 수 있습니다.';
+  if(!cells.length)return'Select a lot 1–3 tiles wide and tall, inside the map.';
+  if(!d?.group||['plot','atelier'].includes(type))return'Select a business you can build.';
+  if(tenure!=='buy')return'You must own the land to build on a combined lot.';
   for(const j of cells){const t=s.tiles[j],root=s.tiles[buildingAnchor(s,j)];
-   if(t.terrain!=='land'||t.type==='road'||(t.type&&t.type!=='extension'&&!TYPES[t.type]?.group&&!parcelQuote(s,j)))return'강·도로·공공시설은 건설 부지에 포함할 수 없습니다.';
-   if((t.type||t.owner)&&!(root.owner==='player'&&root.tenure==='buy'))return'부지 안의 기존 건물을 먼저 매입하세요.';
-   if(root.footprint&&!footprintCells(buildingAnchor(s,j),root.footprint).every(k=>cells.includes(k)))return'기존 통합 건물의 부지를 전부 포함해야 재건축할 수 있습니다.';
-   if(root.type==='atelier')return'작업실은 먼저 정리한 뒤 건설하세요.';
+   if(t.terrain!=='land'||t.type==='road'||(t.type&&t.type!=='extension'&&!TYPES[t.type]?.group&&!parcelQuote(s,j)))return'River, road and public tiles can\'t be part of a building lot.';
+   if((t.type||t.owner)&&!(root.owner==='player'&&root.tenure==='buy'))return'Buy the existing buildings inside the lot first.';
+   if(root.footprint&&!footprintCells(buildingAnchor(s,j),root.footprint).every(k=>cells.includes(k)))return'Include the entire lot of the existing combined building to rebuild it.';
+   if(root.type==='atelier')return'Clear out the workshop before building here.';
   }
-  if(s.mode!=='sandbox'&&(d.unlock||0)>s.highestWealth)return'이 건물을 해금할 순자산이 부족합니다.';
-  if(d.unique&&s.tiles.some((t,j)=>t.owner==='player'&&t.type===type&&!cells.includes(j)))return`${d.name}은(는) 도시에 하나만 세울 수 있습니다.`;
-  if(s.mode!=='sandbox'&&s.money<developmentQuote(s,i,type,1,footprint).total)return'현금이 부족합니다.';
+  if(s.mode!=='sandbox'&&(d.unlock||0)>s.highestWealth)return'Your net worth is too low to unlock this building.';
+  if(d.unique&&s.tiles.some((t,j)=>t.owner==='player'&&t.type===type&&!cells.includes(j)))return`${d.name} can only be built once per city.`;
+  if(s.mode!=='sandbox'&&s.money<developmentQuote(s,i,type,1,footprint).total)return'Not enough cash.';
   return null;
  }
- const t=s.tiles[i],d=TYPES[type];if(!t||!d?.group||type==='plot')return'건설 가능한 사업을 선택하세요.';if(t.terrain==='water')return'강 위에는 건설할 수 없습니다.';if((t.type||t.owner)&&!(t.type==='plot'&&t.owner==='player'&&tenure==='buy'))return'이미 사용 중인 부지입니다. 빈 땅을 선택하세요.';
- if(s.mode!=='sandbox'&&(d.unlock||0)>s.highestWealth)return`최고 순자산 ₲${d.unlock.toLocaleString()} 달성 시 해금됩니다.`;
- if(d.unique&&s.tiles.some(t=>t.owner==='player'&&t.type===type))return`${d.name}은(는) 도시에 하나만 세울 수 있습니다.`;
- if(!['buy','lease'].includes(tenure))return'계약 방식을 선택하세요.';if(d.group==='property'&&tenure==='lease')return'임대 자산은 토지를 매입해야 건설할 수 있습니다.';
- const land=developmentQuote(s,i,type).land,cost=developmentQuote(s,i,type).construction+(tenure==='buy'?land:Math.round(land*.2));if(s.mode!=='sandbox'&&s.money<cost)return'현금이 부족합니다. 임차 창업이나 대출을 고려하세요.';return null;
+ const t=s.tiles[i],d=TYPES[type];if(!t||!d?.group||type==='plot')return'Select a business you can build.';if(t.terrain==='water')return'You can\'t build on water.';if((t.type||t.owner)&&!(t.type==='plot'&&t.owner==='player'&&tenure==='buy'))return'This lot is already in use. Pick an empty one.';
+ if(s.mode!=='sandbox'&&(d.unlock||0)>s.highestWealth)return`Unlocks once peak net worth reaches ₲${d.unlock.toLocaleString()}.`;
+ if(d.unique&&s.tiles.some(t=>t.owner==='player'&&t.type===type))return`${d.name} can only be built once per city.`;
+ if(!['buy','lease'].includes(tenure))return'Choose a contract type.';if(d.group==='property'&&tenure==='lease')return'Rental properties require buying the land first.';
+ const land=developmentQuote(s,i,type).land,cost=developmentQuote(s,i,type).construction+(tenure==='buy'?land:Math.round(land*.2));if(s.mode!=='sandbox'&&s.money<cost)return'Not enough cash. Consider leasing or taking a loan.';return null;
 }
 export function build(s,i,type,tenure='lease',footprint){
  if(footprint){
@@ -263,30 +263,30 @@ export function build(s,i,type,tenure='lease',footprint){
    assetLedger:{initial:q.total+ledgers.reduce((n,l)=>n+l.initial,0),upgrades:ledgers.reduce((n,l)=>n+l.upgrades,0),operating:ledgers.reduce((n,l)=>n+l.operating,0),since:Math.min(s.month,...ledgers.map(l=>l.since)),estimated:ledgers.some(l=>l.estimated),buildingValue:q.construction*.7*Math.pow(q.area,.15),valuationMonth:s.month}};
   
   connectBuildingRoad(s,i);
-  s.log.unshift(`${TYPES[type].name} ${q.area}칸 통합 건설 · ₲${q.total.toLocaleString()} 투자`);s.log=s.log.slice(0,25);awardAssetFame(s,`parcel:${i}`,q.total,TYPES[type].name+' 취득');return{ok:true,msg:`${q.area}칸 ${TYPES[type].name} 건설 완료!`};
+  s.log.unshift(`${TYPES[type].name} built on ${q.area} tiles · ₲${q.total.toLocaleString()} invested`);s.log=s.log.slice(0,25);awardAssetFame(s,`parcel:${i}`,q.total,TYPES[type].name+' acquired');return{ok:true,msg:`${q.area}-tile ${TYPES[type].name} complete!`};
  }
 
- const error=canBuild(s,i,type,tenure);if(error)return{ok:false,msg:error};const previous=s.tiles[i].type==='plot'?assetLedger(s,i):null,land=developmentQuote(s,i,type).land,deposit=tenure==='lease'?Math.round(land*.2):0,constructionCost=developmentQuote(s,i,type).construction,cost=constructionCost+(tenure==='buy'?land:deposit);if(s.mode!=='sandbox')s.money-=cost;Object.assign(s.tiles[i],{type,owner:'player',tenure,deposit,constructionCost,assetLedger:{initial:cost+(previous?.initial||0),upgrades:0,operating:0,since:previous?.since??s.month,estimated:previous?.estimated||false,buildingValue:constructionCost*.7,valuationMonth:s.month},level:1,tree:false,price:100,quality:1,staff:TYPES[type].staff,marketing:false});connectBuildingRoad(s,i);s.log.unshift(`${TYPES[type].name} ${tenure==='buy'?'매입':'임차'} 창업 · ${cost.toLocaleString()}G 투자`);s.log=s.log.slice(0,25);awardAssetFame(s,`parcel:${i}`,cost,TYPES[type].name+' 취득');return{ok:true,msg:'계약 완료! 운영 설정에서 수익 전략을 정해보세요.'};
+ const error=canBuild(s,i,type,tenure);if(error)return{ok:false,msg:error};const previous=s.tiles[i].type==='plot'?assetLedger(s,i):null,land=developmentQuote(s,i,type).land,deposit=tenure==='lease'?Math.round(land*.2):0,constructionCost=developmentQuote(s,i,type).construction,cost=constructionCost+(tenure==='buy'?land:deposit);if(s.mode!=='sandbox')s.money-=cost;Object.assign(s.tiles[i],{type,owner:'player',tenure,deposit,constructionCost,assetLedger:{initial:cost+(previous?.initial||0),upgrades:0,operating:0,since:previous?.since??s.month,estimated:previous?.estimated||false,buildingValue:constructionCost*.7,valuationMonth:s.month},level:1,tree:false,price:100,quality:1,staff:TYPES[type].staff,marketing:false});connectBuildingRoad(s,i);s.log.unshift(`${TYPES[type].name} opened · ${tenure==='buy'?'Buy':'Lease'} contract · ${cost.toLocaleString()}G invested`);s.log=s.log.slice(0,25);awardAssetFame(s,`parcel:${i}`,cost,TYPES[type].name+' acquired');return{ok:true,msg:'Contract signed! Set your profit strategy in Operations.'};
 }
-export function sellAsset(s,i){i=buildingAnchor(s,i);const t=s.tiles[i],report=assetSaleReport(s,i);if(!report)return{ok:false,msg:'내 자산만 매각할 수 있습니다.'};s.money+=report.value;for(const j of footprintCells(i,t.footprint))if(j!==i)s.tiles[j]={terrain:'land',type:null,owner:null,level:1,tree:false};delete t.footprint;Object.assign(t,{type:null,owner:null,level:1,tree:false});delete t.assetLedger;delete t.landmark;const msg=`${report.name} 매각 · ₲${report.value.toLocaleString()} 회수 · ${report.estimated?'추정 ':''}최초 투자금 대비 매각 손익 ${report.gain>=0?'+':''}₲${Math.round(report.gain).toLocaleString()}`;s.log.unshift(msg);s.log=s.log.slice(0,25);return{ok:true,msg,report};}
-export function upgrade(s,i){i=buildingAnchor(s,i);const t=s.tiles[i];if(t?.owner!=='player'||!t.type||t.type==='plot'||t.level>=3)return{ok:false,msg:'더 확장할 수 없습니다.'};const construction=t.constructionCost??TYPES[t.type].cost,cost=Math.round(construction*.8*t.level);if(s.mode!=='sandbox'&&s.money<cost)return{ok:false,msg:'확장 자금이 부족합니다.'};t.assetLedger??=assetLedger(s,i);t.assetLedger.buildingValue=buildingValue(s,t)+construction*.5*Math.pow(buildingArea(t),.15);t.assetLedger.valuationMonth=s.month;t.assetLedger.upgrades+=cost;if(s.mode!=='sandbox')s.money-=cost;t.level++;return{ok:true,msg:'확장 완료. 직원과 운영 시간을 함께 점검하세요.'};}
-export function trade(s,id,qty){if(!STOCKS.some(k=>k.id===id)||!Number.isInteger(qty)||!qty)return{ok:false,msg:'수량을 확인하세요.'};const value=s.prices[id]*qty,fee=Math.abs(value)*.005;if(qty>0&&s.money<value+fee)return{ok:false,msg:'매수할 현금이 부족합니다.'};if(s.holdings[id]+qty<0)return{ok:false,msg:'보유 수량이 부족합니다.'};recordTrade(s,id,qty,value,fee);s.money-=value+fee;s.holdings[id]+=qty;return{ok:true,msg:`${qty>0?'매수':'매도'} 완료 · 수수료 0.5%`};}
+export function sellAsset(s,i){i=buildingAnchor(s,i);const t=s.tiles[i],report=assetSaleReport(s,i);if(!report)return{ok:false,msg:'You can only sell your own assets.'};s.money+=report.value;for(const j of footprintCells(i,t.footprint))if(j!==i)s.tiles[j]={terrain:'land',type:null,owner:null,level:1,tree:false};delete t.footprint;Object.assign(t,{type:null,owner:null,level:1,tree:false});delete t.assetLedger;delete t.landmark;const msg=`${report.name} sold · ₲${report.value.toLocaleString()} recovered · ${report.estimated?'Est. ':''}gain vs. initial investment ${report.gain>=0?'+':''}₲${Math.round(report.gain).toLocaleString()}`;s.log.unshift(msg);s.log=s.log.slice(0,25);return{ok:true,msg,report};}
+export function upgrade(s,i){i=buildingAnchor(s,i);const t=s.tiles[i];if(t?.owner!=='player'||!t.type||t.type==='plot'||t.level>=3)return{ok:false,msg:'Can\'t expand any further.'};const construction=t.constructionCost??TYPES[t.type].cost,cost=Math.round(construction*.8*t.level);if(s.mode!=='sandbox'&&s.money<cost)return{ok:false,msg:'Not enough cash to expand.'};t.assetLedger??=assetLedger(s,i);t.assetLedger.buildingValue=buildingValue(s,t)+construction*.5*Math.pow(buildingArea(t),.15);t.assetLedger.valuationMonth=s.month;t.assetLedger.upgrades+=cost;if(s.mode!=='sandbox')s.money-=cost;t.level++;return{ok:true,msg:'Expansion complete. Review staffing and hours too.'};}
+export function trade(s,id,qty){if(!STOCKS.some(k=>k.id===id)||!Number.isInteger(qty)||!qty)return{ok:false,msg:'Check the quantity.'};const value=s.prices[id]*qty,fee=Math.abs(value)*.005;if(qty>0&&s.money<value+fee)return{ok:false,msg:'Not enough cash to buy.'};if(s.holdings[id]+qty<0)return{ok:false,msg:'Not enough shares.'};recordTrade(s,id,qty,value,fee);s.money-=value+fee;s.holdings[id]+=qty;return{ok:true,msg:`${qty>0?'Buy':'Sell'} complete · 0.5% fee`};}
 export function setPlan(s,key,value){if(!['work','manage','learn','create','inspect','curate'].includes(key)||!Number.isInteger(value)||value<0)return false;const other=Object.entries(s.plan).reduce((n,[k,v])=>n+(k===key?0:v),0);s.plan[key]=clamp(value,0,160-other);return true;}
-export function chooseEvent(s,n){const o=s.event?.options[n];if(!o)return{ok:false,msg:'선택할 안건이 없습니다.'};if(s.mode!=='sandbox'&&s.money<(o.cost||0))return{ok:false,msg:'현금이 부족합니다. 비용 없는 대안을 선택할 수 있습니다.'};if(s.event.id){applyRichChoice(s,o);s.event=null;s.log.unshift('✎ 결정 · '+o.label);s.log=s.log.slice(0,25);return{ok:true,msg:o.label+' · 결정이 반영되었습니다.'};}if(s.mode!=='sandbox')s.money-=o.cost;s.stress=clamp(s.stress+(o.stress||0),0,100);s.skill=clamp(s.skill+(o.skill||0),0,100);s.effect={bonus:o.bonus||0,remaining:2};s.event=null;return{ok:true,msg:o.label+' · 결정이 반영되었습니다.'};}
+export function chooseEvent(s,n){const o=s.event?.options[n];if(!o)return{ok:false,msg:'No decision to make.'};if(s.mode!=='sandbox'&&s.money<(o.cost||0))return{ok:false,msg:'Not enough cash. You can pick a no-cost option.'};if(s.event.id){applyRichChoice(s,o);s.event=null;s.log.unshift('✎ Decision · '+o.label);s.log=s.log.slice(0,25);return{ok:true,msg:o.label+' · Decision applied.'};}if(s.mode!=='sandbox')s.money-=o.cost;s.stress=clamp(s.stress+(o.stress||0),0,100);s.skill=clamp(s.skill+(o.skill||0),0,100);s.effect={bonus:o.bonus||0,remaining:2};s.event=null;return{ok:true,msg:o.label+' · Decision applied.'};}
 // Liquidity crisis: negative cash forces distressed sales at 70%; three months in a row is a restructuring.
 function fireSale(s){
  if(s.concept!=='rich-life'||s.mode==='sandbox')return null;
  if(s.money>=0){s.crisisMonths=0;return null;}
  s.crisisMonths=(s.crisisMonths||0)+1;const items=[];
  // Liquid first: stocks go at a 3% haircut, then compound accounts, buildings and art at 70%.
- for(const k of STOCKS){if(s.money>=0)break;const qty=s.holdings[k.id],price=s.prices[k.id];if(!qty)continue;const sell=Math.min(qty,Math.ceil(-s.money/(price*.97))),value=-price*sell,fee=Math.abs(value)*.03;recordTrade(s,k.id,-sell,value,fee);s.money-=value+fee;s.holdings[k.id]-=sell;items.push({name:`${k.name} 주식 ${sell}주`,value:Math.round(-value-fee)});}
- if(s.money<0&&s.compound)for(const id of Object.keys(COMPOUND_ASSETS)){if(s.money>=0)break;const balance=s.compound.balances[id];if(!balance)continue;const take=Math.min(balance,Math.ceil(-s.money/.7));s.compound.balances[id]-=take;s.money+=Math.round(take*.7);items.push({name:COMPOUND_ASSETS[id].name+' 계좌',value:Math.round(take*.7)});}
+ for(const k of STOCKS){if(s.money>=0)break;const qty=s.holdings[k.id],price=s.prices[k.id];if(!qty)continue;const sell=Math.min(qty,Math.ceil(-s.money/(price*.97))),value=-price*sell,fee=Math.abs(value)*.03;recordTrade(s,k.id,-sell,value,fee);s.money-=value+fee;s.holdings[k.id]-=sell;items.push({name:`${sell} ${k.name} shares`,value:Math.round(-value-fee)});}
+ if(s.money<0&&s.compound)for(const id of Object.keys(COMPOUND_ASSETS)){if(s.money>=0)break;const balance=s.compound.balances[id];if(!balance)continue;const take=Math.min(balance,Math.ceil(-s.money/.7));s.compound.balances[id]-=take;s.money+=Math.round(take*.7);items.push({name:COMPOUND_ASSETS[id].name+' account',value:Math.round(take*.7)});}
  const owned=s.tiles.map((t,i)=>i).filter(i=>s.tiles[i].owner==='player').sort((a,b)=>assetValue(s,a)-assetValue(s,b));
  for(const i of owned){if(s.money>=0)break;const r=sellAsset(s,i);if(!r.ok)continue;const haircut=Math.round(r.report.value*.3);s.money-=haircut;items.push({name:r.report.name,value:r.report.value-haircut});}
  if(s.money<0&&s.artCollection?.owned.length){const owned=[...s.artCollection.owned].sort((a,b)=>a.price-b.price);for(const item of owned){if(s.money>=0)break;const d=ARTWORKS[item.id],value=Math.round(marketPrice(s,item.price)*Math.pow(1+d.annualRate,(item.grown??Math.max(0,s.month-item.boughtMonth))/12)*.7);s.money+=value;s.artCollection.owned=s.artCollection.owned.filter(x=>x.id!==item.id);items.push({name:`〈${d.name}〉`,value});}}
- if(items.length){s.fireSales=(s.fireSales||0)+1;s.log.unshift(`⚠ 급매 처분 · ${items.map(i=>i.name).join(', ')} · ₲${items.reduce((n,i)=>n+i.value,0).toLocaleString('ko-KR')} 회수 (시세의 70%)`);}
+ if(items.length){s.fireSales=(s.fireSales||0)+1;s.log.unshift(`⚠ Fire sale · ${items.map(i=>i.name).join(', ')} · ₲${items.reduce((n,i)=>n+i.value,0).toLocaleString('en-US')} recovered (70% of market)`);}
  const restructure=s.crisisMonths>=3;
- if(restructure){s.crisisMonths=0;s.prestige=Math.max(0,(s.prestige||0)-50);s.log.unshift('⚠ 구조조정 · 3개월 연속 현금 부족 · 명성 −50');}
+ if(restructure){s.crisisMonths=0;s.prestige=Math.max(0,(s.prestige||0)-50);s.log.unshift('⚠ Restructuring · 3 straight months short on cash · Reputation −50');}
  return{items,restructure};
 }
 export function tick(s){
@@ -306,13 +306,13 @@ export function tick(s){
  const crisis=fireSale(s);
  s.lastReport={compoundIncome:compoundSummary(s).last,compoundReinvested:s.compound?.auto?compoundSummary(s).last:0,compoundShock:s.compound?.lastShock||null,dividends:a.investment.dividends,ownerIncome:a.empire.income,luxuryMaintenance:a.lifestyleCosts.maintenance,creative:a.creative.income,month:s.month,wage:a.wage,revenue:a.revenue,expense:a.expense,living:a.living,tuition:a.tuition,interest:a.interest,bonus:a.bonus,net:a.net,economy:economyReport(s).label,pending,rival:rivalEvents,fireSale:crisis?.items?.length?crisis.items:null,restructure:!!crisis?.restructure};
  const after=analyze(s);s.highestWealth=Math.max(s.highestWealth,after.wealth);
- for(const m of rich?RICH_GOALS:MILESTONES)if(after.wealth>=m.wealth&&!s.milestones.includes(m.wealth)){s.milestones.push(m.wealth);s.log.unshift(`✦ ${m.name} 달성! 순자산 ₲${m.wealth.toLocaleString()}`);}
- if(rich){const chapter=chapterOf(s);if(chapter.n>chapterBefore){s.lastReport.chapterUp=chapter.n;s.log.unshift(`✦ CHAPTER ${chapter.n} · ${chapter.name} 진입! ${chapter.unlocks[0]} 해금`);}
-  if(!s.ending&&(s.month>=120||s.highestWealth>=300000000)){s.ending=endingReport(s,after);s.log.unshift(`✦ 레거시 엔딩 · ${s.ending.grade}등급 · ${s.ending.score.toLocaleString('ko-KR')}점`);}}
+ for(const m of rich?RICH_GOALS:MILESTONES)if(after.wealth>=m.wealth&&!s.milestones.includes(m.wealth)){s.milestones.push(m.wealth);s.log.unshift(`✦ ${m.name} reached! Net worth ₲${m.wealth.toLocaleString()}`);}
+ if(rich){const chapter=chapterOf(s);if(chapter.n>chapterBefore){s.lastReport.chapterUp=chapter.n;s.log.unshift(`✦ CHAPTER ${chapter.n} · ${chapter.name} begins! ${chapter.unlocks[0]} unlocked`);}
+  if(!s.ending&&(s.month>=120||s.highestWealth>=300000000)){s.ending=endingReport(s,after);s.log.unshift(`✦ Legacy ending · Grade ${s.ending.grade} · ${s.ending.score.toLocaleString('en-US')} pts`);}}
  s.history.push({prices:{...s.prices},month:s.month,wealth:Math.round(after.wealth),money:Math.round(s.money),net:a.net});s.history=s.history.slice(-36);
  if(rich){scheduleRichEvent(s,{wealth:after.wealth,fame:reputationSummary(s).fame})||rivalOffer(s,after.wealth);}
  else if(EVENTS.length&&s.month%6===0)s.event=EVENTS[(Math.floor(s.month/6)-1)%EVENTS.length];
- if(s.money<0)s.log.unshift('현금 부족: 적자 사업을 정리하거나 근로 시간을 늘려 현금흐름을 회복하세요.');else s.log.unshift(`${s.month}개월 차 결산 · ${a.net>=0?'+':''}${Math.round(a.net).toLocaleString()}G · 순자산 ${Math.round(after.wealth).toLocaleString()}G · 경기 ${economyReport(s).label}`);
+ if(s.money<0)s.log.unshift('Short on cash: close loss-making businesses or work more hours to restore cash flow.');else s.log.unshift(`Month ${s.month} report · ${a.net>=0?'+':''}${Math.round(a.net).toLocaleString()}G · Net worth ${Math.round(after.wealth).toLocaleString()}G · Economy ${economyReport(s).label}`);
  s.log=s.log.slice(0,25);return after;
 }
 export function validSave(s){

@@ -1,15 +1,15 @@
 import {reputationSummary} from './empire.js';
 export const VENTURES={
- fusion:{name:'헬리오 퓨전',icon:'☀',sector:'차세대 에너지',chance:.22,multiple:8,story:'소형 핵융합 모듈의 첫 상용 계약에 도전합니다.'},
- bio:{name:'루미나 바이오',icon:'◌',sector:'AI 신약',chance:.30,multiple:6,story:'희귀질환 후보 물질의 임상 데이터 공개를 앞두고 있습니다.'},
- orbit:{name:'오비탈 링크',icon:'◎',sector:'우주 물류',chance:.18,multiple:10,story:'재사용 화물선의 첫 궤도 운송 시험을 준비합니다.'},
- robot:{name:'모션 로보틱스',icon:'⚙',sector:'산업 로봇',chance:.25,multiple:7,story:'자율 작업 로봇의 첫 공장 납품을 준비합니다.'},
- ocean:{name:'블루웨이브',icon:'≈',sector:'해양 기술',chance:.20,multiple:9,story:'해양 정화 설비의 대규모 실증 사업에 도전합니다.'}
+ fusion:{name:'Helio Fusion',icon:'☀',sector:'Next-gen Energy',chance:.22,multiple:8,story:'Chasing the first commercial contract for compact fusion modules.'},
+ bio:{name:'Lumina Bio',icon:'◌',sector:'AI Drug Discovery',chance:.30,multiple:6,story:'About to unveil clinical data for a rare-disease drug candidate.'},
+ orbit:{name:'Orbital Link',icon:'◎',sector:'Space Logistics',chance:.18,multiple:10,story:'Preparing the first orbital delivery test of a reusable cargo ship.'},
+ robot:{name:'Motion Robotics',icon:'⚙',sector:'Industrial Robots',chance:.25,multiple:7,story:'Preparing the first factory delivery of autonomous work robots.'},
+ ocean:{name:'BlueWave',icon:'≈',sector:'Ocean Tech',chance:.20,multiple:9,story:'Taking on a large-scale pilot of ocean clean-up systems.'}
 };
-const COMPANY_NAMES=['노바','아스트라','벨로','네오','에테르','솔라','루멘','테라','펄스','오로라','코스모','루나','알토','프리즘','퀀텀'];
-const COMPANY_FIELDS=['에너지','바이오랩','스페이스','로보틱스','오션테크'];
+const COMPANY_NAMES=['Nova','Astra','Velo','Neo','Aether','Solar','Lumen','Terra','Pulse','Aurora','Cosmo','Luna','Alto','Prism','Quantum'];
+const COMPANY_FIELDS=['Energy','Biolabs','Space','Robotics','Oceantech'];
 export const MOONSHOT_OUTCOMES=[{multiple:0,chance:.8},{multiple:2,chance:.1},{multiple:5,chance:.05},{multiple:10,chance:.025},{multiple:50,chance:.015},{multiple:100,chance:.008},{multiple:1000,chance:.002}];
-const MOONSHOT={name:'인피니티 랩스',icon:'✧',sector:'초고위험 · 문샷',chance:.2,multiple:1000,variable:true,story:'미지의 기술 상용화에 도전합니다. 회수액은 0원부터 투자금의 최대 1,000배까지입니다.'};
+const MOONSHOT={name:'Infinity Labs',icon:'✧',sector:'Ultra High Risk · Moonshot',chance:.2,multiple:1000,variable:true,story:'Attempting to commercialize an unknown technology. Returns range from ₲0 up to 1,000× your investment.'};
 // odds < 1 (stress above 65 at signing) shrinks the success window of fixed-multiple ventures.
 export const DILIGENCE_HOURS=20;
 export const VENTURE_ODDS=[.85,1.15,.9775];
@@ -38,18 +38,33 @@ export function ensureVentures(s){
  return s.ventures;
 }
 
+// Saves written before the interface moved to English hold the old localized company names,
+// which validItem compares against the table. Rebuild only those names from the stored id so
+// the name check still guards saves written since.
+const LOCALIZED_NAME=/[\uAC00-\uD7A3]/;
+export function repairVentureNames(s){
+ for(const list of [s?.ventures?.active,s?.ventures?.history]){
+  if(!Array.isArray(list))continue;
+  for(const item of list){
+   if(!item||typeof item.name!=='string'||!LOCALIZED_NAME.test(item.name))continue;
+   const d=ventureCompany(item.ventureId);if(d)item.name=d.name;
+  }
+ }
+ return s;
+}
+
 export function investVenture(s,id,amount){
  const d=ventureOffering(s).companies.find(c=>c.id===id),v=ensureVentures(s);
- if(!d)return{ok:false,msg:'투자할 회사를 선택하세요.'};
- if(!AMOUNTS.includes(amount))return{ok:false,msg:'투자 금액을 확인하세요.'};
- if(v.active.length>=3)return{ok:false,msg:'진행 중인 벤처 투자는 최대 3건입니다.'};
- if(s.money<amount)return{ok:false,msg:'투자에 필요한 현금이 부족합니다.'};
+ if(!d)return{ok:false,msg:'Choose a company to invest in.'};
+ if(!AMOUNTS.includes(amount))return{ok:false,msg:'Check the investment amount.'};
+ if(v.active.length>=3)return{ok:false,msg:'You can have at most 3 active venture investments.'};
+ if(s.money<amount)return{ok:false,msg:'Not enough cash to invest.'};
  const stressed=s.stress>65,diligent=s.concept==='rich-life'&&(s.plan.inspect||0)>=DILIGENCE_HOURS,salvage=s.concept==='rich-life'&&reputationSummary(s).salvage;
  const odds=Math.round((stressed?.85:1)*(diligent?1.15:1)*10000)/10000;
  const investment={id:`venture-${v.sequence+1}`,ventureId:id,name:d.name,amount,startedMonth:s.month,dueMonth:s.month+3,roll:hashRoll(s.seed,v.sequence,id),...(odds!==1?{odds}:{}),...(salvage?{salvage:true}:{})};
  v.sequence++;v.lastInvestedMonth=s.month;v.active.push(investment);s.money-=amount;
- s.log.unshift(`${d.icon} ${d.name} 벤처 투자 · ₲${amount.toLocaleString('ko-KR')} · ${investment.dueMonth}개월 차 결과 공개${stressed?' · 과로로 판단력 저하 (성공률 −15%)':''}${diligent?' · 실사 덕분에 성공률 +15%':''}${salvage?' · 명성 덕분에 실패 시 20% 회수':''}`);s.log=s.log.slice(0,25);
- return{ok:true,msg:`${d.name} 투자 완료 · 3개월 뒤 운명이 결정됩니다.${stressed?' 스트레스가 높아 성공률이 15% 낮습니다.':''}${diligent?' 실사 시간 덕분에 성공률이 15% 높습니다.':''}`};
+ s.log.unshift(`${d.icon} ${d.name} venture investment · ₲${amount.toLocaleString('en-US')} · results in month ${investment.dueMonth}${stressed?' · Overworked, judgment impaired (success rate −15%)':''}${diligent?' · Due diligence boosts success rate +15%':''}${salvage?' · Reputation recovers 20% on failure':''}`);s.log=s.log.slice(0,25);
+ return{ok:true,msg:`${d.name} investment placed · Fate decided in 3 months.${stressed?' High stress cuts the success rate by 15%.':''}${diligent?' Due diligence hours raise the success rate by 15%.':''}`};
 }
 
 export function advanceVentures(s){
@@ -60,7 +75,7 @@ export function advanceVentures(s){
   const result={...item,resolvedMonth:s.month,success,payout,multiple};
   if(payout)s.money+=payout;
   v.history.unshift(result);resolved.push(result);
-  s.log.unshift(success?`✦ 벤처 대박! ${d.name} ${multiple}배 엑싯 · +₲${payout.toLocaleString('ko-KR')}`:`× 벤처 실패 · ${d.name} 투자금 ₲${item.amount.toLocaleString('ko-KR')} ${payout?`중 ₲${payout.toLocaleString('ko-KR')} 회수`:'전액 손실'}`);
+  s.log.unshift(success?`✦ Venture jackpot! ${d.name} ${multiple}× exit · +₲${payout.toLocaleString('en-US')}`:`× Venture failed · ${d.name} stake ₲${item.amount.toLocaleString('en-US')} ${payout?`· ₲${payout.toLocaleString('en-US')} recovered`:'lost entirely'}`);
   return false;
  });
  v.history=v.history.slice(0,12);s.log=s.log.slice(0,25);v.latest=resolved;
