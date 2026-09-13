@@ -10,7 +10,8 @@ import {compoundCard,compoundDialog,buyCompound,ensureCompound} from './compound
 const compoundStyles=document.createElement('link');compoundStyles.rel='stylesheet';compoundStyles.href='./city/compound.css';document.head.append(compoundStyles);
 import {chapterOf,chapterCard,chapterDialog,legacyDialog,endingDialog,foundFoundation,SCENARIOS} from './legacy.js';
 import {VERSION,FEEDBACK_URL,releaseFeatures,feedbackDialog,feedbackText,issueURL} from './release.js';
-const FEATURES=releaseFeatures(location.hostname);
+// app.js imports the engine's location() helper, so the browser address must be read from window.location.
+const FEATURES=releaseFeatures(window.location.hostname);
 import {rivalCard,ensureRival} from './rival.js';
 const legacyStyles=document.createElement('link');legacyStyles.rel='stylesheet';legacyStyles.href='./city/legacy.css';document.head.append(legacyStyles);
 const releaseStyles=document.createElement('link');releaseStyles.rel='stylesheet';releaseStyles.href='./city/release.css';document.head.append(releaseStyles);
