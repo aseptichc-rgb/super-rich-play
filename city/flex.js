@@ -1,0 +1,23 @@
+import {marketPrice} from './economy.js';
+import {validMansion,mansionDesign,mansionMaintenance} from './mansion.js';
+import {photoGallery} from './collection-photos.js';
+import {VEHICLES,ownedModels,validVehicles,vehicleMaintenance} from './luxury-models.js';
+export const FLEX_ITEMS={
+ sportscar:{name:'선셋 스포츠카',icon:'🏎',price:8000,unlock:20000,description:'지도 속 내 캐릭터가 골드 스포츠카를 타고 이동합니다.'},
+ penthouse:{name:'리버뷰 대저택',icon:'🏛',price:35000,unlock:100000,description:'수영장과 정원을 갖춘 대저택. 쇼룸과 지도 남서쪽에 나만의 저택이 나타납니다.'},
+ yacht:{name:'리버사이드 요트',icon:'🛥',price:90000,unlock:300000,description:'쇼룸과 동네 강 위에 전용 요트가 등장합니다.'}
+};
+export const flexState=s=>s.flex??{owned:[],lastParty:-1};
+export function validFlex(s){const f=s.flex;return f===undefined||!!(f&&Array.isArray(f.owned)&&validVehicles(s)&&f.owned.every(id=>Object.hasOwn(FLEX_ITEMS,id))&&new Set(f.owned).size===f.owned.length&&(f.mansion===undefined||(f.owned.includes('penthouse')&&validMansion(f.mansion)))&&Number.isInteger(f.lastParty)&&f.lastParty>=-1&&f.lastParty<=s.month);}
+export function flexQuote(s,wealth,id){const item=FLEX_ITEMS[id];if(!item)return'선택한 컬렉션이 없습니다.';if(flexState(s).owned.includes(id))return'이미 보유한 컬렉션입니다.';if(s.mode!=='sandbox'&&Math.max(s.highestWealth,wealth)<item.unlock)return`최고 순자산 ₲${item.unlock.toLocaleString('ko-KR')}에서 해금`;if(s.money<marketPrice(s,item.price))return'구매할 현금이 부족합니다.';return null;}
+export function buyFlex(s,wealth,id){const error=flexQuote(s,wealth,id);if(error)return{ok:false,msg:error};const item=FLEX_ITEMS[id];s.flex??={owned:[],lastParty:-1};s.highestWealth=Math.max(s.highestWealth,wealth);s.money-=marketPrice(s,item.price);s.flex.owned.push(id);if(s.concept==='rich-life')s.prestige=Math.max(0,(s.prestige||0)+10);s.log.unshift(`✦ ${item.name} 구매 · 나만의 컬렉션에 추가!${s.concept==='rich-life'?' · 명성 +10':''}`);s.log=s.log.slice(0,25);return{ok:true,msg:item.name+' · 이제 내 것입니다!'};}
+export function hostParty(s){if(!flexState(s).owned.length)return{ok:false,msg:'컬렉션을 하나 마련하면 파티를 열 수 있습니다.'};if(flexState(s).lastParty===s.month)return{ok:false,msg:'이번 달에는 이미 파티를 열었습니다.'};if(s.money<500)return{ok:false,msg:'파티 비용 ₲500이 필요합니다.'};s.money-=500;s.stress=Math.max(0,s.stress-20);s.flex.lastParty=s.month;if(s.concept==='rich-life')s.prestige=Math.max(0,(s.prestige||0)+3);s.log.unshift('🥂 친구들과 플렉스 파티 · 스트레스 −20'+(s.concept==='rich-life'?' · 명성 +3':''));s.log=s.log.slice(0,25);return{ok:true,msg:'오늘은 내가 쏜다! 스트레스 −20'};}
+const money=n=>'₲'+Math.round(n).toLocaleString('ko-KR');
+export function flexScene(s){return photoGallery(s);}
+export function flexDialog(s,a){
+ const f=flexState(s),partyReason=!f.owned.length?'첫 컬렉션 구매 후 이용 가능':f.lastParty===s.month?'이번 달 파티 완료':s.money<500?'현금 ₲500 필요':'';
+ const carCost=ownedModels(s,'sportscar').reduce((sum,id)=>sum+vehicleMaintenance(VEHICLES.sportscar.find(model=>model.id===id),'sportscar'),0);
+ const yachtCost=ownedModels(s,'yacht').reduce((sum,id)=>sum+vehicleMaintenance(VEHICLES.yacht.find(model=>model.id===id),'yacht'),0);
+ const homeCost=f.owned.includes('penthouse')?mansionMaintenance(mansionDesign(s)):0;
+ return `<span class="eyebrow">THE GOOD LIFE</span><h2>벌었으니까, 누려야지.</h2><p>내 차, 내 집, 내 요트. 차곡차곡 모은 돈을 나만의 풍경으로.</p><div class="button-row"><button data-action="cars">스포츠카 5종 비교 →</button><button data-action="yachts">요트 5종 비교 →</button></div>${flexScene(s)}<div class="flex-summary"><b>COLLECTION ${f.owned.length} / 3</b><span>보유 현금 ${money(s.money)}</span></div><div class="flex-grid">${Object.entries(FLEX_ITEMS).map(([id,d])=>{const owned=f.owned.includes(id);return `<section class="flex-item ${owned?'owned':''}"><span class="flex-icon">${d.icon}</span><small>${owned?'✦ MY COLLECTION':'최고 순자산 '+money(d.unlock)}</small><h3>${d.name}</h3><p>${d.description}</p><strong>${id==='sportscar'?money(marketPrice(s,80000))+'부터':id==='yacht'?money(marketPrice(s,90000))+'부터':'설계별 견적'}</strong><button ${id==='sportscar'?'data-action="cars"':id==='yacht'?'data-action="yachts"':'data-action="mansion-design"'}>${id==='penthouse'?'저택 설계하기':'5가지 모델 선택'}</button></section>`;}).join('')}</div>${f.owned.includes('penthouse')?'<button data-action="flex-home" class="primary full">🏛 내 대저택 보러 가기 →</button>':''}<button data-action="mansion-design" class="primary full">✎ 나만의 저택 직접 디자인하기 →</button><div class="flex-party"><div><h3>🥂 오늘은 내가 쏜다</h3><p>월 1회 · ₲500 · 스트레스 −20 (최소 0)</p></div><button data-action="flex-party" ${partyReason?'disabled':''}>${partyReason||'플렉스 파티 열기'}</button></div><p class="help">현재 월 유지비: 저택 ${money(homeCost)} · 스포츠카 ${money(carCost)} · 요트 ${money(yachtCost)}. 소장한 모든 모델에 유지비가 적용되며, 구매 후에는 계속 소장합니다.</p>`;
+}

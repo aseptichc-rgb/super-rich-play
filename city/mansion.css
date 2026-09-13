@@ -1,0 +1,119 @@
+/* Private residence atelier: scoped to the mansion designer. */
+dialog.mansion-dialog{width:min(1180px,96vw);max-width:96vw;max-height:94dvh;padding:0;border:1px solid #ded8ca;border-radius:18px;background:#f7f5ef;box-shadow:0 30px 100px #14281f55;color:#263e35}
+.mansion-dialog::backdrop{background:#102b2399;backdrop-filter:blur(8px)}
+.mansion-dialog .dialog-close{position:absolute;top:21px;right:22px;z-index:3;background:#eeebe1;border-color:#ddd7c9}
+.estate-header{display:flex;justify-content:space-between;align-items:center;gap:20px;padding:30px 38px 26px;border-bottom:1px solid #ddd8ca}
+.estate-header .eyebrow{font-size:9px;letter-spacing:2.5px;color:#8e7751}
+.estate-header h2{font-family:Georgia,'Batang',serif;font-size:29px;letter-spacing:-1.2px;line-height:1.5;margin:9px 0 6px;font-weight:500;color:#243e34}
+.estate-header p{font-size:12px;margin:0;color:#748076}
+.estate-edition{border-left:1px solid #cfc7b7;padding-left:20px;margin-right:43px;font-size:10px;line-height:1.8;letter-spacing:2px;color:#89734e}
+.estate-edition i{display:block;font-style:normal;font-size:9px;letter-spacing:4px;margin-top:8px;color:#919387}
+.estate-layout{display:grid;grid-template-columns:minmax(0,1fr) 350px;gap:28px;padding:28px}
+.estate-layout #mansion-preview{min-width:0}
+.estate-hero{position:relative;isolation:isolate;overflow:hidden;margin:0;border-radius:10px;background:#213c32}
+.estate-hero>img{display:block;width:100%;height:clamp(300px,43vh,470px);object-fit:cover}
+.estate-hero:after{content:"";position:absolute;inset:28% 0 0;background:linear-gradient(transparent,#11291ee6);z-index:0;pointer-events:none}
+.estate-hero figcaption{position:absolute;z-index:1;bottom:24px;left:27px;right:25px;color:#fff9eb}
+.estate-hero figcaption>span{font-size:9px;letter-spacing:2.3px;color:#e0c98f}
+.estate-hero h3{font-family:Georgia,'Batang',serif;font-weight:400;font-size:27px;line-height:1.5;letter-spacing:-.8px;margin:9px 0;color:#fff9eb}
+.estate-hero p{font-size:11px;line-height:1.8;margin:0;max-width:390px;color:#e2e7da}
+.estate-preview-tag{position:absolute;top:19px;left:20px;padding:7px 10px;border:1px solid #ffffff50;border-radius:4px;background:#1834296b;color:#fff9ed;font-size:9px;letter-spacing:.4px;z-index:1}
+.estate-specs{display:grid;grid-template-columns:1.15fr .8fr .9fr 1.2fr;padding:20px 0;border-bottom:1px solid #ded8c9}
+.estate-specs>div{padding:0 15px;border-right:1px solid #ded8c9}
+.estate-specs>div:first-child{padding-left:3px}.estate-specs>div:last-child{border:0;padding-right:0}
+.estate-specs span{display:block;font-size:10px;color:#7c8478;margin-bottom:8px}
+.estate-specs strong{font-family:Georgia,serif;font-size:25px;font-weight:400;color:#294b3d}
+.estate-specs small{font-family:'Segoe UI','Malgun Gothic',sans-serif;font-size:10px;color:#7a8277}
+.estate-specs b{display:block;font-size:13px;font-weight:500;padding-top:7px}
+.estate-image-note{font-size:10px!important;line-height:1.8!important;color:#838779!important;margin:10px 0 18px!important}
+.estate-quote{background:#233e33;color:#f9f2df;border-radius:10px;padding:23px 25px}
+.estate-quote-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.estate-quote-head>div>span{font-size:11px;color:#d8ddcb}
+.estate-quote-head strong{display:block;font-family:Georgia,serif;font-size:33px;font-weight:400;letter-spacing:-.8px;margin-top:7px;overflow-wrap:anywhere}
+.estate-quote-seal{color:#c9b883;font-size:9px;letter-spacing:2px;line-height:1.8;border:1px solid #a79c6e80;border-radius:50%;padding:14px;text-align:center}
+.estate-quote-meta{display:flex;flex-wrap:wrap;gap:9px 20px;border-top:1px solid #ffffff20;padding-top:15px;margin:17px 0;font-size:10px;color:#c6d0bd}
+.estate-quote-meta b{font-weight:500;color:#f0eedc;margin-left:5px}
+.estate-quote>button{width:100%;padding:14px;background:#e9d7a6;color:#263e32;border:1px solid #e9d7a6;border-radius:6px;font-size:12px;font-weight:600}
+.estate-quote>button:hover{background:#f4e3b6}
+.estate-quote>button:disabled{opacity:1;background:#ffffff0d;color:#b9c4b1;border-color:#ffffff25;cursor:default}
+.estate-quote>p{color:#bec9b8;font-size:10px;line-height:1.8;margin:13px 0 0}
+.estate-detail{border-top:0;border-bottom:1px solid #dcd7c8;padding:0;margin:9px 0 0}
+.estate-detail>summary{display:flex;justify-content:space-between;gap:12px;padding:17px 2px;font-size:12px;color:#3e5546;cursor:pointer;list-style:none}
+.estate-detail>summary::-webkit-details-marker{display:none}
+.estate-detail>summary>span{font-size:10px;color:#8c805e}
+.estate-detail[open]>summary{font-weight:600}
+.estate-design-summary{padding:4px 0 13px;font-size:11px;line-height:1.8}
+.estate-design-summary>span{display:block;color:#77816f}
+.estate-design-summary p{font-size:11px;margin:5px 0}
+.estate-detail .mansion-art{border:1px solid #d8ded0;border-radius:8px;margin-bottom:14px}
+.estate-detail .mansion-plans section{background:#f0f0e7;border-color:#d9d7c7;border-radius:3px;padding:14px}
+.estate-detail .mansion-rooms{gap:5px}
+.estate-detail .mansion-rooms span{background:#faf9f2;border-color:#b3bda9;padding:15px 4px}
+.estate-detail .help{font-size:10px;line-height:1.8}
+.estate-costs{font-size:12px;margin:0 0 15px}
+.estate-costs>div{display:flex;justify-content:space-between;gap:12px;padding:11px 0;border-bottom:1px solid #e4dfd2}
+.estate-costs dd{margin:0;color:#806b40;font-weight:600}
+.estate-controls{min-width:0;background:#fffdf7;border:1px solid #e0dacb;border-radius:10px;padding:24px}
+.estate-section{border:0;border-bottom:1px solid #e7e2d7;padding:0 0 23px;margin:0 0 23px;min-width:0}
+.estate-section legend{font-size:13px;font-weight:600;margin:0 0 13px;padding:0;color:#2e473b}
+.estate-section legend>span{font-family:Georgia,serif;font-size:13px;font-weight:400;color:#a18a57;margin-right:9px}
+.estate-section>p{font-size:10px;color:#85897a;margin:-3px 0 13px}
+.estate-style-options{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+.estate-style{position:relative;overflow:hidden;border:1px solid #e0dccc;border-radius:5px;cursor:pointer;background:#f8f5ec}
+.estate-style input,.estate-swatches input{position:absolute;width:1px;height:1px;opacity:0}
+.estate-style img{display:block;width:100%;height:67px;object-fit:cover}
+.estate-style>span{display:block;text-align:center;padding:9px 2px;font-size:10px;color:#7d8273}
+.estate-style:has(:checked){border-color:#8b7544;box-shadow:0 0 0 1px #8b7544;background:#2d493b}
+.estate-style:has(:checked)>span{color:#f4e7bf}
+.estate-style:has(:focus-visible),.estate-swatches label:has(:focus-visible){outline:3px solid #b39b5a;outline-offset:3px}
+.estate-fields{display:grid;grid-template-columns:1fr 1fr;gap:14px 10px}
+.estate-section label:not(.estate-style),.estate-field-title{font-size:10px;color:#697564}
+.estate-fields>label,.estate-section>label{display:flex;flex-direction:column;gap:7px}
+.estate-section select,.estate-section input[type=number]{display:block;width:100%;min-width:0;padding:10px 9px;border:1px solid #d6d7c8;border-radius:5px;background:#fffef9;color:#334c3b;font-size:11px}
+.estate-section #mansion-capacity{display:block;font-size:9px;color:#8b8d7c;margin-top:10px}
+.estate-swatches{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin:13px 0 19px}
+.estate-swatches label{position:relative;cursor:pointer;text-align:center}
+.estate-swatches i{display:block;width:31px;height:31px;background:var(--swatch);border:1px solid #00000018;border-radius:50%;margin:0 auto 8px}
+.estate-swatches label:has(:checked) i{outline:1px solid #8e794e;outline-offset:4px}
+.estate-swatches span{font-size:8px;white-space:nowrap}
+.estate-swatches label:has(:checked) span{color:#655129;font-weight:600}
+.estate-amenities{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.estate-amenities label{display:flex;align-items:flex-start;gap:7px;border:1px solid #e4dfd2;border-radius:5px;padding:11px 7px;cursor:pointer}
+.estate-amenities label:has(:checked){background:#edf1e6;border-color:#b7c4a8}
+.estate-amenities input{accent-color:#375840;width:13px;height:13px;margin:1px 0 0;flex-shrink:0}
+.estate-amenities b{display:block;font-size:10px;font-weight:500;color:#435c43}
+.estate-amenities small{display:block;font-size:8px;line-height:1.7;color:#8a8b79;margin-top:5px}
+.estate-section .estate-facility-note{font-size:9px;line-height:1.8;color:#927f5b;margin:13px 0 0}
+.estate-controls-footer{text-align:center}
+.estate-controls-footer button{font-size:10px;background:none;color:#7e806e;border-color:#e3dfd1;padding:9px 16px}
+.estate-controls-footer p{font-size:9px;line-height:1.9;color:#949381;margin:11px 0 0}
+@media(max-width:950px){.estate-layout{grid-template-columns:minmax(0,1fr) 310px;gap:18px;padding:20px}.estate-controls{padding:18px}.estate-header{padding:28px}.estate-header h2{font-size:25px}.estate-edition{display:none}.estate-hero figcaption{left:20px;right:20px}.estate-hero h3{font-size:23px}.estate-specs>div{padding:0 8px}.estate-specs b{font-size:11px}.estate-quote{padding:20px}.estate-quote-seal{display:none}}
+@media(max-width:720px){dialog.mansion-dialog{max-height:96dvh;width:96vw;border-radius:12px}.mansion-dialog .dialog-close{top:14px;right:14px}.estate-header{padding:27px 22px 21px}.estate-header .eyebrow{font-size:7px;letter-spacing:1.6px}.estate-header h2{font-size:23px;max-width:270px;line-height:1.5;margin-top:13px}.estate-header p{font-size:10px;line-height:1.8}.estate-layout{grid-template-columns:1fr;padding:14px;gap:19px}.estate-hero>img{height:330px}.estate-hero figcaption{bottom:22px;left:20px;right:18px}.estate-hero h3{font-size:24px}.estate-hero p{font-size:10px}.estate-quote-head strong{font-size:30px}.estate-specs{padding:18px 0}.estate-specs strong{font-size:22px}.estate-specs b{font-size:10px}.estate-specs span{font-size:9px}.estate-controls{padding:22px}.estate-style img{height:80px}.estate-amenities small{font-size:9px}}
+@media(max-width:720px){.estate-layout #mansion-preview{display:contents}.estate-hero{order:1}.estate-specs{order:2}.estate-image-note{order:3;margin:0!important}.estate-controls{order:4}.estate-quote{order:5}.estate-detail{order:6}.estate-layout{row-gap:12px}}
+.estate-live-model{overflow:hidden;border:1px solid #d6d9c7;border-radius:10px;background:#f1f2e8}
+.estate-live-model>header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:19px 23px 0}
+.estate-live-model>header span{font-size:9px;letter-spacing:1.8px;color:#8e7c50}
+.estate-live-model>header h3{font-family:Georgia,'Batang',serif;font-size:21px;font-weight:400;line-height:1.6;margin:7px 0 0;color:#304a3a}
+.estate-live-model>header>b{flex-shrink:0;padding:7px 10px;border:1px solid #c9cfb7;border-radius:20px;font-size:10px;font-weight:400;color:#637452}
+.estate-site-art{display:block;width:100%;height:auto}
+.estate-live-model>p{font-size:10px;line-height:1.8;color:#78836d;padding:0 23px 16px;margin:0}
+.site-label rect{fill:#f7f4e6;stroke:#aeb799;stroke-width:1}
+.site-label text{fill:#465c43;font:12px 'Segoe UI','Malgun Gothic',sans-serif}
+.site-orientation{fill:#7d8b71;font:17px Georgia,serif}
+.site-footnote{fill:#90977d;font:10px 'Segoe UI',sans-serif;letter-spacing:2px}
+.estate-inspiration{border:0;margin:0;padding:0}
+.estate-inspiration>summary{display:flex;justify-content:space-between;gap:10px;padding:13px 0;border-bottom:1px solid #dfdfd1;font-size:10px;color:#7b826e;cursor:pointer}
+.estate-inspiration .estate-hero{margin-top:12px}
+@media(max-width:720px){.estate-live-model{order:1}.estate-inspiration{order:2}.estate-live-model>header{padding:15px 14px 0;gap:7px}.estate-live-model>header h3{font-size:17px}.estate-live-model>header span{font-size:7px}.estate-live-model>header>b{font-size:8px;padding:6px}.estate-live-model>p{padding:0 14px 14px;font-size:9px}.estate-site-art{min-height:210px}}
+.estate-live-model{background:#faf6ef;border-color:#e4d9c9;box-shadow:0 8px 25px #8b75650a}
+.estate-live-model>header{padding:22px 25px 0}
+.estate-live-model>header span{color:#ae8c69;font-size:8px;letter-spacing:2px}
+.estate-live-model>header h3{color:#526759;font-size:23px}
+.estate-live-model>header>b{background:#f5eee1;border-color:#e1d4bd;color:#927954}
+.site-label circle{fill:#fff9ec;stroke:#baa27e;stroke-width:1.2}
+.site-label text{fill:#967b55;font:12px Georgia,serif}
+.site-legend{display:flex;justify-content:center;flex-wrap:wrap;gap:8px 15px;padding:0 22px 15px}
+.site-legend>span{display:flex;align-items:center;gap:6px;color:#7b806e;font-size:10px}
+.site-legend i{display:grid;place-items:center;width:19px;height:19px;border:1px solid #d1bea0;background:#fffaf1;border-radius:50%;font:10px Georgia,serif;color:#9c815a}
+.estate-live-model>p{border-top:1px solid #e9dfd0;padding:13px 23px;margin:0;color:#9a9584;font-size:9px}
+@media(max-width:720px){.estate-live-model>header{padding:17px 15px 0}.estate-live-model>header h3{font-size:17px}.estate-live-model>header span{font-size:6px;letter-spacing:1.3px}.site-legend{gap:8px 10px;padding:0 13px 13px}.site-legend>span{font-size:9px}}

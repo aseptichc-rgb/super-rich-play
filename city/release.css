@@ -1,0 +1,11 @@
+.version-tag{font-size:10px;color:#7a8876;padding:3px 8px;border:1px solid var(--line);border-radius:10px;background:#fffdf7;white-space:nowrap}
+.feedback-form{display:grid;gap:12px;margin:16px 0}.feedback-form label{display:grid;gap:6px;font-size:13px;font-weight:600;color:#2f4d3e}.feedback-form textarea,.feedback-form select{font:inherit;font-size:13px;font-weight:400;padding:10px;border:1px solid #d3dccb;border-radius:8px;background:#fffdf7;color:#2b4239;resize:vertical}
+.feedback-summary{margin:12px 0;padding:12px 14px;border-radius:10px;background:#edf1e5;font-size:12px;line-height:1.7}.feedback-summary summary{cursor:pointer;font-weight:600;color:#315f4f}.feedback-summary dl{display:grid;grid-template-columns:auto 1fr;gap:2px 12px;margin:8px 0 0}.feedback-summary dt{color:#6f7d6f}.feedback-summary dd{margin:0;color:#2f4d3e;font-weight:600}
+#feedback-output{width:100%;min-height:160px;margin-top:12px;font-size:12px;padding:10px;border:1px solid #d3dccb;border-radius:8px}
+.sidebar-bottom button{border:0;background:none;padding:0;font-size:inherit;color:inherit;text-decoration:underline;cursor:pointer}
+@media(max-width:720px){
+ .version-tag{display:none}
+ .live-card .rich-office{display:flex;overflow-x:auto;gap:6px;padding:8px;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch}
+ .live-card .rich-office button{flex:0 0 118px;padding:8px 7px;scroll-snap-align:start}
+ .legacy-actions{grid-template-columns:1fr}
+}
