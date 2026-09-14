@@ -1,15 +1,16 @@
+import {L,lang,samePhrase} from './i18n.js';
 import {reputationSummary} from './empire.js';
 export const VENTURES={
- fusion:{name:'Helio Fusion',icon:'☀',sector:'Next-gen Energy',chance:.22,multiple:8,story:'Chasing the first commercial contract for compact fusion modules.'},
- bio:{name:'Lumina Bio',icon:'◌',sector:'AI Drug Discovery',chance:.30,multiple:6,story:'About to unveil clinical data for a rare-disease drug candidate.'},
- orbit:{name:'Orbital Link',icon:'◎',sector:'Space Logistics',chance:.18,multiple:10,story:'Preparing the first orbital delivery test of a reusable cargo ship.'},
- robot:{name:'Motion Robotics',icon:'⚙',sector:'Industrial Robots',chance:.25,multiple:7,story:'Preparing the first factory delivery of autonomous work robots.'},
- ocean:{name:'BlueWave',icon:'≈',sector:'Ocean Tech',chance:.20,multiple:9,story:'Taking on a large-scale pilot of ocean clean-up systems.'}
+ fusion:{name:L('Helio Fusion'),icon:'☀',sector:L('Next-gen Energy'),chance:.22,multiple:8,story:L('Chasing the first commercial contract for compact fusion modules.')},
+ bio:{name:L('Lumina Bio'),icon:'◌',sector:L('AI Drug Discovery'),chance:.30,multiple:6,story:L('About to unveil clinical data for a rare-disease drug candidate.')},
+ orbit:{name:L('Orbital Link'),icon:'◎',sector:L('Space Logistics'),chance:.18,multiple:10,story:L('Preparing the first orbital delivery test of a reusable cargo ship.')},
+ robot:{name:L('Motion Robotics'),icon:'⚙',sector:L('Industrial Robots'),chance:.25,multiple:7,story:L('Preparing the first factory delivery of autonomous work robots.')},
+ ocean:{name:L('BlueWave'),icon:'≈',sector:L('Ocean Tech'),chance:.20,multiple:9,story:L('Taking on a large-scale pilot of ocean clean-up systems.')}
 };
-const COMPANY_NAMES=['Nova','Astra','Velo','Neo','Aether','Solar','Lumen','Terra','Pulse','Aurora','Cosmo','Luna','Alto','Prism','Quantum'];
-const COMPANY_FIELDS=['Energy','Biolabs','Space','Robotics','Oceantech'];
+const COMPANY_NAMES=[L('Nova'),L('Astra'),L('Velo'),L('Neo'),L('Aether'),L('Solar'),L('Lumen'),L('Terra'),L('Pulse'),L('Aurora'),L('Cosmo'),L('Luna'),L('Alto'),L('Prism'),L('Quantum')];
+const COMPANY_FIELDS=[L('Energy'),L('Biolabs'),L('Space'),L('Robotics'),L('Oceantech')];
 export const MOONSHOT_OUTCOMES=[{multiple:0,chance:.8},{multiple:2,chance:.1},{multiple:5,chance:.05},{multiple:10,chance:.025},{multiple:50,chance:.015},{multiple:100,chance:.008},{multiple:1000,chance:.002}];
-const MOONSHOT={name:'Infinity Labs',icon:'✧',sector:'Ultra High Risk · Moonshot',chance:.2,multiple:1000,variable:true,story:'Attempting to commercialize an unknown technology. Returns range from ₲0 up to 1,000× your investment.'};
+const MOONSHOT={name:L('Infinity Labs'),icon:'✧',sector:L('Ultra High Risk · Moonshot'),chance:.2,multiple:1000,variable:true,story:L('Attempting to commercialize an unknown technology. Returns range from ₲0 up to 1,000× your investment.')};
 // odds < 1 (stress above 65 at signing) shrinks the success window of fixed-multiple ventures.
 export const DILIGENCE_HOURS=20;
 export const VENTURE_ODDS=[.85,1.15,.9775];
@@ -38,16 +39,18 @@ export function ensureVentures(s){
  return s.ventures;
 }
 
-// Saves written before the interface moved to English hold the old localized company names,
-// which validItem compares against the table. Rebuild only those names from the stored id so
-// the name check still guards saves written since.
-const LOCALIZED_NAME=/[\uAC00-\uD7A3]/;
+// Saves keep the company name in the language it was invested in: Korean before 2026-09-13, or
+// either language once players can switch. validItem compares names with the current table, so
+// rebuild a name from the stored id only when it is that company's name in another language;
+// any other name still fails the check.
+const LOCALIZED_NAME=/[가-힣]/;
 export function repairVentureNames(s){
  for(const list of [s?.ventures?.active,s?.ventures?.history]){
   if(!Array.isArray(list))continue;
   for(const item of list){
-   if(!item||typeof item.name!=='string'||!LOCALIZED_NAME.test(item.name))continue;
-   const d=ventureCompany(item.ventureId);if(d)item.name=d.name;
+   if(!item||typeof item.name!=='string')continue;
+   const d=ventureCompany(item.ventureId);
+   if(d&&item.name!==d.name&&((lang==='en'&&LOCALIZED_NAME.test(item.name))||samePhrase(item.name,d.name)))item.name=d.name;
   }
  }
  return s;
@@ -55,16 +58,16 @@ export function repairVentureNames(s){
 
 export function investVenture(s,id,amount){
  const d=ventureOffering(s).companies.find(c=>c.id===id),v=ensureVentures(s);
- if(!d)return{ok:false,msg:'Choose a company to invest in.'};
- if(!AMOUNTS.includes(amount))return{ok:false,msg:'Check the investment amount.'};
- if(v.active.length>=3)return{ok:false,msg:'You can have at most 3 active venture investments.'};
- if(s.money<amount)return{ok:false,msg:'Not enough cash to invest.'};
+ if(!d)return{ok:false,msg:L('Choose a company to invest in.')};
+ if(!AMOUNTS.includes(amount))return{ok:false,msg:L('Check the investment amount.')};
+ if(v.active.length>=3)return{ok:false,msg:L('You can have at most 3 active venture investments.')};
+ if(s.money<amount)return{ok:false,msg:L('Not enough cash to invest.')};
  const stressed=s.stress>65,diligent=s.concept==='rich-life'&&(s.plan.inspect||0)>=DILIGENCE_HOURS,salvage=s.concept==='rich-life'&&reputationSummary(s).salvage;
  const odds=Math.round((stressed?.85:1)*(diligent?1.15:1)*10000)/10000;
  const investment={id:`venture-${v.sequence+1}`,ventureId:id,name:d.name,amount,startedMonth:s.month,dueMonth:s.month+3,roll:hashRoll(s.seed,v.sequence,id),...(odds!==1?{odds}:{}),...(salvage?{salvage:true}:{})};
  v.sequence++;v.lastInvestedMonth=s.month;v.active.push(investment);s.money-=amount;
- s.log.unshift(`${d.icon} ${d.name} venture investment · ₲${amount.toLocaleString('en-US')} · results in month ${investment.dueMonth}${stressed?' · Overworked, judgment impaired (success rate −15%)':''}${diligent?' · Due diligence boosts success rate +15%':''}${salvage?' · Reputation recovers 20% on failure':''}`);s.log=s.log.slice(0,25);
- return{ok:true,msg:`${d.name} investment placed · Fate decided in 3 months.${stressed?' High stress cuts the success rate by 15%.':''}${diligent?' Due diligence hours raise the success rate by 15%.':''}`};
+ s.log.unshift(L`${d.icon} ${d.name} venture investment · ₲${amount.toLocaleString('en-US')} · results in month ${investment.dueMonth}${stressed?L(' · Overworked, judgment impaired (success rate −15%)'):''}${diligent?L(' · Due diligence boosts success rate +15%'):''}${salvage?L(' · Reputation recovers 20% on failure'):''}`);s.log=s.log.slice(0,25);
+ return{ok:true,msg:L`${d.name} investment placed · Fate decided in 3 months.${stressed?L(' High stress cuts the success rate by 15%.'):''}${diligent?L(' Due diligence hours raise the success rate by 15%.'):''}`};
 }
 
 export function advanceVentures(s){
@@ -75,7 +78,7 @@ export function advanceVentures(s){
   const result={...item,resolvedMonth:s.month,success,payout,multiple};
   if(payout)s.money+=payout;
   v.history.unshift(result);resolved.push(result);
-  s.log.unshift(success?`✦ Venture jackpot! ${d.name} ${multiple}× exit · +₲${payout.toLocaleString('en-US')}`:`× Venture failed · ${d.name} stake ₲${item.amount.toLocaleString('en-US')} ${payout?`· ₲${payout.toLocaleString('en-US')} recovered`:'lost entirely'}`);
+  s.log.unshift(success?L`✦ Venture jackpot! ${d.name} ${multiple}× exit · +₲${payout.toLocaleString('en-US')}`:L`× Venture failed · ${d.name} stake ₲${item.amount.toLocaleString('en-US')} ${payout?L`· ₲${payout.toLocaleString('en-US')} recovered`:L('lost entirely')}`);
   return false;
  });
  v.history=v.history.slice(0,12);s.log=s.log.slice(0,25);v.latest=resolved;

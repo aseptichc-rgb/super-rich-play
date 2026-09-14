@@ -1,3 +1,4 @@
+import {L} from './i18n.js';
 import {build,canBuild,developmentQuote,footprintCells,coords,SIZE} from './engine.js';
 import {validLandmark} from './landmarks.js';
 export function landmarkQuote(s,i,type,footprint){
@@ -6,12 +7,12 @@ export function landmarkQuote(s,i,type,footprint){
  return {...q,fame,baseConstruction:q.construction,construction,total:construction+q.land,revenue,profit:revenue-q.cost};
 }
 export function landmarkBuildError(s,i,design,footprint){
- if(!validLandmark(design))return 'Select a valid design.';
+ if(!validLandmark(design))return L('Select a valid design.');
  const cells=footprintCells(i,footprint);
- if(!cells.length)return 'Select a lot inside the map, 1–3 tiles wide and tall.';
- if(cells.some(j=>s.tiles[j].terrain!=='land'||s.tiles[j].type||s.tiles[j].owner))return 'The entire footprint of the selected size must be empty.';
+ if(!cells.length)return L('Select a lot inside the map, 1–3 tiles wide and tall.');
+ if(cells.some(j=>s.tiles[j].terrain!=='land'||s.tiles[j].type||s.tiles[j].owner))return L('The entire footprint of the selected size must be empty.');
  const error=canBuild(s,i,design.type,'buy',footprint);if(error)return error;
- if(s.mode!=='sandbox'&&s.money<landmarkQuote(s,i,design.type,footprint).total)return 'Not enough cash to build the landmark.';
+ if(s.mode!=='sandbox'&&s.money<landmarkQuote(s,i,design.type,footprint).total)return L('Not enough cash to build the landmark.');
  return null;
 }
 // A lot grows right and down from its anchor. When the clicked tile can't be the anchor, slide the lot so the
@@ -32,6 +33,6 @@ export function buildLandmark(s,i,design,footprint){
  t.constructionCost=q.construction;t.assetLedger.initial+=extra;t.assetLedger.buildingValue*=100;t.landmark={...design};
  s.empire??={owned:[]};s.empire.landmarkFame??={};
  s.empire.landmarkFame[i]=(s.empire.landmarkFame[i]||0)+q.fame;s.empire.earnedFame=(s.empire.earnedFame||0)+q.fame;
- s.log=[`${design.name} landmark built on ${footprint.width}×${footprint.height} tiles · ₲${q.total.toLocaleString()} invested · Completion reputation +${q.fame}`,...previousLog].slice(0,25);
- return {ok:true,fame:q.fame,msg:`Landmark complete! Reputation +${q.fame.toLocaleString('en-US')}`};
+ s.log=[L`${design.name} landmark built on ${footprint.width}×${footprint.height} tiles · ₲${q.total.toLocaleString()} invested · Completion reputation +${q.fame}`,...previousLog].slice(0,25);
+ return {ok:true,fame:q.fame,msg:L`Landmark complete! Reputation +${q.fame.toLocaleString('en-US')}`};
 }
