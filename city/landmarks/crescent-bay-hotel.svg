@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="400" viewBox="0 0 360 400">
+ <!-- Crescent Bay Hotel: curved glass resort hotel with a rooftop pool. Isometric, base at bottom center. -->
+ <defs>
+  <linearGradient id="curveL" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#3f7a95"/><stop offset="1" stop-color="#5f9ab4"/></linearGradient>
+  <linearGradient id="curveR" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#8ec3d8"/><stop offset="1" stop-color="#bfe0ec"/></linearGradient>
+  <linearGradient id="sand" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f3e6c4"/><stop offset="1" stop-color="#dcc99a"/></linearGradient>
+ </defs>
+ <ellipse cx="180" cy="378" rx="140" ry="26" fill="#000" opacity=".12"/>
+ <!-- plaza -->
+ <polygon points="180,396 30,321 180,246 330,321" fill="url(#sand)"/>
+ <polygon points="30,321 180,396 180,382 30,307" fill="#c2ae82"/>
+ <polygon points="330,321 180,396 180,382 330,307" fill="#d5c39a"/>
+ <!-- pool on the plaza -->
+ <polygon points="120,318 160,338 220,308 180,288" fill="#6fc3d6"/>
+ <polygon points="126,318 160,335 214,308 180,291" fill="#9fdce8" opacity=".7"/>
+ <!-- palm trees -->
+ <g fill="#4f8a4a">
+  <rect x="78" y="300" width="4" height="26" fill="#8a6a3c"/><circle cx="80" cy="298" r="10"/><circle cx="70" cy="302" r="6"/><circle cx="90" cy="302" r="6"/>
+  <rect x="278" y="300" width="4" height="26" fill="#8a6a3c"/><circle cx="280" cy="298" r="10"/><circle cx="270" cy="302" r="6"/><circle cx="290" cy="302" r="6"/>
+ </g>
+ <!-- podium -->
+ <polygon points="70,306 180,361 180,331 70,276" fill="#e9e2cf"/>
+ <polygon points="290,306 180,361 180,331 290,276" fill="#f7f2e3"/>
+ <polygon points="180,331 70,276 180,221 290,276" fill="#fbf8ee"/>
+ <!-- curved tower: drawn as a crescent of vertical slats -->
+ <path d="M96 268 Q180 318 264 268 L264 92 Q180 142 96 92 Z" fill="url(#curveL)"/>
+ <path d="M180 293 Q222 288 264 268 L264 92 Q222 112 180 117 Z" fill="url(#curveR)"/>
+ <g stroke="#245a72" stroke-width="1.4" opacity=".5">
+  <path d="M96 112 Q180 162 264 112"/><path d="M96 134 Q180 184 264 134"/><path d="M96 156 Q180 206 264 156"/><path d="M96 178 Q180 228 264 178"/><path d="M96 200 Q180 250 264 200"/><path d="M96 222 Q180 272 264 222"/><path d="M96 244 Q180 294 264 244"/>
+  <line x1="120" y1="103" x2="120" y2="279"/><line x1="144" y1="111" x2="144" y2="287"/><line x1="180" y1="117" x2="180" y2="293"/><line x1="216" y1="111" x2="216" y2="287"/><line x1="240" y1="103" x2="240" y2="279"/>
+ </g>
+ <!-- balconies highlight -->
+ <path d="M96 92 Q180 142 264 92" fill="none" stroke="#ffffff" stroke-width="3" opacity=".8"/>
+ <!-- roof deck with infinity pool -->
+ <path d="M96 92 Q180 142 264 92 Q180 42 96 92 Z" fill="#f4efe0"/>
+ <path d="M124 92 Q180 124 236 92 Q180 60 124 92 Z" fill="#6fc3d6"/>
+ <path d="M134 92 Q180 116 226 92 Q180 68 134 92 Z" fill="#a4e0ea" opacity=".7"/>
+ <!-- sign -->
+ <rect x="150" y="26" width="60" height="16" rx="4" fill="#243b4a"/>
+ <rect x="152" y="28" width="56" height="12" rx="3" fill="#f2c14e" opacity=".9"/>
+ <rect x="178" y="42" width="4" height="8" fill="#243b4a"/>
+ <!-- entrance canopy -->
+ <polygon points="180,361 150,346 150,338 180,353" fill="#f2c14e"/>
+ <polygon points="180,361 210,346 210,338 180,353" fill="#d9a83a"/>
+</svg>

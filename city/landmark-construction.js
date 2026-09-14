@@ -1,4 +1,4 @@
-import {build,canBuild,developmentQuote,footprintCells} from './engine.js';
+import {build,canBuild,developmentQuote,footprintCells,coords,SIZE} from './engine.js';
 import {validLandmark} from './landmarks.js';
 export function landmarkQuote(s,i,type,footprint){
  const q=developmentQuote(s,i,type,1,footprint),construction=q.construction*100,revenue=q.revenue*10;
@@ -12,6 +12,16 @@ export function landmarkBuildError(s,i,design,footprint){
  if(cells.some(j=>s.tiles[j].terrain!=='land'||s.tiles[j].type||s.tiles[j].owner))return 'The entire footprint of the selected size must be empty.';
  const error=canBuild(s,i,design.type,'buy',footprint);if(error)return error;
  if(s.mode!=='sandbox'&&s.money<landmarkQuote(s,i,design.type,footprint).total)return 'Not enough cash to build the landmark.';
+ return null;
+}
+// A lot grows right and down from its anchor. When the clicked tile can't be the anchor, slide the lot so the
+// tile still sits inside it; the first buildable anchor wins. Returns null when no placement contains the tile.
+export function landmarkAnchor(s,i,design,footprint){
+ const {x,y}=coords(i),{width=1,height=1}=footprint||{};
+ for(let dy=0;dy<height;dy++)for(let dx=0;dx<width;dx++){
+  if(x-dx<0||y-dy<0)continue;
+  const a=(y-dy)*SIZE+x-dx;if(!landmarkBuildError(s,a,design,footprint))return a;
+ }
  return null;
 }
 export function buildLandmark(s,i,design,footprint){

@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="440" viewBox="0 0 320 440">
+ <!-- Sky Garden Tower: stepped office tower with planted terraces. Isometric, base at bottom center. -->
+ <defs>
+  <linearGradient id="glassL" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#8fb9c9"/><stop offset="1" stop-color="#6d9bb0"/></linearGradient>
+  <linearGradient id="glassR" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#c6dfe8"/><stop offset="1" stop-color="#a3c6d4"/></linearGradient>
+ </defs>
+ <ellipse cx="160" cy="418" rx="118" ry="24" fill="#000" opacity=".12"/>
+ <!-- ground slab -->
+ <polygon points="160,436 40,376 160,316 280,376" fill="#c9d3bd"/>
+ <polygon points="40,376 160,436 160,422 40,362" fill="#9aa88f"/>
+ <polygon points="280,376 160,436 160,422 280,362" fill="#b3bfa6"/>
+ <!-- tier 1 -->
+ <g transform="translate(0,0)">
+  <polygon points="60,362 160,412 160,292 60,242" fill="url(#glassL)"/>
+  <polygon points="260,362 160,412 160,292 260,242" fill="url(#glassR)"/>
+  <polygon points="160,292 60,242 160,192 260,242" fill="#eef3ea"/>
+  <g stroke="#3f6f84" stroke-width="1.5" opacity=".55">
+   <line x1="60" y1="272" x2="160" y2="322"/><line x1="60" y1="302" x2="160" y2="352"/><line x1="60" y1="332" x2="160" y2="382"/>
+   <line x1="260" y1="272" x2="160" y2="322"/><line x1="260" y1="302" x2="160" y2="352"/><line x1="260" y1="332" x2="160" y2="382"/>
+   <line x1="85" y1="254" x2="85" y2="374"/><line x1="110" y1="267" x2="110" y2="387"/><line x1="135" y1="279" x2="135" y2="399"/>
+   <line x1="235" y1="254" x2="235" y2="374"/><line x1="210" y1="267" x2="210" y2="387"/><line x1="185" y1="279" x2="185" y2="399"/>
+  </g>
+  <!-- terrace garden tier 1 -->
+  <polygon points="160,286 68,240 160,194 252,240" fill="#7fb069"/>
+  <circle cx="86" cy="238" r="9" fill="#4f8a4a"/><circle cx="234" cy="238" r="9" fill="#4f8a4a"/><circle cx="160" cy="278" r="8" fill="#5d9a53"/>
+ </g>
+ <!-- tier 2 -->
+ <g>
+  <polygon points="90,258 160,293 160,183 90,148" fill="url(#glassL)"/>
+  <polygon points="230,258 160,293 160,183 230,148" fill="url(#glassR)"/>
+  <polygon points="160,183 90,148 160,113 230,148" fill="#eef3ea"/>
+  <g stroke="#3f6f84" stroke-width="1.5" opacity=".55">
+   <line x1="90" y1="178" x2="160" y2="213"/><line x1="90" y1="208" x2="160" y2="243"/><line x1="90" y1="238" x2="160" y2="273"/>
+   <line x1="230" y1="178" x2="160" y2="213"/><line x1="230" y1="208" x2="160" y2="243"/><line x1="230" y1="238" x2="160" y2="273"/>
+   <line x1="113" y1="160" x2="113" y2="270"/><line x1="137" y1="172" x2="137" y2="282"/>
+   <line x1="207" y1="160" x2="207" y2="270"/><line x1="183" y1="172" x2="183" y2="282"/>
+  </g>
+  <polygon points="160,178 96,146 160,114 224,146" fill="#7fb069"/>
+  <circle cx="112" cy="144" r="8" fill="#4f8a4a"/><circle cx="208" cy="144" r="8" fill="#4f8a4a"/>
+ </g>
+ <!-- tier 3 -->
+ <g>
+  <polygon points="118,168 160,189 160,89 118,68" fill="url(#glassL)"/>
+  <polygon points="202,168 160,189 160,89 202,68" fill="url(#glassR)"/>
+  <polygon points="160,89 118,68 160,47 202,68" fill="#f4f7f0"/>
+  <g stroke="#3f6f84" stroke-width="1.5" opacity=".55">
+   <line x1="118" y1="98" x2="160" y2="119"/><line x1="118" y1="128" x2="160" y2="149"/>
+   <line x1="202" y1="98" x2="160" y2="119"/><line x1="202" y1="128" x2="160" y2="149"/>
+   <line x1="139" y1="78" x2="139" y2="178"/><line x1="181" y1="78" x2="181" y2="178"/>
+  </g>
+  <polygon points="160,86 124,68 160,50 196,68" fill="#7fb069"/>
+  <circle cx="160" cy="66" r="9" fill="#4f8a4a"/>
+ </g>
+ <!-- rooftop mast -->
+ <rect x="158" y="18" width="4" height="34" fill="#5b6b62"/>
+ <circle cx="160" cy="16" r="4" fill="#f2c14e"/>
+ <!-- entrance canopy -->
+ <polygon points="160,412 130,397 130,389 160,404" fill="#f2c14e"/>
+ <polygon points="160,412 190,397 190,389 160,404" fill="#d9a83a"/>
+</svg>

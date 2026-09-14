@@ -1,5 +1,7 @@
-// Images live in private server storage; game saves contain only a small design reference.
-export const landmarkURL=id=>`/api/landmarks/${id}/image`;
+// Built-in example images ship with the game; player designs live in private server storage.
+// Game saves contain only a small design reference either way.
+import {presetLandmark} from './landmark-presets.js';
+export const landmarkURL=id=>{const p=presetLandmark(id);return p?`city/landmarks/${p.file}`:`/api/landmarks/${id}/image`;};
 export function validLandmark(d){return !!d&&/^[a-f0-9-]{36}$/.test(d.id)&&typeof d.name==='string'&&d.name.length>0&&d.name.length<=40&&['office','hotel'].includes(d.type);}
 export function validLandmarks(s){
  const rewards=s?.empire?.landmarkFame;
