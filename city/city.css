@@ -81,6 +81,7 @@ button{font-size:.875rem}
 #dialog button,.guide-list b,.field-grid label,.field-grid select,.policy b{font-size:.875rem}
 #dialog .help,#dialog .new-options small,#dialog .event-options small,.keyboard-help,.history-log p,.policy small{font-size:.875rem;color:#52644e;line-height:1.7}
 #dialog summary,#dialog .legacy-links{font-size:.875rem;color:#52644e}
+.amenity-bonus{padding:12px 15px;margin:16px 0;border:1px solid #c9dcbd;border-left:4px solid #80ae77;border-radius:9px;background:#f5f9ef}#dialog .amenity-bonus h3{margin:0 0 4px;font-size:.9375rem;color:#35653b}#dialog .amenity-bonus .help{margin-top:4px}
 @media(min-width:1051px){.game{grid-template-columns:minmax(0,1fr) 380px}}
 @media(min-width:721px) and (max-width:1050px){.game{grid-template-columns:minmax(0,1fr) 330px}}
 @media(min-width:721px) and (max-width:1200px){

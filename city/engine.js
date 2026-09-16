@@ -195,7 +195,11 @@ export function buyParcel(s,i){
  awardAssetFame(s,`parcel:${i}`,q.total,TYPES[q.type].name+L(' acquired'));
  const msg=wasRival?L`Acquired rival's ${TYPES[q.type].name} · ₲${q.total.toLocaleString()} (50% premium) · Reputation +15`:L`${TYPES[q.type].name} purchased · ₲${q.total.toLocaleString()}`;s.log.unshift(msg);s.log=s.log.slice(0,25);return{ok:true,msg};
 }
-export function location(s,i){let residents=0,competition=0,amenity=0;for(let j=0;j<s.tiles.length;j++){const t=s.tiles[j],d=dist(i,j);if(d<=4&&['home','rental','condo','housing'].includes(t.type))residents+=t.level*12;if(d<=4&&['park','garden','citypark'].includes(t.type))amenity+=12*t.level;if(d<=4&&t.type==='themepark')amenity+=18*t.level;if(d<=4&&j!==i&&t.type===s.tiles[i].type)competition++;}const access=hasRoadAccess(s,i,s.tiles[i].footprint);return{residents,competition,amenity:Math.min(36,amenity),access,boulevard:hasBoulevardAccess(s,i,s.tiles[i].footprint),footfall:Math.round(clamp(35+residents*.32+amenity,20,100))};}
+// Parks, gardens, theme parks and landmarks lift foot traffic for other buildings within 4 tiles. A garden (₲1,600) adds 12 per level;
+// pricier builds add more, growing with build cost^0.15 (public park 23, theme park 36, hotel landmark about 50).
+// Only a theme park lifts itself, by a fixed 18 per level that ignores build cost, so its pre-build quote matches the finished park.
+export function amenityPower(t){return t?.type&&(['park','garden','citypark','themepark'].includes(t.type)||t.landmark)?Math.round(12*t.level*Math.pow(Math.max(1,(t.constructionCost??TYPES[t.type]?.cost??1600)/1600),.15)):0;}
+export function location(s,i){let residents=0,competition=0,amenity=0;for(let j=0;j<s.tiles.length;j++){const t=s.tiles[j],d=dist(i,j);if(d<=4&&['home','rental','condo','housing'].includes(t.type))residents+=t.level*12;if(d<=4)amenity+=j!==i?amenityPower(t):t.type==='themepark'?18*t.level:0;if(d<=4&&j!==i&&t.type===s.tiles[i].type)competition++;}const access=hasRoadAccess(s,i,s.tiles[i].footprint);return{residents,competition,amenity:Math.min(36,amenity),access,boulevard:hasBoulevardAccess(s,i,s.tiles[i].footprint),footfall:Math.round(clamp(35+residents*.32+amenity,20,100))};}
 export function footprintCells(i,footprint={width:1,height:1}){
  const {width,height}=footprint||{},p=coords(i);
  if(!Number.isInteger(i)||i<0||i>=SIZE*SIZE||![width,height].every(n=>Number.isInteger(n)&&n>=1&&n<=3)||p.x+width>SIZE||p.y+height>SIZE)return [];
@@ -222,14 +226,15 @@ export function synergyReport(s,i,type){
  return{partners,hq,monument,bonus:partners*.08+(hq?.05:0)+(monument?.1:0)};
 }
 export function developmentQuote(s,i,type,level=1,footprint=s.tiles[i]?.footprint){
- const cells=footprintCells(i,footprint),view=footprint?{...s,tiles:s.tiles.map((t,j)=>cells.includes(j)?j===i?{...t,type,footprint}:{terrain:'land',type:null,level:1}:t)}:s;
+ // A contract quote sees the finished map: the new building at the quoted level, owned by the player, replacing what stood in its footprint.
+ const cells=footprintCells(i,footprint),view=footprint?{...s,tiles:s.tiles.map((t,j)=>cells.includes(j)?j===i?{...t,type,footprint,level,owner:'player'}:{terrain:'land',type:null,level:1}:t)}:s;
  const d=TYPES[type],loc=location(view,i),{x,y}=coords(i),central=clamp(1-Math.hypot(x-mapOffset(s)-10,y-mapOffset(s)-10)/15,0,1);
  const waterfront=s.tiles.some((t,j)=>t.terrain==='water'&&dist(i,j)<=3);
  const score=clamp(.65*(loc.footfall/100)+.35*central+(type==='resort'?(waterfront?.25:0)+loc.amenity/36*.2:type==='hotel'?loc.amenity/36*.1:0),0,1);
  const area=cells.length||1,factor=(d.managed?.75+score*.6:1)*(loc.access?1:OFF_ROAD.construction),construction=Math.round(d.cost*factor*Math.pow(area,1.05));
  const land=cells.reduce((sum,j)=>sum+(s.tiles[buildingAnchor(s,j)]?.owner==='player'&&s.tiles[buildingAnchor(s,j)].tenure==='buy'?0:landPrice(s,j)),0);
  // Managed revenue rides the business cycle, tourism clusters, the owner's reputation premium and on-site attention.
- const synergy=synergyReport(s,i,type),premium=d.managed?reputationSummary(s).premium:1,cycle=d.managed?cycleFactor(s):1,attention=d.managed?ownerAttention(s):null,boost=cycle*(1+synergy.bonus)*premium*(attention?attention.multiplier:1);
+ const synergy=synergyReport(view,i,type),premium=d.managed?reputationSummary(s).premium:1,cycle=d.managed?cycleFactor(s):1,attention=d.managed?ownerAttention(view):null,boost=cycle*(1+synergy.bonus)*premium*(attention?attention.multiplier:1);
  // Everything except the level multiplier is rounded first, so an expansion always earns an exact multiple of level 1.
  let revenue=Math.round(incomeFactor(s)*d.base*(d.managed?(.55+score*1.15)*boost:1)*Math.pow(area,1.3)*(loc.access?1:OFF_ROAD.revenue)*(type==='office'&&loc.boulevard?BOULEVARD.rent:1))*level,cost=d.upkeep*level*area;
  if(!d.managed&&d.group&&type!=='plot'){
@@ -268,6 +273,14 @@ export function businessReport(s,i,context={}){
  const marketing=t.marketing?150:0,boost=t.marketing&&!rental?revenue*.18:0;
  const gross=Math.round(revenue+boost),goods=rental?0:gross*(.29+quality*.07),cost=Math.round(goods+wages+lease+maintenance+marketing);
  return{revenue:gross,cost,profit:gross-cost,occupancy:Math.round(occupancy*100),demand:Math.round(demand*100),wages,lease,maintenance,goods:Math.round(goods),marketing,loc,manage:Math.round(manage*100)};
+}
+// What amenities within 4 tiles add to an earning building: its report now minus the same report with their effect off.
+// Level 0 switches an amenity off while the building stays, so competition and tourism clusters are unchanged.
+export function amenityBonus(s,i){
+ const near=s.tiles.flatMap((t,j)=>j!==i&&dist(i,j)<=4&&amenityPower(t)?[j]:[]);
+ if(!near.length||!TYPES[s.tiles[i].type]?.base)return null;
+ const off=new Set(near),now=businessReport(s,i),without=businessReport({...s,tiles:s.tiles.map((t,j)=>off.has(j)?{...t,level:0}:t)},i);
+ return{sources:near.map(j=>s.tiles[j]),footfall:now.loc.footfall-without.loc.footfall,occupancy:now.occupancy-without.occupancy,revenue:now.revenue-without.revenue};
 }
 export function analyze(s){return onMap(s,()=>analyzeAt(s));}
 function analyzeAt(s){
