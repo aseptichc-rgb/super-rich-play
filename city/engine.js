@@ -9,7 +9,7 @@ import {compoundSummary,settleCompound,validCompound,COMPOUND_ASSETS} from './co
 import {ARTWORKS} from './art.js';
 import {reputationSummary} from './empire.js';
 import {cycleFactor,economyReport} from './economy.js';
-import {scheduleRichEvent,applyRichChoice,resolvePending,validRichEvent,validPending} from './events.js';
+import {scheduleRichEvent,buildRichEvent,applyRichChoice,resolvePending,validRichEvent,validPending} from './events.js';
 import {advanceRival,rivalOffer,validRival} from './rival.js';
 import {chapterOf,settlePrestige,endingReport,validLegacy} from './legacy.js';
 import {validFlex} from './flex.js';
@@ -74,6 +74,8 @@ function migrateSaveAt(s){
  if(s&&RETIRED_EVENTS.some(e=>JSON.stringify(e)===JSON.stringify(s.event)))s.event=null;
  if(s?.event?.id==='networking')s.event=null;
  if(Array.isArray(s?.eventLog))s.eventLog=s.eventLog.filter(id=>id!=='networking');
+ // Spending events opened before the price caps are re-quoted so old wealth-scaled prices disappear.
+ if(['tax_audit','tourist_boom','scandal','charity_gala','family_request','travel_slump','burnout'].includes(s?.event?.id))s.event=buildRichEvent(s,s.event.id,{wealth:analyze(s).wealth,fame:reputationSummary(s).fame});
  return s;
 }
 export const coords=i=>({x:i%SIZE,y:Math.floor(i/SIZE)});

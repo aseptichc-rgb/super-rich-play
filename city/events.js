@@ -3,33 +3,36 @@ import {L} from './i18n.js';
 import {hashRoll} from './rng.js';
 const money=n=>'₲'+Math.round(n).toLocaleString('en-US');
 const pct=(wealth,p,min=0)=>Math.max(min,Math.round(wealth*p));
+// Spending stops growing at the Tycoon chapter's ₲30M; investments keep scaling because they return the stake.
+const spend=(wealth,p)=>pct(Math.min(wealth,30000000),p);
 export const EVENT_INTERVAL=4;
 export const RICH_EVENTS=[
  {id:'tax_audit',title:L('Tax audit notice'),text:L('Your growing wealth triggered a full tax audit. How do you respond?'),build:(s,c)=>[
-  {label:L('Pay in full'),cost:pct(c.wealth,.03),fame:10,desc:L`Pay 3% of net worth (${money(pct(c.wealth,.03))}) · Reputation +10`},
-  {label:L('Hire a tax consultant'),cost:pct(c.wealth,.01),stress:8,later:{months:4,amount:-pct(c.wealth,.06),chance:.35,label:L('Back taxes')},desc:L`1% now (${money(pct(c.wealth,.01))}) · 35% chance of a 6% back-tax bill in 4 months · Stress +8`},
-  ...(c.fame>=150?[{label:L('Bring in the law firm'),cost:pct(c.wealth,.005),fame:-15,desc:L`0.5% (${money(pct(c.wealth,.005))}) spent · Reputation −15 · An option only fame unlocks`}]:[])]},
+  {label:L('Pay in full'),cost:spend(c.wealth,.03),fame:10,desc:L`Pay ${money(spend(c.wealth,.03))} · Reputation +10`},
+  {label:L('Hire a tax consultant'),cost:spend(c.wealth,.01),stress:8,later:{months:4,amount:-spend(c.wealth,.06),chance:.35,label:L('Back taxes')},desc:L`${money(spend(c.wealth,.01))} now · 35% chance of a ${money(spend(c.wealth,.06))} back-tax bill in 4 months · Stress +8`},
+  ...(c.fame>=150?[{label:L('Bring in the law firm'),cost:spend(c.wealth,.005),fame:-15,desc:L`${money(spend(c.wealth,.005))} spent · Reputation −15 · An option only fame unlocks`}]:[])]},
  {id:'rate_hike',title:L('Rate hike'),text:L('The central bank raised rates. Loans get harder and the rental market cools.'),build:(s,c)=>[
   {label:L('Buy high-yield bonds'),cost:pct(c.wealth,.05),later:{months:6,amount:pct(c.wealth,.05)+pct(c.wealth,.004)*6,chance:1,label:L('Bond matured')},desc:L`5% (${money(pct(c.wealth,.05))}) invested · Principal + 2.4% interest guaranteed back in 6 months`},
   {label:L('Wait and see'),multiplier:.9,months:3,desc:L('Rental & hotel revenue −10% for 3 months')}]},
  {id:'tourist_boom',title:L('Global event · Tourist surge'),text:L('The city landed a major international event. Lodging demand is about to explode.'),build:(s,c)=>[
-  {label:L('Invest in promotion'),cost:pct(c.wealth,.02),multiplier:1.3,months:3,desc:L`2% (${money(pct(c.wealth,.02))}) spent · Rental & hotel revenue +30% for 3 months`},
+  {label:L('Invest in promotion'),cost:spend(c.wealth,.02),multiplier:1.3,months:3,desc:L`${money(spend(c.wealth,.02))} spent · Rental & hotel revenue +30% for 3 months`},
   {label:L('Welcome them as is'),multiplier:1.1,months:1,desc:L('Revenue +10% for 1 month · No cost')}]},
  {id:'scandal',title:L('Tabloid scandal'),text:L('A party photo landed in the gossip pages. Public opinion is stirring.'),build:(s,c)=>[
-  {label:L('Apologize and donate'),cost:pct(c.wealth,.02),fame:-10,desc:L`2% (${money(pct(c.wealth,.02))}) donated · Limits the hit to Reputation −10`},
+  {label:L('Apologize and donate'),cost:spend(c.wealth,.02),fame:-10,desc:L`${money(spend(c.wealth,.02))} donated · Limits the hit to Reputation −10`},
   {label:L('Ignore it'),fame:-40,stress:15,desc:L('No cost · Reputation −40 · Stress +15')}]},
- {id:'charity_gala',title:L('Charity gala invitation'),text:L('The biggest charity gala in the city needs a headline sponsor. High society is watching you.'),build:(s,c)=>[
-  {label:L('Become headline sponsor'),cost:pct(c.wealth,.015),fame:40,memories:1,stress:-10,desc:L`1.5% (${money(pct(c.wealth,.015))}) sponsored · Reputation +40 · Memories +1`},
-  {label:L('Just attend'),cost:pct(c.wealth,.002),fame:10,desc:L`0.2% (${money(pct(c.wealth,.002))}) for a table · Reputation +10`},
-  {label:L('Skip it'),fame:-5,stress:-5,desc:L('Reputation −5 · Stress −5')}]},
+ // A gala is a night out, not an investment: costs scale early, then stop at party-sized prices.
+ {id:'charity_gala',title:L('Charity gala invitation'),text:L('The biggest charity gala in the city needs a headline sponsor. High society is watching you.'),build:(s,c)=>{const sponsor=Math.min(pct(c.wealth,.015),100000),table=Math.min(pct(c.wealth,.002),10000);return[
+  {label:L('Become headline sponsor'),cost:sponsor,fame:40,memories:1,stress:-10,desc:L`${money(sponsor)} sponsored · Reputation +40 · Memories +1`},
+  {label:L('Just attend'),cost:table,fame:10,desc:L`${money(table)} for a table · Reputation +10`},
+  {label:L('Skip it'),fame:-5,stress:-5,desc:L('Reputation −5 · Stress −5')}];}},
  {id:'insider_tip',title:L('Insider tip'),text:L('An old friend leaks pre-IPO info. They swear it\'s a sure thing, but getting caught would ruin your name.'),build:(s,c)=>[
   {label:L('Politely decline'),fame:5,desc:L('Reputation +5 · Nothing to lose')},
   {label:L('Bet quietly'),cost:pct(c.wealth,.03),stress:12,later:{months:2,amount:pct(c.wealth,.09),chance:.5,label:L('Insider bet'),penalty:{fame:-60}},desc:L`3% (${money(pct(c.wealth,.03))}) bet · In 2 months, 50%: +9% return / 50%: total loss and Reputation −60`}]},
  {id:'family_request',title:L('Family asks for startup money'),text:L('Your younger sibling asks for startup funding. The plan looks solid, but there are no guarantees.'),build:(s,c)=>[
-  {label:L('Fund them gladly'),cost:pct(c.wealth,.02),stress:-10,fame:5,later:{months:9,amount:pct(c.wealth,.03),chance:.4,label:L('Sibling\'s first dividend')},desc:L`2% (${money(pct(c.wealth,.02))}) funded · Stress −10 · 40% chance of a 3% return in 9 months`},
+  {label:L('Fund them gladly'),cost:spend(c.wealth,.02),stress:-10,fame:5,later:{months:9,amount:spend(c.wealth,.03),chance:.4,label:L('Sibling\'s first dividend')},desc:L`${money(spend(c.wealth,.02))} funded · Stress −10 · 40% chance of ${money(spend(c.wealth,.03))} back in 9 months`},
   {label:L('Decline'),stress:15,desc:L('No cost · Stress +15')}]},
  {id:'travel_slump',title:L('Tourism slump · Flights suspended'),text:L('Major air routes are cut and the hotel trade has frozen. Your staff are looking to you.'),build:(s,c)=>[
-  {label:L('Keep every employee'),cost:pct(c.wealth,.01),fame:15,multiplier:.8,months:3,desc:L`1% (${money(pct(c.wealth,.01))}) spent · Reputation +15 · Revenue −20% for 3 months`},
+  {label:L('Keep every employee'),cost:spend(c.wealth,.01),fame:15,multiplier:.8,months:3,desc:L`${money(spend(c.wealth,.01))} spent · Reputation +15 · Revenue −20% for 3 months`},
   {label:L('Cut staff'),fame:-15,multiplier:.65,months:2,desc:L('No cost · Reputation −15 · Revenue −35% for 2 months')}]},
  {id:'museum_loan',title:L('Museum loan request'),text:L('The national museum asks to borrow your collection for a special exhibition.'),when:(s)=>(s.artCollection?.owned.length||0)>0,build:()=>[
   {label:L('Lend it'),fame:25,memories:1,desc:L('Reputation +25 · Memories +1 · The works return in 3 months')},
@@ -38,8 +41,8 @@ export const RICH_EVENTS=[
   {label:L('Join the consortium'),cost:pct(c.wealth,.04),later:{months:6,amount:pct(c.wealth,.09),chance:.6,label:L('Redevelopment consortium payout'),fallback:pct(c.wealth,.02)},desc:L`4% (${money(pct(c.wealth,.04))}) invested · In 6 months, 60%: 9% return / 40%: only 2% back`},
   {label:L('Wait and see'),desc:L('No change')}]},
  {id:'burnout',title:L('Health checkup warning'),text:L('Your doctor warns you\'re overworked. Rest now, or you\'ll be forced to rest much longer later.'),when:s=>s.stress>=45,build:(s,c)=>[
-  {label:L('Take a month off to recover'),cost:pct(c.wealth,.01),stress:-40,multiplier:.9,months:1,desc:L`1% (${money(pct(c.wealth,.01))}) · Stress −40 · Revenue −10% for 1 month`},
-  {label:L('Ignore it and keep working'),stress:20,later:{months:3,amount:-pct(c.wealth,.02),chance:.6,label:L('Hospital bill')},desc:L('Stress +20 · 60% chance of a 2% hospital bill in 3 months')}]},
+  {label:L('Take a month off to recover'),cost:spend(c.wealth,.01),stress:-40,multiplier:.9,months:1,desc:L`${money(spend(c.wealth,.01))} · Stress −40 · Revenue −10% for 1 month`},
+  {label:L('Ignore it and keep working'),stress:20,later:{months:3,amount:-spend(c.wealth,.02),chance:.6,label:L('Hospital bill')},desc:L`Stress +20 · 60% chance of a ${money(spend(c.wealth,.02))} hospital bill in 3 months`}]},
  {id:'market_crash',title:L('Stock market plunge'),text:L('Bad news from abroad crashed the market in a day. Sell in panic, or buy the dip?'),build:(s,c)=>[
   {label:L('Buy the dip'),cost:pct(c.wealth,.03),prices:.9,later:{months:3,amount:pct(c.wealth,.03)+pct(c.wealth,.02),chance:.75,label:L('Dip-buy rebound')},desc:L`Stock prices −10% · 3% (${money(pct(c.wealth,.03))}) extra buying · 75% chance of a 5% return in 3 months`},
   {label:L('Hold'),prices:.9,desc:L('Stock prices −10% · No extra spending')}]},
