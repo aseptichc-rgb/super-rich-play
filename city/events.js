@@ -43,9 +43,6 @@ export const RICH_EVENTS=[
  {id:'market_crash',title:L('Stock market plunge'),text:L('Bad news from abroad crashed the market in a day. Sell in panic, or buy the dip?'),build:(s,c)=>[
   {label:L('Buy the dip'),cost:pct(c.wealth,.03),prices:.9,later:{months:3,amount:pct(c.wealth,.03)+pct(c.wealth,.02),chance:.75,label:L('Dip-buy rebound')},desc:L`Stock prices −10% · 3% (${money(pct(c.wealth,.03))}) extra buying · 75% chance of a 5% return in 3 months`},
   {label:L('Hold'),prices:.9,desc:L('Stock prices −10% · No extra spending')}]},
- {id:'networking',title:L('Industry networking invite'),text:L('A chance to meet new clients and partners. Invest in growth, or in some breathing room?'),build:(s,c)=>[
-  {label:L('Attend and learn'),cost:pct(c.wealth,.002),skill:4,fame:8,stress:4,desc:L`0.2% (${money(pct(c.wealth,.002))}) spent · Skill +4 · Reputation +8 · Stress +4`},
-  {label:L('Take a proper rest'),stress:-12,desc:L('No cost · Stress −12')}]},
  {id:'rival_offer',title:L('Rival\'s buyout offer'),text:L('Your rival offers to buy your building above market price. Take the cash, or keep your pride?'),hidden:true,build:(s,c)=>[
   {label:L('Sell at a premium'),money:c.offer,action:'sell-to-rival',tile:c.tile,desc:L`${c.tileName} sold · 130% of market (${money(c.offer)}) in cash`},
   {label:L('Decline'),fame:10,desc:L('Reputation +10 · Rival\'s next offer comes in a year')}]}
@@ -76,7 +73,7 @@ export function applyRichChoice(s,o){
  if(o.prices)for(const k of Object.keys(s.prices))s.prices[k]=Math.max(5,Math.round(s.prices[k]*o.prices*100)/100);
  if(o.multiplier)s.effect={bonus:0,remaining:o.months||1,multiplier:o.multiplier};else if(o.bonus)s.effect={bonus:o.bonus,remaining:2};
  if(o.later){s.pending??=[];const seq=(s.pendingSerial=(s.pendingSerial||0)+1);s.pending.push({id:seq,label:o.later.label,month:s.month+o.later.months,amount:o.later.amount,chance:o.later.chance,fallback:o.later.fallback||0,penalty:o.later.penalty||null,roll:hashRoll(s.seed,seq,'pending')});}
- if(o.action==='sell-to-rival'&&Number.isInteger(o.tile)){const t=s.tiles[o.tile];if(t?.owner==='player'){const keep={type:t.type,level:t.level,constructionCost:t.constructionCost};for(const k of Object.keys(t))if(!['terrain','tree'].includes(k))delete t[k];Object.assign(t,keep,{owner:'rival',tree:false});if(s.rival){s.rival.tiles.push(o.tile);s.rival.acquired=(s.rival.acquired||0)+1;}}}
+ if(o.action==='sell-to-rival'&&Number.isInteger(o.tile)){const t=s.tiles[o.tile];if(t?.owner==='player'){t.owner='rival';t.tree=false;delete t.assetLedger;if(s.rival){s.rival.tiles.push(o.tile);s.rival.acquired=(s.rival.acquired||0)+1;}}}
 }
 // Delayed payoffs resolve at month end using the roll fixed when the decision was made.
 export function resolvePending(s){

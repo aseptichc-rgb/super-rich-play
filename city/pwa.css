@@ -1,0 +1,13 @@
+.pwa-settings{border-top:1px solid var(--line);margin-top:24px;padding-top:4px}
+.pwa-settings p{font-size:14px;line-height:1.7;color:var(--ink)}
+.pwa-settings summary{font-size:14px;min-height:44px;display:list-item;padding:12px 0}
+.pwa-settings [hidden]{display:none!important}
+body{padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+@media(pointer:coarse){
+ dialog button,.map-tools button,.top-actions button,.side-tabs button{min-height:44px;min-width:44px}
+ dialog input,dialog select,dialog textarea{font-size:16px}
+}
+@media(max-width:720px){
+ dialog{max-height:calc(100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom));overflow-y:auto;overscroll-behavior:contain}
+ .world-wrap{min-height:480px;height:calc(100dvh - 97px - env(safe-area-inset-top) - env(safe-area-inset-bottom))}
+}

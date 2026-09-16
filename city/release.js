@@ -7,7 +7,9 @@ export const VERSION='v2.0';
 export const PLAY_REPO='aseptichc-rgb/super-rich-play';
 // Paste a survey link (for example a Google Form) to add an "Open Survey" button. Empty keeps copy and GitHub issue.
 export const FEEDBACK_URL='';
-export function releaseChannel(hostname=''){return /\.github\.io$/i.test(String(hostname))?'play':'full';}
+// itch.io serves uploaded HTML games from its own CDN hosts (html.itch.zone, older *.ssl.hwcdn.net), so the same zip
+// behaves like the GitHub Pages copy there.
+export function releaseChannel(hostname=''){return /\.github\.io$|(^|\.)itch\.(zone|io)$|\.hwcdn\.net$/i.test(String(hostname))?'play':'full';}
 // The landmark studio ships three built-in designs, so it works everywhere. AI drafts and uploads need the
 // private design server and are switched off until that server is wired up again.
 export function releaseFeatures(hostname='',cloud=false){const play=releaseChannel(hostname)==='play';return{channel:play?'play':'full',landmarkStudio:true,aiLandmarks:false,legacyModes:!play,cloudSave:!!cloud};}

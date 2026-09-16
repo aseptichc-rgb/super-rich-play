@@ -4,13 +4,13 @@ import {validLandmark} from './landmarks.js';
 export function landmarkQuote(s,i,type,footprint){
  const q=developmentQuote(s,i,type,1,footprint),construction=q.construction*100,revenue=q.revenue*10;
  const fame=Math.max(0,500+(q.cells.length-1)*100-(s.empire?.landmarkFame?.[i]||0));
- return {...q,fame,baseConstruction:q.construction,construction,total:construction+q.land,revenue,profit:revenue-q.cost};
+ return {...q,fame,baseConstruction:q.construction,construction,total:construction+q.land+q.demolition,revenue,profit:revenue-q.cost};
 }
 export function landmarkBuildError(s,i,design,footprint){
  if(!validLandmark(design))return L('Select a valid design.');
  const cells=footprintCells(i,footprint);
  if(!cells.length)return L('Select a lot inside the map, 1–3 tiles wide and tall.');
- if(cells.some(j=>s.tiles[j].terrain!=='land'||s.tiles[j].type||s.tiles[j].owner))return L('The entire footprint of the selected size must be empty.');
+ if(cells.some(j=>s.tiles[j].terrain!=='land'||((s.tiles[j].type||s.tiles[j].owner)&&!(s.tiles[j].type==='plot'&&s.tiles[j].owner==='player'&&s.tiles[j].tenure==='buy'))))return L('The entire footprint must be empty land or your own empty lots.');
  const error=canBuild(s,i,design.type,'buy',footprint);if(error)return error;
  if(s.mode!=='sandbox'&&s.money<landmarkQuote(s,i,design.type,footprint).total)return L('Not enough cash to build the landmark.');
  return null;

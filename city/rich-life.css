@@ -12,4 +12,20 @@
 .world-wrap .map-tools,.world-wrap .layer-control{background:#f8faf2df;border-color:#ffffffa6;box-shadow:0 8px 28px #25454b15;backdrop-filter:blur(18px)}
 .world-wrap .build-dock{background:#fafbf4eb;border-color:#ffffffbd;box-shadow:0 16px 48px #24474d24}
 @media(max-width:720px){.world-wrap .live-card{width:226px;max-height:155px}.world-wrap .rich-office button{padding:8px 6px}.world-wrap .live-card-title{font-size:8px}.world-wrap .rich-office b{font-size:9px}}
-@media(min-width:721px){.world-wrap .layer-control{top:24px;right:72px;bottom:auto;left:auto}.world-wrap .live-card{max-height:calc(100% - 400px)}.world-wrap .rich-office button{padding:7px 6px}.world-wrap .rich-office b{font-size:10px}}
+@media(min-width:721px){.world-wrap .layer-control{top:24px;right:80px;bottom:auto;left:auto}.world-wrap .live-card{max-height:calc(100% - 400px)}.world-wrap .rich-office button{padding:7px 6px}.world-wrap .rich-office b{font-size:10px}}
+
+/* Keep the office readable without scaling or blurring its text. */
+.world-wrap .live-card{width:340px;max-width:calc(100% - 68px);max-height:calc(100% - 470px);background:#f8f8f0;backdrop-filter:none}
+.world-wrap .rich-office button{padding:10px 8px;gap:6px}
+.world-wrap .rich-office b{font-size:.875rem;line-height:1.45}
+.world-wrap .rich-office small{font-size:.8125rem;line-height:1.5;font-weight:500}
+.world-wrap .rich-office button:not(.venture-launch):not(.owner-launch):not(.legacy-launch) small{color:#52644e}
+.world-wrap .live-card-title{font-size:.75rem;line-height:1.5;letter-spacing:0}
+.world-wrap .world-title{text-shadow:none}
+.world-wrap .build-dock,.world-wrap .map-tools,.world-wrap .layer-control{background:#fafbf4;backdrop-filter:none}
+@media(max-width:1050px){.world-wrap .live-card{width:300px}}
+@media(min-width:721px) and (max-width:1200px){
+ .world-wrap .live-card{top:235px;left:23px;width:min(300px,46%);max-height:calc(100% - 510px)}
+ .world-wrap .layer-control{top:235px;right:14px;width:min(280px,44%);min-width:0}
+}
+@media(max-width:720px){.world-wrap .live-card{top:204px;width:270px;max-width:calc(100% - 32px);max-height:170px}}

@@ -14,15 +14,17 @@ export const SCENARIOS={
  selfmade:{name:L('Self-made'),icon:'⚒',tagline:L('Cash ₲500,000 · no assets · expertise 85'),desc:L('Start from nothing. The road to your first hotel is the longest, and the most thrilling.')},
  windfall:{name:L('Windfall'),icon:'✦',tagline:L('Cash ₲3,500,000 · mansion, car and yacht · 3× living costs'),desc:L('You bought everything at once. Upkeep eats your cash every month.')}
 };
+// New games only start as the heir. The other starts stay defined so saves that already use them keep loading.
+export const NEW_GAME_SCENARIOS=['heir'];
 export const PRESTIGE_DECAY=.03;
 export function chapterOf(s){const peak=s.mode==='sandbox'?Infinity:(s.highestWealth||0);return CHAPTERS.filter(c=>peak>=c.min).at(-1);}
 export function nextChapter(s){return s.mode==='sandbox'?null:CHAPTERS.find(c=>c.min>(s.highestWealth||0))||null;}
 export function addPrestige(s,n){s.prestige=Math.max(0,Math.round(((s.prestige||0)+n)*10)/10);return s.prestige;}
-// Lifestyle fame fades 3% a month; landmark buildings feed it every month.
+// Lifestyle fame fades 3% a month; landmark buildings and resident amenities feed it every month.
 export function settlePrestige(s){
  if(s.prestige)s.prestige=Math.max(0,Math.round(s.prestige*(1-PRESTIGE_DECAY)*10)/10);
  const owned=s.tiles.filter(t=>t.owner==='player');
- const gain=(owned.some(t=>t.type==='hq')?10:0)+(owned.some(t=>t.type==='monument')?30:0);
+ const gain=(owned.some(t=>t.type==='hq')?10:0)+(owned.some(t=>t.type==='monument')?30:0)+Math.min(5,owned.filter(t=>t.type==='citypark').length)*2+(owned.some(t=>t.type==='themepark')?5:0);
  if(gain)addPrestige(s,gain);
 }
 export function foundationQuote(s,wealth){return Math.max(5000000,Math.round(wealth*.05));}

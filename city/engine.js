@@ -1,3 +1,4 @@
+import {startupSummary,advanceStartups,validStartups,decideStartup,validStartupEvent} from './startups.js';
 import {L} from './i18n.js';
 import {marketFactor,marketPrice,incomeFactor} from './economy.js';
 import {ensureEconomy,advanceEconomy,validEconomy} from './economy.js';
@@ -16,7 +17,10 @@ import {artPortfolio,validArt} from './art.js';
 import {RICH_GOALS,validRichLife} from './rich-life.js';
 import {validRewards} from './rewards.js';
 import {wageQuote,validCareer} from './careers.js';
-import {investmentReport,recordTrade,validInvestment} from './investment.js';
+import {investmentReport,ensureBasis,recordTrade,validInvestment} from './investment.js';
+import {STOCKS} from './stocks.js';
+import {createMarket,ensureMarket,advanceStocks,listedStocks,trade,validMarket} from './market.js';
+export {STOCKS,trade};
 import {projectReport,advanceProjects,validProjects} from './projects.js';
 import {validShift} from './activity.js';
 import {advanceVentures,validVentures,repairVentureNames} from './venture.js';
@@ -24,10 +28,21 @@ import {empireSummary,validEmpire,settleOwnerBenefits} from './empire.js';
 import {acquisitionSummary,validAcquisitions} from './acquisitions.js';
 import {lifestyleCostReport} from './living-costs.js';
 // Personal wealth simulation. All money is fictional G; one tick is one month.
-export const SIZE=26,SAVE_KEY='super-rich-life-v2';
+export const SAVE_KEY='super-rich-life-v2';
+// The map is square. Building on its edge opens MAP_GROWTH tiles of land on every side, so the
+// original city keeps its world coordinates at s.mapOffset. SIZE follows the active map (useMap).
+export const BASE_SIZE=26,MAP_GROWTH=3,MAX_SIZE=44;
+export let SIZE=BASE_SIZE;
+export const mapOffset=s=>s?.mapOffset||0;
+const mapSize=s=>BASE_SIZE+2*mapOffset(s);
+export function useMap(s){SIZE=mapSize(s);return s;}
+function onMap(s,fn){const size=SIZE;SIZE=mapSize(s);try{return fn();}finally{SIZE=size;}}
 export const TYPES={
  extension:{name:L('Combined building lot'),color:'#c8bb88'},
  golf:{name:L('Golf Course'),group:'property',icon:'⛳',cost:1000000,upkeep:18000,color:'#78aa58',shape:'golf',base:100000,staff:0,managed:true,desc:L('A golf course with a clubhouse and full course. Green-fee income depends on location · Runs automatically · Expands up to 3 tiers.')},
+ citypark:{name:L('Public Park'),group:'property',icon:'🌳',cost:120000,upkeep:1500,color:'#83b17b',shape:'park',base:0,staff:0,desc:L('A park for residents. Earns no rent, but lifts foot traffic for buildings within 4 tiles and adds Reputation +2 monthly (up to 5 parks) · Expands up to 3 tiers.')},
+ housing:{name:L('Housing Complex'),group:'property',icon:'🏘',cost:320000,upkeep:3000,color:'#afc897',shape:'home',base:26000,staff:0,desc:L('Homes that pay rent every month. Residents bring foot traffic to shops, hotels and offices within 4 tiles · Higher rent means more vacancies.')},
+ themepark:{name:L('Theme Park'),group:'property',icon:'🎡',cost:2500000,upkeep:45000,color:'#e39a6a',shape:'themepark',base:240000,staff:0,managed:true,unlock:10000000,desc:L('Unlocks in the Developer chapter (peak net worth ₲10,000,000). A tourist magnet: joins hotel, resort and golf clusters, lifts foot traffic within 4 tiles and adds Reputation +5 monthly · Runs itself.')},
  plot:{name:L('Owned Lot'),group:'land',icon:'▱',cost:0,upkeep:0,color:'#c8bb88',base:0,staff:0,desc:L('Empty land you bought early. It never auto-develops, so build whatever you like here.')},
  hotel:{name:L('Hotel'),group:'property',icon:'🏨',cost:250000,upkeep:5000,color:'#d6b16c',shape:'shop',base:20000,staff:0,managed:true,desc:L('Opens as soon as it is built! Profit depends on location and the economy · Clustering with nearby hotels and resorts lifts revenue.')},
  resort:{name:L('Resort'),group:'property',icon:'🏝',cost:600000,upkeep:10000,color:'#6fb8ab',shape:'home',base:56000,staff:0,managed:true,unlock:10000000,desc:L('Unlocks in the Developer chapter (peak net worth ₲10,000,000). Earns more near the river and parks · Runs itself and pays profit in cash.')},
@@ -44,7 +59,6 @@ export const TYPES={
  garden:{name:L('Private Garden'),group:'property',icon:'♣',cost:1600,upkeep:35,color:'#80ae77',shape:'park',base:0,staff:0,desc:L('Boosts your businesses and rental appeal within 4 tiles. The garden itself earns nothing.')},
  home:{name:L('Homes'),color:'#afc897'},shop:{name:L('Shop'),color:'#8abcc4'},factory:{name:L('Logistics Co.'),color:'#c8b38a'},park:{name:L('Park'),color:'#83b17b'},hall:{name:L('Community Center'),color:'#eee0b8'},wind:{name:L('Wind Farm'),color:'#dbe4d6'},water:{name:L('Water Tower'),color:'#8fbcc6'},school:{name:L('School'),color:'#d9b699'},clinic:{name:L('Hospital'),color:'#e0b2a5'},fire:{name:L('Fire Station'),color:'#c99580'},road:{name:L('Road'),color:'#8b988d'},plaza:{name:L('Plaza'),color:'#b6a3cf'},tower:{name:L('Office'),color:'#d7cfb0'}
 };
-export const STOCKS=[{id:'local',name:L('Town Retail'),base:100,risk:.06,annualRate:.20},{id:'tech',name:L('Next Tech'),base:160,risk:.13,annualRate:.30},{id:'estate',name:L('River REIT'),base:80,risk:.035,annualRate:.10}];
 export const MILESTONES=[{wealth:20000,name:L('First Fortune')},{wealth:50000,name:L('Local Entrepreneur')},{wealth:100000,name:L('Asset Portfolio')},{wealth:300000,name:L('Super Rich')}];
 export const EVENTS=[];
 // Retained only to recognize and clear pending events in older saves.
@@ -53,9 +67,13 @@ const RETIRED_EVENTS=[
  {title:L('A bulk order came in'),text:L('A local event wants a bulk order. It needs upfront spending and extra operating hours.'),options:[{label:L('Take the order'),cost:500,bonus:420,stress:8,desc:L('Spend ₲500 now · Business profit +₲420 over 2 months · Stress +8')},{label:L('Focus on current customers'),cost:0,bonus:0,stress:-6,desc:L('No extra spending · Stress −6')}]},
  {title:L('Group buy on supplies'),text:L('Buy the next two months of stock together and get a discount.'),options:[{label:L('Prepay'),cost:400,bonus:280,stress:0,desc:L('Spend ₲400 now · Business profit +₲280 over 2 months')},{label:L('Keep the cash'),cost:0,bonus:0,stress:0,desc:L('No extra spending or profit')}]}
 ];
-export function migrateSave(s){
- if(s){ensureEconomy(s);s.growthStartMonth??=s.month;if(s.tiles?.length===SIZE*SIZE)installBoulevards(s);repairVentureNames(s);}
+export function migrateSave(s){return onMap(s,()=>migrateSaveAt(s));}
+function migrateSaveAt(s){
+ if(s?.concept==='rich-life'&&Number.isInteger(s.plan?.create)&&s.plan.create>=0)s.plan.create=0;
+ if(s){ensureEconomy(s);ensureMarket(s);s.growthStartMonth??=s.month;if(s.tiles?.length===SIZE*SIZE)installBoulevards(s);repairVentureNames(s);}
  if(s&&RETIRED_EVENTS.some(e=>JSON.stringify(e)===JSON.stringify(s.event)))s.event=null;
+ if(s?.event?.id==='networking')s.event=null;
+ if(Array.isArray(s?.eventLog))s.eventLog=s.eventLog.filter(id=>id!=='networking');
  return s;
 }
 export const coords=i=>({x:i%SIZE,y:Math.floor(i/SIZE)});
@@ -63,7 +81,8 @@ export const index=(x,y)=>y*SIZE+x;
 const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
 const dist=(a,b)=>{const p=coords(a),q=coords(b);return Math.hypot(p.x-q.x,p.y-q.y);};
 export function neighbors(i){const{x,y}=coords(i);return[[x-1,y],[x+1,y],[x,y-1],[x,y+1]].filter(([a,b])=>a>=0&&b>=0&&a<SIZE&&b<SIZE).map(([a,b])=>index(a,b));}
-export function createGame(mode='standard',seed=42){
+export function createGame(mode='standard',seed=42){return onMap(null,()=>createGameAt(mode,seed));}
+function createGameAt(mode,seed){
  const tiles=Array.from({length:SIZE*SIZE},(_,i)=>{const{x,y}=coords(i);return{terrain:x>20+Math.sin(y*.24)*1.5?'water':'land',type:null,level:1,tree:(i*31+seed)%17<3,owner:null};});
  const put=(x,y,type,level=1)=>Object.assign(tiles[index(x,y)],{type,level,tree:false,owner:'npc'});
  for(let x=3;x<=19;x++)for(const y of[7,11,16])put(x,y,'road');
@@ -71,12 +90,13 @@ export function createGame(mode='standard',seed=42){
  for(const[x,y,l]of[[5,5,1],[5,6,2],[7,5,1],[8,6,1],[9,6,2],[4,8,1],[5,8,1],[7,8,1],[8,8,2],[12,5,2],[13,6,1],[15,6,2],[16,6,1],[12,12,2],[13,12,1],[16,12,2],[18,12,1],[7,17,1],[8,17,2],[12,17,1],[15,17,2],[16,17,1]])put(x,y,'home',l);
  put(9,10,'hall');put(10,8,'park');put(8,10,'shop',2);put(13,10,'shop',2);put(18,8,'factory');put(19,8,'factory');put(12,8,'school');put(16,14,'park');put(4,15,'park');put(10,17,'clinic');put(18,17,'tower');
  installBoulevards({tiles});
- return{economy:ensureEconomy({month:0,seed}),version:2,growthStartMonth:0,name:L('Riverside'),mode,seed,tiles,money:12000,debt:0,month:0,skill:10,stress:12,plan:{work:80,manage:40,learn:20,create:0},career:'flexible',costBasis:{local:0,tech:0,estate:0},realizedGains:0,holdings:{local:0,tech:0,estate:0},prices:{local:100,tech:160,estate:80},history:[],log:[L('You\'ve arrived in Riverside. Work to build seed money and pick a spot for your first shop.')],event:null,effect:null,highestWealth:12000,milestones:[],lastReport:null};
+ return{economy:ensureEconomy({month:0,seed}),version:2,growthStartMonth:0,name:L('Riverside'),mode,seed,tiles,money:12000,debt:0,month:0,skill:10,stress:12,plan:{work:80,manage:40,learn:20,create:0},career:'flexible',costBasis:Object.fromEntries(STOCKS.map(k=>[k.id,0])),realizedGains:0,holdings:Object.fromEntries(STOCKS.map(k=>[k.id,0])),prices:Object.fromEntries(STOCKS.map(k=>[k.id,k.base])),market:createMarket(0),history:[],log:[L('You\'ve arrived in Riverside. Work to build seed money and pick a spot for your first shop.')],event:null,effect:null,highestWealth:12000,milestones:[],lastReport:null};
 }
 export const BOULEVARD={axis:11,land:1.5,rent:1.3};
 // Upgrade existing streets and vacant parcels; never displace saved buildings or owned land.
 export function installBoulevards(s){
- for(let n=0;n<SIZE;n++)for(const i of new Set([index(n,BOULEVARD.axis),index(BOULEVARD.axis,n)])){
+ const axis=BOULEVARD.axis+mapOffset(s);
+ for(let n=0;n<SIZE;n++)for(const i of new Set([index(n,axis),index(axis,n)])){
   const t=s.tiles[i];if(t.owner==='player'||(t.type&&t.type!=='road'))continue;
   Object.assign(t,{type:'road',owner:'npc',level:1,tree:false,boulevard:true,bridge:t.terrain==='water'});
  }
@@ -101,7 +121,31 @@ function connectBuildingRoad(s,i){
   for(const n of neighbors(j))if(vacant(n)&&!previous.has(n)){previous.set(n,j);queue.push(n);}
  }
 }
-export function landPrice(s,i){const{x,y}=coords(i);return Math.round((2600+Math.max(0,12-Math.hypot(x-10,y-10))*230+(x>=18?800:0))*(1+s.month*.002)*marketFactor(s)*(hasRoadAccess(s,i)?1:OFF_ROAD.land)*(hasBoulevardAccess(s,i)?BOULEVARD.land:1));}
+// Building on any edge tile adds a band of land on every side, runs edge roads out and lays a road along the new band.
+export function expandMap(s,i){
+ useMap(s);
+ const cells=footprintCells(i,s.tiles[i]?.footprint),old=SIZE,g=MAP_GROWTH,edge=j=>{const{x,y}=coords(j);return[x===0,y===0,x===old-1,y===old-1];};
+ const sides=[0,1,2,3].filter(k=>cells.some(j=>edge(j)[k]));
+ if(!sides.length||old+g*2>MAX_SIZE)return i;
+ const next=old+g*2,o=mapOffset(s)+g,move=j=>(Math.floor(j/old)+g)*next+j%old+g;
+ const tiles=Array.from({length:next*next},(_,k)=>{const x=k%next-o,y=Math.floor(k/next)-o;return{terrain:x>20+Math.sin(y*.24)*1.5?'water':'land',type:null,level:1,tree:(Math.abs(x*31+y*7)+s.seed)%17<3,owner:null};});
+ s.tiles.forEach((t,j)=>{if(t.buildingAnchor!==undefined)t.buildingAnchor=move(t.buildingAnchor);tiles[move(j)]=t;});
+ // Every saved tile index moves with the grid.
+ if(s.rival){s.rival.tiles=s.rival.tiles.map(move);if(s.rival.target>=0)s.rival.target=move(s.rival.target);}
+ if(s.empire?.landmarkFame)s.empire.landmarkFame=Object.fromEntries(Object.entries(s.empire.landmarkFame).map(([j,n])=>[move(Number(j)),n]));
+ if(s.reputation?.assets)s.reputation.assets=Object.fromEntries(Object.entries(s.reputation.assets).map(([k,n])=>[/^parcel:\d+$/.test(k)?`parcel:${move(Number(k.slice(7)))}`:k,n]));
+ if(Number.isInteger(s.journey?.workroom))s.journey.workroom=move(s.journey.workroom);
+ for(const option of s.event?.options||[])if(Number.isInteger(option.tile))option.tile=move(option.tile);
+ s.tiles=tiles;s.mapOffset=o;SIZE=next;
+ const road=(x,y)=>{const t=tiles[index(x,y)];if(t.type)return;Object.assign(t,{type:'road',owner:'npc',level:1,tree:false});if(t.terrain==='water')t.bridge=true;};
+ for(let n=g;n<g+old;n++)for(const [x,y,dx,dy]of[[n,g,0,-1],[g,n,-1,0],[n,g+old-1,0,1],[g+old-1,n,1,0]])
+  if(tiles[index(x,y)].type==='road')for(let k=1;k<=g;k++)road(x+dx*k,y+dy*k);
+ installBoulevards(s);
+ for(const side of sides)for(let n=0;n<next;n++){const [x,y]=[[g-1,n],[n,g-1],[g+old,n],[n,g+old]][side];if(tiles[index(x,y)].terrain==='land')road(x,y);}
+ s.log.unshift(L`Map expanded · ${g} tiles of new land and roads opened on every side`);s.log=s.log.slice(0,25);
+ return move(i);
+}
+export function landPrice(s,i){let{x,y}=coords(i);x-=mapOffset(s);y-=mapOffset(s);return Math.round((2600+Math.max(0,12-Math.hypot(x-10,y-10))*230+(x>=18?800:0))*(1+s.month*.002)*marketFactor(s)*(hasRoadAccess(s,i)?1:OFF_ROAD.land)*(hasBoulevardAccess(s,i)?BOULEVARD.land:1));}
 // Monthly, deterministic growth uses the same location and land valuation as contracts.
 export function advanceNeighborhood(s){
  const vacant=i=>s.tiles[i].terrain==='land'&&!s.tiles[i].type&&!s.tiles[i].owner&&s.rival?.target!==i;
@@ -119,8 +163,9 @@ export function advanceNeighborhood(s){
   s.log.unshift(L`Neighborhood growth · ${TYPES[type].name} completed at (${coords(i).x+1}, ${coords(i).y+1})`);
  }
  // Each six additional buildings supports one new connected road tile.
- const buildings=s.tiles.filter(t=>t.type&&!['road','plot','extension','garden','park'].includes(t.type)).length;
- const roads=s.tiles.filter((t,i)=>t.type==='road'&&!(t.boulevard&&(coords(i).x<3||coords(i).x>19||coords(i).y<3||coords(i).y>21))).length;
+ const buildings=s.tiles.filter(t=>t.type&&!['road','plot','extension','garden','park','citypark'].includes(t.type)).length;
+ // Boulevard extensions and roads opened by map expansion don't raise the threshold.
+ const roads=s.tiles.filter((t,i)=>{const x=coords(i).x-mapOffset(s),y=coords(i).y-mapOffset(s);return t.type==='road'&&x>=0&&y>=0&&x<BASE_SIZE&&y<BASE_SIZE&&!(t.boulevard&&(x<3||x>19||y<3||y>21));}).length;
  if(s.month%3===0&&buildings>=34+Math.max(0,roads-99)*6){
   const extensions=s.tiles.map((t,j)=>j).filter(j=>vacant(j)&&neighbors(j).some(n=>s.tiles[n].type==='road')&&neighbors(j).some(vacant));
   const score=j=>neighbors(j).filter(vacant).length*20+s.tiles.reduce((n,t,k)=>n+(t.type&&!['road','plot'].includes(t.type)&&dist(j,k)<=3?1:0),0)+roll(j)*10;
@@ -130,14 +175,15 @@ export function advanceNeighborhood(s){
  s.log=s.log.slice(0,25);
 }
 export function parcelQuote(s,i){
- const t=s.tiles[i];if(!t||t.terrain!=='land'||t.owner==='player')return null;
- if(t.owner==='rival'){if(!TYPES[t.type]?.managed||(s.mode!=='sandbox'&&(s.highestWealth||0)<30000000))return null;const construction=t.constructionCost??developmentQuote(s,i,t.type).construction,land=landPrice(s,i);return{type:t.type,construction,level:t.level,land,total:Math.round((land+construction*t.level)*1.5),premium:1.5,rival:true};}
- const type=!t.type&&!t.owner?'plot':t.owner==='npc'?({home:'rental',shop:'market',tower:'office',factory:'workshop'}[t.type]||(TYPES[t.type]?.group&&t.type!=='atelier'?t.type:null)):null;
+ i=buildingAnchor(s,i);const t=s.tiles[i];if(!t||t.terrain!=='land'||t.owner==='player')return null;
+ if(t.owner==='rival'){if(!TYPES[t.type]?.managed||(s.mode!=='sandbox'&&(s.highestWealth||0)<30000000))return null;const construction=t.constructionCost??developmentQuote(s,i,t.type).construction,land=assetLandValue(s,i);return{type:t.type,construction,level:t.level,land,total:Math.round((land+construction*t.level)*1.5),premium:1.5,rival:true};}
+ const type=!t.type&&!t.owner?'plot':t.owner==='npc'?({home:'rental',shop:'market',tower:'office',factory:'workshop'}[t.type]||(TYPES[t.type]?.group?t.type:null)):null;
  if(!type)return null;
  const construction=type==='plot'?0:t.constructionCost??developmentQuote(s,i,type).construction;
- return{type,construction,level:t.level,land:landPrice(s,i),total:landPrice(s,i)+marketPrice(s,construction*t.level)};
+ const land=assetLandValue(s,i);return{type,construction,level:t.level,land,total:land+marketPrice(s,construction*t.level)};
 }
 export function buyParcel(s,i){
+ i=buildingAnchor(s,i);
  const q=parcelQuote(s,i);if(!q)return{ok:false,msg:L('Select an empty lot or private building that\'s for sale.')};
  if(s.mode!=='sandbox'&&s.money<q.total)return{ok:false,msg:L('Not enough cash to buy this lot.')};
  if(s.mode!=='sandbox')s.money-=q.total;
@@ -147,7 +193,7 @@ export function buyParcel(s,i){
  awardAssetFame(s,`parcel:${i}`,q.total,TYPES[q.type].name+L(' acquired'));
  const msg=wasRival?L`Acquired rival's ${TYPES[q.type].name} · ₲${q.total.toLocaleString()} (50% premium) · Reputation +15`:L`${TYPES[q.type].name} purchased · ₲${q.total.toLocaleString()}`;s.log.unshift(msg);s.log=s.log.slice(0,25);return{ok:true,msg};
 }
-export function location(s,i){let residents=0,competition=0,amenity=0;for(let j=0;j<s.tiles.length;j++){const t=s.tiles[j],d=dist(i,j);if(d<=4&&['home','rental','condo'].includes(t.type))residents+=t.level*12;if(d<=4&&['park','garden'].includes(t.type))amenity+=12*t.level;if(d<=4&&j!==i&&t.type===s.tiles[i].type)competition++;}const access=hasRoadAccess(s,i,s.tiles[i].footprint);return{residents,competition,amenity:Math.min(36,amenity),access,boulevard:hasBoulevardAccess(s,i,s.tiles[i].footprint),footfall:Math.round(clamp(35+residents*.32+amenity,20,100))};}
+export function location(s,i){let residents=0,competition=0,amenity=0;for(let j=0;j<s.tiles.length;j++){const t=s.tiles[j],d=dist(i,j);if(d<=4&&['home','rental','condo','housing'].includes(t.type))residents+=t.level*12;if(d<=4&&['park','garden','citypark'].includes(t.type))amenity+=12*t.level;if(d<=4&&t.type==='themepark')amenity+=18*t.level;if(d<=4&&j!==i&&t.type===s.tiles[i].type)competition++;}const access=hasRoadAccess(s,i,s.tiles[i].footprint);return{residents,competition,amenity:Math.min(36,amenity),access,boulevard:hasBoulevardAccess(s,i,s.tiles[i].footprint),footfall:Math.round(clamp(35+residents*.32+amenity,20,100))};}
 export function footprintCells(i,footprint={width:1,height:1}){
  const {width,height}=footprint||{},p=coords(i);
  if(!Number.isInteger(i)||i<0||i>=SIZE*SIZE||![width,height].every(n=>Number.isInteger(n)&&n>=1&&n<=3)||p.x+width>SIZE||p.y+height>SIZE)return [];
@@ -165,17 +211,17 @@ export function ownerAttention(s){
  const ratio=need?clamp(hours/need,0,1):1,health=1-Math.max(0,s.stress-65)*.005;
  return{buildings,need,hours,ratio,health,multiplier:(.85+.25*ratio)*health};
 }
-// Tourism clusters: hotels, resorts and golf courses within two tiles of each other lift one another; HQ and monument lift everything.
+// Tourism clusters: hotels, resorts, golf courses and theme parks within two tiles of each other lift one another; HQ and monument lift everything.
 export function synergyReport(s,i,type){
  if(!TYPES[type]?.managed)return{partners:0,hq:false,monument:false,bonus:0};
- let partners=0,hq=false,monument=false;const tourism=['hotel','resort','golf'],cluster=tourism.includes(type);
+ let partners=0,hq=false,monument=false;const tourism=['hotel','resort','golf','themepark'],cluster=tourism.includes(type);
  for(let j=0;j<s.tiles.length;j++){const t=s.tiles[j];if(t.owner!=='player'||j===i)continue;if(t.type==='hq')hq=true;else if(t.type==='monument')monument=true;else if(cluster&&tourism.includes(t.type)&&dist(i,j)<=2)partners++;}
  partners=Math.min(3,partners);
  return{partners,hq,monument,bonus:partners*.08+(hq?.05:0)+(monument?.1:0)};
 }
 export function developmentQuote(s,i,type,level=1,footprint=s.tiles[i]?.footprint){
  const cells=footprintCells(i,footprint),view=footprint?{...s,tiles:s.tiles.map((t,j)=>cells.includes(j)?j===i?{...t,type,footprint}:{terrain:'land',type:null,level:1}:t)}:s;
- const d=TYPES[type],loc=location(view,i),{x,y}=coords(i),central=clamp(1-Math.hypot(x-10,y-10)/15,0,1);
+ const d=TYPES[type],loc=location(view,i),{x,y}=coords(i),central=clamp(1-Math.hypot(x-mapOffset(s)-10,y-mapOffset(s)-10)/15,0,1);
  const waterfront=s.tiles.some((t,j)=>t.terrain==='water'&&dist(i,j)<=3);
  const score=clamp(.65*(loc.footfall/100)+.35*central+(type==='resort'?(waterfront?.25:0)+loc.amenity/36*.2:type==='hotel'?loc.amenity/36*.1:0),0,1);
  const area=cells.length||1,factor=(d.managed?.75+score*.6:1)*(loc.access?1:OFF_ROAD.construction),construction=Math.round(d.cost*factor*Math.pow(area,1.05));
@@ -189,7 +235,8 @@ export function developmentQuote(s,i,type,level=1,footprint=s.tiles[i]?.footprin
   const report=businessReport(virtual,i);revenue=report.revenue;cost=report.cost;
  }
  revenue=Math.round(revenue);cost=Math.round(cost);
- return{loc,waterfront,score,factor,cells,area,label:score>=.8?L('Prime location'):score>=.55?L('Popular location'):L('Value location'),construction,land,total:construction+land,revenue,cost,profit:revenue-cost,synergy,premium,cycle,attention,boost};
+ const demolition=footprint?[...new Set(cells.map(j=>buildingAnchor(s,j)))].reduce((sum,j)=>sum+(demolitionQuote(s,j)?.cost||0),0):0;
+ return{loc,waterfront,score,factor,cells,area,label:score>=.8?L('Prime location'):score>=.55?L('Popular location'):L('Value location'),construction,land,demolition,total:construction+land+demolition,revenue,cost,profit:revenue-cost,synergy,premium,cycle,attention,boost};
 }
 // Game-only appreciation: annual 20%, with the legacy rate preserved before migration.
 export const BUILDING_GROWTH=Math.pow(1.20,1/12)-1;
@@ -206,7 +253,7 @@ export function assetSaleReport(s,i){
 }
 export function businessReport(s,i,context={}){
  if(TYPES[s.tiles[i].type]?.managed){const t=s.tiles[i],q=developmentQuote(s,i,t.type,t.level),revenue=q.revenue*(t.landmark?10:1),cost=q.cost;return{revenue,cost,profit:revenue-cost,occupancy:Math.round(60+q.score*40),demand:Math.round(q.score*100),wages:0,lease:0,maintenance:cost,goods:0,marketing:0,loc:q.loc,manage:100};}
- const t=s.tiles[i],d=TYPES[t.type],loc=location(s,i),rental=['rental','condo'].includes(t.type),businessCount=context.businessCount??s.tiles.filter(t=>t.owner==='player'&&TYPES[t.type]?.group==='business').length;
+ const t=s.tiles[i],d=TYPES[t.type],loc=location(s,i),rental=['rental','condo','housing'].includes(t.type),businessCount=context.businessCount??s.tiles.filter(t=>t.owner==='player'&&TYPES[t.type]?.group==='business').length;
  const manage=clamp(s.plan.manage/Math.max(1,businessCount*28),.3,1.2),health=1-Math.max(0,s.stress-65)*.009;
  const price=t.price||100,quality=t.quality||1,staff=t.staff??d.staff,level=t.level;
  const cycle=cycleFactor(s);
@@ -220,15 +267,16 @@ export function businessReport(s,i,context={}){
  const gross=Math.round(revenue+boost),goods=rental?0:gross*(.29+quality*.07),cost=Math.round(goods+wages+lease+maintenance+marketing);
  return{revenue:gross,cost,profit:gross-cost,occupancy:Math.round(occupancy*100),demand:Math.round(demand*100),wages,lease,maintenance,goods:Math.round(goods),marketing,loc,manage:Math.round(manage*100)};
 }
-export function analyze(s){
+export function analyze(s){return onMap(s,()=>analyzeAt(s));}
+function analyzeAt(s){
  const owned=s.tiles.map((t,i)=>({t,i})).filter(({t})=>t.owner==='player'),businessCount=owned.filter(({t})=>TYPES[t.type]?.group==='business').length;
  const reports={};let revenue=0,expense=0,assets=0;
  for(const{t,i}of owned){assets+=assetValue(s,i);if(t.type){const r=businessReport(s,i,{businessCount});reports[i]=r;revenue+=r.revenue;expense+=r.cost;}}
  const career=wageQuote(s),wage=career.wage,investment=investmentReport(s);
- const lifestyleCosts=lifestyleCostReport(s),living=lifestyleCosts.total,tuition=s.plan.learn*4,interest=Math.round(s.debt*.012),stocks=STOCKS.reduce((sum,k)=>sum+s.holdings[k.id]*s.prices[k.id],0);
+ const lifestyleCosts=lifestyleCostReport(s),living=lifestyleCosts.total,tuition=s.plan.learn*4,interest=Math.round(s.debt*.012),stocks=investment.market;
  const compound=compoundSummary(s),creative=projectReport(s),empire=empireSummary(s),bonus=s.effect?.bonus||0,net=wage+revenue-expense-living-tuition-interest+bonus+creative.income+investment.dividends+empire.income+(compound.auto?0:compound.income);
- const inventory=journeyInventoryValue(s),art=artPortfolio(s),wealth=acquisitionSummary(s).assets+s.money+assets+stocks+inventory+empire.assets+art.value+compoundSummary(s).assets-s.debt,connected=new Set();s.tiles.forEach((t,i)=>{if(t.type==='road')connected.add(i);});
- return{inventory,art,lifestyleCosts,career,investment,creative,empire,economy:economyReport(s),compound,owned,reports,businessCount,revenue,expense,assets,wage,living,tuition,interest,stocks,bonus,net,wealth,passive:owned.filter(({t})=>TYPES[t.type]?.group==='property').reduce((n,{i})=>n+reports[i].profit,0)+empire.income,free:160-s.plan.work-s.plan.manage-s.plan.learn-(s.plan.create||0)-(s.plan.inspect||0)-(s.plan.curate||0),attention:ownerAttention(s),connected,active:s.tiles.map(()=>true),details:s.tiles.map((t,i)=>{const l=location(s,i);return{connected:l.access,pollution:100-l.footfall,value:Math.round(landPrice(s,i)/80),education:l.residents>40,health:l.amenity>0,fire:t.owner==='player'};})};
+ const inventory=journeyInventoryValue(s),art=artPortfolio(s),wealth=startupSummary(s).assets+acquisitionSummary(s).assets+s.money+assets+stocks+inventory+empire.assets+art.value+compoundSummary(s).assets-s.debt,connected=new Set();s.tiles.forEach((t,i)=>{if(t.type==='road')connected.add(i);});
+ return{inventory,art,lifestyleCosts,career,investment,creative,empire,economy:economyReport(s),compound,owned,reports,businessCount,revenue,expense,assets,wage,living,tuition,interest,stocks,bonus,net,wealth,passive:owned.filter(({t})=>TYPES[t.type]?.group==='property').reduce((n,{i})=>n+reports[i].profit,0)+empire.income,free:160-s.plan.work-s.plan.manage-s.plan.learn-(s.concept==='rich-life'?0:(s.plan.create||0))-(s.plan.inspect||0)-(s.plan.curate||0),attention:ownerAttention(s),connected,active:s.tiles.map(()=>true),details:s.tiles.map((t,i)=>{const l=location(s,i);return{connected:l.access,pollution:100-l.footfall,value:Math.round(landPrice(s,i)/80),education:l.residents>40,health:l.amenity>0,fire:t.owner==='player'};})};
 }
 export function canBuild(s,i,type,tenure='lease',footprint){
  if(footprint){
@@ -269,18 +317,31 @@ export function build(s,i,type,tenure='lease',footprint){
 
  const error=canBuild(s,i,type,tenure);if(error)return{ok:false,msg:error};const previous=s.tiles[i].type==='plot'?assetLedger(s,i):null,land=developmentQuote(s,i,type).land,deposit=tenure==='lease'?Math.round(land*.2):0,constructionCost=developmentQuote(s,i,type).construction,cost=constructionCost+(tenure==='buy'?land:deposit);if(s.mode!=='sandbox')s.money-=cost;Object.assign(s.tiles[i],{type,owner:'player',tenure,deposit,constructionCost,assetLedger:{initial:cost+(previous?.initial||0),upgrades:0,operating:0,since:previous?.since??s.month,estimated:previous?.estimated||false,buildingValue:constructionCost*.7,valuationMonth:s.month},level:1,tree:false,price:100,quality:1,staff:TYPES[type].staff,marketing:false});connectBuildingRoad(s,i);s.log.unshift(L`${TYPES[type].name} opened · ${tenure==='buy'?L('Buy'):L('Lease')} contract · ${cost.toLocaleString()}G invested`);s.log=s.log.slice(0,25);awardAssetFame(s,`parcel:${i}`,cost,TYPES[type].name+L(' acquired'));return{ok:true,msg:L('Contract signed! Set your profit strategy in Operations.')};
 }
-export function sellAsset(s,i){i=buildingAnchor(s,i);const t=s.tiles[i],report=assetSaleReport(s,i);if(!report)return{ok:false,msg:L('You can only sell your own assets.')};s.money+=report.value;for(const j of footprintCells(i,t.footprint))if(j!==i)s.tiles[j]={terrain:'land',type:null,owner:null,level:1,tree:false};delete t.footprint;Object.assign(t,{type:null,owner:null,level:1,tree:false});delete t.assetLedger;delete t.landmark;const msg=L`${report.name} sold · ₲${report.value.toLocaleString()} recovered · ${report.estimated?L('Est. '):''}gain vs. initial investment ${report.gain>=0?'+':''}₲${Math.round(report.gain).toLocaleString()}`;s.log.unshift(msg);s.log=s.log.slice(0,25);return{ok:true,msg,report};}
-export function upgrade(s,i){i=buildingAnchor(s,i);const t=s.tiles[i];if(t?.owner!=='player'||!t.type||t.type==='plot'||t.level>=3)return{ok:false,msg:L('Can\'t expand any further.')};const construction=t.constructionCost??TYPES[t.type].cost,cost=Math.round(construction*.8*t.level);if(s.mode!=='sandbox'&&s.money<cost)return{ok:false,msg:L('Not enough cash to expand.')};t.assetLedger??=assetLedger(s,i);t.assetLedger.buildingValue=buildingValue(s,t)+construction*.5*Math.pow(buildingArea(t),.15);t.assetLedger.valuationMonth=s.month;t.assetLedger.upgrades+=cost;if(s.mode!=='sandbox')s.money-=cost;t.level++;return{ok:true,msg:L('Expansion complete. Review staffing and hours too.')};}
-export function trade(s,id,qty){if(!STOCKS.some(k=>k.id===id)||!Number.isInteger(qty)||!qty)return{ok:false,msg:L('Check the quantity.')};const value=s.prices[id]*qty,fee=Math.abs(value)*.005;if(qty>0&&s.money<value+fee)return{ok:false,msg:L('Not enough cash to buy.')};if(s.holdings[id]+qty<0)return{ok:false,msg:L('Not enough shares.')};recordTrade(s,id,qty,value,fee);s.money-=value+fee;s.holdings[id]+=qty;return{ok:true,msg:L`${qty>0?L('Buy','stock'):L('Sell')} complete · 0.5% fee`};}
-export function setPlan(s,key,value){if(!['work','manage','learn','create','inspect','curate'].includes(key)||!Number.isInteger(value)||value<0)return false;const other=Object.entries(s.plan).reduce((n,[k,v])=>n+(k===key?0:v),0);s.plan[key]=clamp(value,0,160-other);return true;}
-export function chooseEvent(s,n){const o=s.event?.options[n];if(!o)return{ok:false,msg:L('No decision to make.')};if(s.mode!=='sandbox'&&s.money<(o.cost||0))return{ok:false,msg:L('Not enough cash. You can pick a no-cost option.')};if(s.event.id){applyRichChoice(s,o);s.event=null;s.log.unshift(L('✎ Decision · ')+o.label);s.log=s.log.slice(0,25);return{ok:true,msg:o.label+L(' · Decision applied.')};}if(s.mode!=='sandbox')s.money-=o.cost;s.stress=clamp(s.stress+(o.stress||0),0,100);s.skill=clamp(s.skill+(o.skill||0),0,100);s.effect={bonus:o.bonus||0,remaining:2};s.event=null;return{ok:true,msg:o.label+L(' · Decision applied.')};}
+export function sellAsset(s,i){i=buildingAnchor(s,i);const t=s.tiles[i],report=assetSaleReport(s,i);if(!report)return{ok:false,msg:L('You can only sell your own assets.')};s.money+=report.value;t.owner='npc';delete t.assetLedger;const msg=L`${report.name} sold · ₲${report.value.toLocaleString()} recovered · ${report.estimated?L('Est. '):''}gain vs. initial investment ${report.gain>=0?'+':''}₲${Math.round(report.gain).toLocaleString()}`;s.log.unshift(msg);s.log=s.log.slice(0,25);return{ok:true,msg,report};}
+export function demolitionQuote(s,i){
+ i=buildingAnchor(s,i);const t=s.tiles[i];
+ if(t?.owner!=='player'||t.tenure!=='buy'||!TYPES[t.type]?.group||t.type==='plot')return null;
+ return{name:TYPES[t.type].name,cost:Math.max(1,Math.round((t.constructionCost??TYPES[t.type].cost)*t.level*.1)),cells:footprintCells(i,t.footprint),land:assetLandValue(s,i)};
+}
+export function demolishAsset(s,i){
+ i=buildingAnchor(s,i);const q=demolitionQuote(s,i);
+ if(!q)return{ok:false,msg:L('Only buildings on your own land can be demolished.')};
+ if(s.money<q.cost)return{ok:false,msg:L('Not enough cash for demolition.')};
+ const ledger=assetLedger(s,i);s.money-=q.cost;
+ for(const j of q.cells)s.tiles[j]={terrain:'land',type:'plot',owner:'player',tenure:'buy',deposit:0,constructionCost:0,level:1,tree:false,price:100,quality:1,staff:0,marketing:false,assetLedger:{...ledger,initial:ledger.initial/q.cells.length,upgrades:ledger.upgrades/q.cells.length,operating:(ledger.operating-q.cost)/q.cells.length,buildingValue:0,valuationMonth:s.month}};
+ const msg=L`${q.name} demolished · ₲${q.cost.toLocaleString()} paid · Land retained`;s.log.unshift(msg);s.log=s.log.slice(0,25);
+ return{ok:true,msg,cost:q.cost};
+}
+export function upgrade(s,i){i=buildingAnchor(s,i);const t=s.tiles[i];if(t?.landmark)return{ok:false,msg:L('Landmarks keep their original design and cannot be expanded.')};if(t?.owner!=='player'||!t.type||t.type==='plot'||t.level>=3)return{ok:false,msg:L('Can\'t expand any further.')};const construction=t.constructionCost??TYPES[t.type].cost,cost=Math.round(construction*.8*t.level);if(s.mode!=='sandbox'&&s.money<cost)return{ok:false,msg:L('Not enough cash to expand.')};t.assetLedger??=assetLedger(s,i);t.assetLedger.buildingValue=buildingValue(s,t)+construction*.5*Math.pow(buildingArea(t),.15);t.assetLedger.valuationMonth=s.month;t.assetLedger.upgrades+=cost;if(s.mode!=='sandbox')s.money-=cost;t.level++;return{ok:true,msg:L('Expansion complete. Review staffing and hours too.')};}
+export function setPlan(s,key,value){if(s.concept==='rich-life'&&key==='create')return false;if(!['work','manage','learn','create','inspect','curate'].includes(key)||!Number.isInteger(value)||value<0)return false;const other=Object.entries(s.plan).reduce((n,[k,v])=>n+(k===key||s.concept==='rich-life'&&k==='create'?0:v),0);s.plan[key]=clamp(value,0,160-other);return true;}
+export function chooseEvent(s,n){const o=s.event?.options[n];if(!o)return{ok:false,msg:L('No decision to make.')};if(s.mode!=='sandbox'&&s.money<(o.cost||0))return{ok:false,msg:L('Not enough cash. You can pick a no-cost option.')};if(s.event.startup)return decideStartup(s,n);if(s.event.id){applyRichChoice(s,o);s.event=null;s.log.unshift(L('✎ Decision · ')+o.label);s.log=s.log.slice(0,25);return{ok:true,msg:o.label+L(' · Decision applied.')};}if(s.mode!=='sandbox')s.money-=o.cost;s.stress=clamp(s.stress+(o.stress||0),0,100);s.skill=clamp(s.skill+(o.skill||0),0,100);s.effect={bonus:o.bonus||0,remaining:2};s.event=null;return{ok:true,msg:o.label+L(' · Decision applied.')};}
 // Liquidity crisis: negative cash forces distressed sales at 70%; three months in a row is a restructuring.
 function fireSale(s){
  if(s.concept!=='rich-life'||s.mode==='sandbox')return null;
  if(s.money>=0){s.crisisMonths=0;return null;}
  s.crisisMonths=(s.crisisMonths||0)+1;const items=[];
  // Liquid first: stocks go at a 3% haircut, then compound accounts, buildings and art at 70%.
- for(const k of STOCKS){if(s.money>=0)break;const qty=s.holdings[k.id],price=s.prices[k.id];if(!qty)continue;const sell=Math.min(qty,Math.ceil(-s.money/(price*.97))),value=-price*sell,fee=Math.abs(value)*.03;recordTrade(s,k.id,-sell,value,fee);s.money-=value+fee;s.holdings[k.id]-=sell;items.push({name:L`${sell} ${k.name} shares`,value:Math.round(-value-fee)});}
+ for(const k of listedStocks(s)){if(s.money>=0)break;const qty=s.holdings[k.id],price=s.prices[k.id];if(!qty)continue;const sell=Math.min(qty,Math.ceil(-s.money/(price*.97))),value=-price*sell,fee=Math.abs(value)*.03;recordTrade(s,k.id,-sell,value,fee);s.money-=value+fee;s.holdings[k.id]-=sell;items.push({name:L`${sell} ${k.name} shares`,value:Math.round(-value-fee)});}
  if(s.money<0&&s.compound)for(const id of Object.keys(COMPOUND_ASSETS)){if(s.money>=0)break;const balance=s.compound.balances[id];if(!balance)continue;const take=Math.min(balance,Math.ceil(-s.money/.7));s.compound.balances[id]-=take;s.money+=Math.round(take*.7);items.push({name:COMPOUND_ASSETS[id].name+L(' account'),value:Math.round(take*.7)});}
  const owned=s.tiles.map((t,i)=>i).filter(i=>s.tiles[i].owner==='player').sort((a,b)=>assetValue(s,a)-assetValue(s,b));
  for(const i of owned){if(s.money>=0)break;const r=sellAsset(s,i);if(!r.ok)continue;const haircut=Math.round(r.report.value*.3);s.money-=haircut;items.push({name:r.report.name,value:r.report.value-haircut});}
@@ -294,12 +355,12 @@ export function tick(s){
  if(s.event||s.shift)return analyze(s);ensureEconomy(s);const previousMarket=marketFactor(s),rich=s.concept==='rich-life',chapterBefore=rich?chapterOf(s).n:0;s.growthStartMonth??=s.month;const a=analyze(s);for(const {t,i} of a.owned){t.assetLedger??=assetLedger(s,i);t.assetLedger.operating+=a.reports[i]?.profit||0;}s.money+=a.net;advanceProjects(s);if(s.empire){s.empire.acquiredMonths??={};for(const id of s.empire.owned)s.empire.acquiredMonths[id]??=s.month;}settleCompound(s);s.month++;
  const crashed=advanceEconomy(s);
  advanceNeighborhood(s);
- advanceVentures(s);
- s.skill=clamp(s.skill+s.plan.learn*.08,0,100);s.stress=clamp(s.stress+(s.plan.work+s.plan.manage+(s.plan.create||0)+(s.plan.inspect||0)+(s.plan.curate||0))*.06-a.free*.3-3,0,100);
+ advanceVentures(s);advanceStartups(s);
+ s.skill=clamp(s.skill+s.plan.learn*.08,0,100);s.stress=clamp(s.stress+(s.plan.work+s.plan.manage+(rich?0:(s.plan.create||0))+(s.plan.inspect||0)+(s.plan.curate||0))*.06-a.free*.3-3,0,100);
  // Curation: artworks only appreciate in months the owner spends at least 8 hours with the collection.
  if(rich&&s.artCollection?.owned.length){const curated=(s.plan.curate||0)>=8;for(const item of s.artCollection.owned){item.grown??=Math.max(0,s.month-1-item.boughtMonth);if(curated)item.grown++;}if(curated)s.prestige=Math.max(0,(s.prestige||0)+2);}
  settleOwnerBenefits(s);
- for(const k of STOCKS){const phase=s.seed+k.base,cycle=m=>Math.sin(m*Math.PI/6+phase),factor=Math.pow(1+k.annualRate,1/12)*Math.exp(k.risk*(cycle(s.month)-cycle(s.month-1)));s.prices[k.id]=Math.max(5,Math.round(s.prices[k.id]*(crashed?1:factor)*marketFactor(s)/previousMarket*100)/100);}
+ ensureBasis(s);advanceStocks(s,crashed,previousMarket);
  if(s.effect&&--s.effect.remaining<=0)s.effect=null;
  const pending=rich?resolvePending(s):[];
  if(rich)settlePrestige(s);
@@ -317,26 +378,30 @@ export function tick(s){
  s.log=s.log.slice(0,25);return after;
 }
 export function validSave(s){
+ if(s?.mapOffset!==undefined&&!(Number.isInteger(s.mapOffset)&&s.mapOffset>0&&mapSize(s)<=MAX_SIZE))return false;
+ return onMap(s,()=>validSaveAt(s));
+}
+function validSaveAt(s){
  if(!validEconomy(s)||!validLandmarks(s))return false;
  if(s?.growthStartMonth!==undefined&&(!Number.isInteger(s.growthStartMonth)||s.growthStartMonth<0||s.growthStartMonth>s.month))return false;
  if(Array.isArray(s?.tiles)&&!s.tiles.every(t=>t?.assetLedger===undefined||(t.assetLedger&&['initial','upgrades','buildingValue'].every(k=>Number.isFinite(t.assetLedger[k])&&t.assetLedger[k]>=0)&&Number.isFinite(t.assetLedger.operating)&&['since','valuationMonth'].every(k=>Number.isInteger(t.assetLedger[k])&&t.assetLedger[k]>=0&&t.assetLedger[k]<=s.month)&&typeof t.assetLedger.estimated==='boolean')))return false;
- if(!s||!validReputation(s)||!validAcquisitions(s)||!validCompound(s)||!validFlex(s)||!validArt(s)||!validRichLife(s)||!validVentures(s)||!validEmpire(s))return false;
+ if(!s||!validReputation(s)||!validAcquisitions(s)||!validStartups(s)||!validCompound(s)||!validFlex(s)||!validArt(s)||!validRichLife(s)||!validVentures(s)||!validEmpire(s))return false;
  if(!s||!validShift(s)||!validProjects(s)||!validCareer(s)||!validInvestment(s)||!validRewards(s)||!validJourney(s)||s.version!==2||!['standard','sandbox'].includes(s.mode)||typeof s.name!=='string'||s.name.length>40)return false;
  if(!['money','month','debt','skill','stress','seed','highestWealth'].every(k=>Number.isFinite(s[k]))||!Number.isInteger(s.month)||s.month<0||s.debt<0||s.skill<0||s.skill>100||s.stress<0||s.stress>100)return false;
  if(!['create','inspect','curate'].every(k=>s.plan?.[k]===undefined||(Number.isInteger(s.plan[k])&&s.plan[k]>=0)))return false;
  if(!s.plan||!['work','manage','learn'].every(k=>Number.isInteger(s.plan[k])&&s.plan[k]>=0)||Object.values(s.plan).reduce((a,b)=>a+b,0)>160)return false;
- if(!s.holdings||!s.prices||!STOCKS.every(k=>Number.isInteger(s.holdings[k.id])&&s.holdings[k.id]>=0&&Number.isFinite(s.prices[k.id])&&s.prices[k.id]>0))return false;
+ if(!validMarket(s))return false;
  if(!Array.isArray(s.tiles)||s.tiles.length!==SIZE*SIZE||!s.tiles.every(t=>t&&['land','water'].includes(t.terrain)&&(t.type===null||Object.hasOwn(TYPES,t.type))&&[null,'npc','player','rival'].includes(t.owner)&&Number.isInteger(t.level)&&t.level>=1&&t.level<=3))return false;
  if(!s.tiles.every((t,i)=>{
-  if(t.footprint!==undefined){const cells=footprintCells(i,t.footprint);if(t.terrain!=='land'||t.owner!=='player'||t.tenure!=='buy'||!TYPES[t.type]?.group||['plot','atelier'].includes(t.type)||!cells.length||!cells.every(j=>j===i||s.tiles[j].type==='extension'&&s.tiles[j].buildingAnchor===i))return false;}
-  if(t.type==='extension'){const root=s.tiles[t.buildingAnchor];return Number.isInteger(t.buildingAnchor)&&t.buildingAnchor!==i&&t.terrain==='land'&&t.owner===null&&t.assetLedger===undefined&&t.footprint===undefined&&root?.footprint!==undefined&&root.owner==='player'&&footprintCells(t.buildingAnchor,root.footprint).includes(i);}
+  if(t.footprint!==undefined){const cells=footprintCells(i,t.footprint);if(t.terrain!=='land'||!['player','npc','rival'].includes(t.owner)||t.tenure!=='buy'||!TYPES[t.type]?.group||['plot','atelier'].includes(t.type)||!cells.length||!cells.every(j=>j===i||s.tiles[j].type==='extension'&&s.tiles[j].buildingAnchor===i))return false;}
+  if(t.type==='extension'){const root=s.tiles[t.buildingAnchor];return Number.isInteger(t.buildingAnchor)&&t.buildingAnchor!==i&&t.terrain==='land'&&t.owner===null&&t.assetLedger===undefined&&t.footprint===undefined&&root?.footprint!==undefined&&['player','npc','rival'].includes(root.owner)&&footprintCells(t.buildingAnchor,root.footprint).includes(i);}
   return t.buildingAnchor===undefined;
  }))return false;
  if(!s.tiles.every(t=>t.constructionCost===undefined||(Number.isFinite(t.constructionCost)&&t.constructionCost>=0)))return false; if(!s.tiles.every(t=>t.owner!=='player'||(TYPES[t.type]?.group&&['buy','lease'].includes(t.tenure)&&Number.isFinite(t.deposit)&&t.deposit>=0&&Number.isInteger(t.price)&&t.price>=60&&t.price<=160&&Number.isInteger(t.quality)&&t.quality>=1&&t.quality<=3&&Number.isInteger(t.staff)&&t.staff>=0&&t.staff<=8&&typeof t.marketing==='boolean')))return false;
  if(!Array.isArray(s.log)||s.log.length>25||!s.log.every(l=>typeof l==='string')||!Array.isArray(s.history)||s.history.length>36||!s.history.every(h=>['month','wealth','money','net'].every(k=>Number.isFinite(h[k]))))return false;
  if(!Array.isArray(s.milestones)||!s.milestones.every(v=>[...MILESTONES,...RICH_GOALS].some(m=>m.wealth===v)))return false;
  if(s.effect&&(!Number.isFinite(s.effect.bonus)||!Number.isInteger(s.effect.remaining)||s.effect.remaining<1||s.effect.remaining>12||(s.effect.multiplier!==undefined&&!(Number.isFinite(s.effect.multiplier)&&s.effect.multiplier>0&&s.effect.multiplier<=3))))return false;
- if(s.event&&!(s.event.id?validRichEvent(s):EVENTS.some(e=>JSON.stringify(e)===JSON.stringify(s.event))))return false;
+ if(s.event&&!(s.event.startup?validStartupEvent(s):s.event.id?validRichEvent(s):EVENTS.some(e=>JSON.stringify(e)===JSON.stringify(s.event))))return false;
  if(!validPending(s)||!validRival(s)||!validLegacy(s))return false;
  if(s.lastReport&&!['month','wage','revenue','expense','living','tuition','interest','bonus','net'].every(k=>Number.isFinite(s.lastReport[k])))return false;return true;
 }
