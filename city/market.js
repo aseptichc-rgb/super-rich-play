@@ -1,18 +1,21 @@
 import {L} from './i18n.js';
 import {marketFactor,economyCycle} from './economy.js';
-import {STOCKS,IPO_POOL,stockInfo} from './stocks.js';
+import {STOCKS,ADDED_STOCKS,IPO_POOL,stockInfo} from './stocks.js';
 import {ensureBasis,recordTrade} from './investment.js';
-// The stock market: ten listed companies at the start, one IPO a year, distress and delisting when a
+// The stock market: ten companies and an office REIT at the start, one IPO a year, distress and delisting when a
 // price collapses, and a market-cap-weighted index that can be bought as one basket.
 const roll=(seed,n)=>{let x=(seed^Math.imul(n,0x9e3779b1)^0x5bd1e995)>>>0;x=Math.imul(x^(x>>>16),0x7feb352d);x=Math.imul(x^(x>>>15),0x846ca68b);return((x^(x>>>16))>>>0)/4294967296;};
 export const FEE=.005,DISTRESS_MONTHS=3,DRAWDOWN=.3,RECOVERY=.4;
-export function createMarket(month=0){return{listed:STOCKS.map(k=>k.id),nextIpo:month+12,ipos:0,listedAt:{},peak:Object.fromEntries(STOCKS.map(k=>[k.id,k.base])),distress:{},delisted:[],index:1000,indexHistory:[]};}
+export function createMarket(month=0){return{listed:STOCKS.map(k=>k.id),nextIpo:month+12,ipos:0,listedAt:{},peak:Object.fromEntries(STOCKS.map(k=>[k.id,k.base])),distress:{},delisted:[],index:1000,indexHistory:[],added:ADDED_STOCKS.map(k=>k.id)};}
 // Older saves know only the first three companies; the other seven list at their base price.
+// Stocks added after launch list once, so a later delisting is never undone.
 export function ensureMarket(s){
  if(!s.holdings||!s.prices)return null;
  s.market??=createMarket(s.month);
  for(const k of STOCKS){s.holdings[k.id]??=0;s.prices[k.id]??=k.base;if(s.costBasis)s.costBasis[k.id]??=0;}
- for(const id of s.market.listed)s.market.peak[id]??=s.prices[id];
+ const m=s.market;m.added??=[];
+ for(const k of ADDED_STOCKS)if(!m.added.includes(k.id)){if(!m.listed.includes(k.id))m.listed.push(k.id);m.added.push(k.id);}
+ for(const id of m.listed)m.peak[id]??=s.prices[id];
  return s.market;
 }
 export const listedStocks=s=>ensureMarket(s).listed.map(stockInfo);
@@ -22,7 +25,7 @@ export function ipoFate(s,id){const k=stockInfo(id),at=s.market?.listedAt?.[id];
 export function stockProfile(s,id){
  const k=stockInfo(id),f=ipoFate(s,id);
  if(!f)return k;
- if(f.boom&&s.month>f.at)return{...k,type:'growth',annualRate:.3,risk:.12,beta:1.4};
+ if(f.boom&&s.month>f.at)return{...k,type:'growth',annualRate:.19,risk:.12,beta:1.4};
  return{...k,annualRate:f.boom?.5:s.month>=f.at?-.6:-.3};
 }
 export function trade(s,id,qty){if(!ensureMarket(s)?.listed.includes(id)||!Number.isInteger(qty)||!qty)return{ok:false,msg:L('Check the quantity.')};const value=s.prices[id]*qty,fee=Math.abs(value)*FEE;if(qty>0&&s.money<value+fee)return{ok:false,msg:L('Not enough cash to buy.')};if(s.holdings[id]+qty<0)return{ok:false,msg:L('Not enough shares.')};recordTrade(s,id,qty,value,fee);s.money-=value+fee;s.holdings[id]+=qty;return{ok:true,msg:L`${qty>0?L('Buy','stock'):L('Sell')} complete · 0.5% fee`};}
@@ -53,6 +56,7 @@ export function advanceStocks(s,crashed,previousMarket){
   const p=stockProfile(s,id),phase=s.seed+p.base,cycle=x=>Math.sin(x*Math.PI/6+phase);
   let factor=Math.pow(1+p.annualRate,1/12)*Math.exp(p.risk*(cycle(s.month)-cycle(s.month-1)))*Math.exp(p.risk*.8*(roll(s.seed,s.month*64+p.key)*2-1));
   if(p.type==='cyclical')factor*=Math.pow(economyCycle(s)/economyCycle(s,s.month-1),1.5);
+  if(p.type==='reit')factor*=economyCycle(s)/economyCycle(s,s.month-1);
   const crash=Math.pow(marketFactor(s)/previousMarket,p.beta);
   s.prices[id]=Math.max(1,Math.round(s.prices[id]*(crashed?1:factor)*crash*100)/100);
  }
@@ -88,5 +92,6 @@ export function validMarket(s){
  if(!Object.entries(m.peak).every(([id,v])=>m.listed.includes(id)&&Number.isFinite(v)&&v>0)||!Object.entries(m.distress).every(([id,v])=>m.listed.includes(id)&&Number.isInteger(v)&&v>=1&&v<=DISTRESS_MONTHS))return false;
  if(!Array.isArray(m.delisted)||m.delisted.length>12||!m.delisted.every(d=>stockInfo(d.id)&&!m.listed.includes(d.id)&&typeof d.name==='string'&&Number.isInteger(d.month)&&d.month>=0&&Number.isInteger(d.shares)&&d.shares>=0&&Number.isFinite(d.lost)))return false;
  if(!Number.isFinite(m.index)||m.index<=0||!Array.isArray(m.indexHistory)||m.indexHistory.length>36||!m.indexHistory.every(v=>Number.isFinite(v)&&v>0))return false;
+ if(m.added!==undefined&&!(Array.isArray(m.added)&&new Set(m.added).size===m.added.length&&m.added.every(id=>ADDED_STOCKS.some(k=>k.id===id))))return false;
  return true;
 }

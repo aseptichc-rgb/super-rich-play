@@ -11,3 +11,12 @@ body{padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-i
  dialog{max-height:calc(100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom));overflow-y:auto;overscroll-behavior:contain}
  .world-wrap{min-height:480px;height:calc(100dvh - 97px - env(safe-area-inset-top) - env(safe-area-inset-bottom))}
 }
+.top-actions .shortcut-button{white-space:nowrap;font-size:.75rem;padding:8px 10px;border-color:#b4c6a5}
+.top-actions .shortcut-button[hidden]{display:none}
+.shortcut-steps{padding-left:20px;font-size:14px;line-height:1.7}
+.shortcut-steps li+li{margin-top:6px}
+#shortcut-hint{position:fixed;right:16px;bottom:16px;z-index:40;width:min(320px,calc(100vw - 32px));padding:14px 16px;border:1px solid #b4c6a5;border-radius:12px;background:#fffdf7;box-shadow:0 8px 25px #244a3030;color:var(--ink)}
+#shortcut-hint[hidden]{display:none}
+#shortcut-hint p{margin:6px 0 10px;font-size:13px;line-height:1.6}
+#shortcut-hint .button-row{display:flex;gap:8px}
+@media(max-width:720px){.top-actions .shortcut-button{padding:4px 7px}.top-actions .shortcut-button span{display:none}#shortcut-hint{bottom:calc(16px + env(safe-area-inset-bottom))}}

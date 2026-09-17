@@ -5,11 +5,14 @@ import {newCode,normalizeCode,formatCode,decideOnOpen,readCloud,writeCloud,remot
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const money=n=>'₲'+Math.round(n).toLocaleString('en-US');
 const when=s=>L`Year ${Math.floor(s.month/12)+1} · Month ${s.month%12+1}`;
+const UNAVAILABLE=L('Your Google account save is unavailable right now. Your game is still saved on this device.');
 const SYNCED=L('✓ Saved · Cloud synced'),PENDING=L('✓ Saved · Cloud sync pending'),FAILED=L('Saved locally · Cloud sync failed'),CHOOSE=L('Saved locally · Choose a save to keep'),LOCAL=L('✓ Saved');
 // Nothing is uploaded while the page closes: a closing page never reads the reply, so this device would fall behind
 // the cloud's revision and ask about a conflict on the next visit. Unsynced changes go up the next time the game opens.
 export function createCloudUI({client,storage,version,getState,replaceState,openDialog,closeDialog,toast,setStatus,showSettings,scenarioName,timers={set:(fn,ms)=>setTimeout(fn,ms),clear:id=>clearTimeout(id)}}){
- let memo=readCloud(storage),busy=false,again=false,paused=false,applying=false,lastPush=0,lastMonth=getState().month,timer=0,pending=null;
+ let memo=readCloud(storage),busy=false,again=false,paused=false,applying=false,lastPush=0,lastMonth=getState().month,timer=0,pending=null,opened=null;
+ // The signed-in Google account: {uid, store from account-save.js, code it points at}. Null when signed out.
+ let account=null;
  // open() decides with what was remembered at load; saves made while the page starts must not change that answer.
  const loadedDirty=!!memo?.dirty;
  // JSON of the save known to match the cloud. A save with the same JSON is not a change.
@@ -18,6 +21,16 @@ export function createCloudUI({client,storage,version,getState,replaceState,open
  let ready=!memo;
  const remember=v=>{memo=v;writeCloud(storage,v);};
  const meta=s=>({month:s.month,wealth:analyze(s).wealth,version});
+ // Points the signed-in account at the code this device now syncs, so other devices continue the same save.
+ async function linkCode(){
+  if(!account||!memo)return;
+  const a=account,code=memo.code;
+  if(memo.account!==a.uid)remember({...memo,account:a.uid});
+  if(a.code===code)return;
+  const r=await a.store.set(code);
+  if(account!==a)return;
+  if(r.ok){a.code=code;toast(L('Your game is now saved to your Google account.'));}else toast(UNAVAILABLE);
+ }
  function schedule(){timers.clear(timer);timer=timers.set(()=>push(),Math.max(1000,SYNC_INTERVAL-(Date.now()-lastPush)));}
  function stop(message){remember(null);paused=false;pending=null;synced=null;ready=true;timers.clear(timer);setStatus(LOCAL);if(message)toast(message);}
  async function push(){
@@ -51,22 +64,22 @@ export function createCloudUI({client,storage,version,getState,replaceState,open
   const {row,save,code}=pending;pending=null;
   applying=true;try{replaceState(save);}finally{applying=false;}
   synced=JSON.stringify(getState());ready=true;lastMonth=save.month;paused=false;
-  remember({code,revision:row.revision,syncedAt:row.updated_at,dirty:false});
+  remember({code,revision:row.revision,syncedAt:row.updated_at,dirty:false});linkCode();
   setStatus(SYNCED);toast(L('Continued from your cloud save.'));
  }
  async function keepLocal(){
   if(!pending)return;
   const {row,code}=pending;pending=null;closeDialog();
   synced=null;ready=true;paused=false;
-  remember({code,revision:row.revision,syncedAt:row.updated_at,dirty:true});
+  remember({code,revision:row.revision,syncedAt:row.updated_at,dirty:true});linkCode();
   await push();
  }
- async function create(){
+ async function create(show=true){
   if(busy)return;
   busy=true;const s=getState();let r;
   for(let tries=0;tries<3;tries++){
    const code=newCode();r=await client.create(code,s,meta(s));
-   if(r.ok){busy=false;lastPush=Date.now();paused=false;ready=true;synced=JSON.stringify(s);remember({code,revision:r.revision,syncedAt:new Date().toISOString(),dirty:false});setStatus(SYNCED);showCode(code);return;}
+   if(r.ok){busy=false;lastPush=Date.now();paused=false;ready=true;synced=JSON.stringify(s);remember({code,revision:r.revision,syncedAt:new Date().toISOString(),dirty:false});setStatus(SYNCED);if(show)showCode(code);linkCode();return;}
    if(r.error!=='taken')break;
   }
   busy=false;toast(L('Could not reach the cloud. Your game is still saved on this device.'));
@@ -113,7 +126,7 @@ export function createCloudUI({client,storage,version,getState,replaceState,open
  return{
   settingsHTML(){
    if(!memo)return L`<h3>Cloud Save</h3><p class="help">Continue this game on another device with a save code. No sign-up needed. Anyone with the code can open, overwrite or delete the save, and a lost code can't be recovered.</p><button data-cloud="create" class="full">Save to Cloud</button><label class="field-label">Already have a code?<input id="cloud-code-input" maxlength="24" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="XXXX-XXXX-XXXX-XXXX"></label><button data-cloud="load-code">Continue With a Save Code</button>`;
-   return L`<h3>Cloud Save</h3><p class="help">This game syncs to the cloud. Enter the code on another device to continue there. Keep it private: anyone with it can open, overwrite or delete this save.</p><p class="cloud-code">${formatCode(memo.code)}</p><div class="button-row"><button data-cloud="copy">Copy Code</button>${paused?L('<button class="primary" data-cloud="compare">Choose Which Save to Keep</button>'):L('<button data-cloud="sync">Sync Now</button>')}</div><div class="button-row"><button data-cloud="stop">Stop Syncing on This Device</button><button data-cloud="delete">Delete Cloud Save</button></div>`;
+   return L`<h3>Cloud Save</h3><p class="help">This game syncs to the cloud. Enter the code on another device to continue there. Keep it private: anyone with it can open, overwrite or delete this save.</p><p class="cloud-code">${formatCode(memo.code)}</p><div class="button-row"><button data-cloud="copy">Copy Code</button>${paused?L('<button class="primary" data-cloud="compare">Choose Which Save to Keep</button>'):L('<button data-cloud="sync">Sync Now</button>')}</div><div class="button-row"><button data-cloud="stop">Stop Syncing on This Device</button><button data-cloud="delete">Delete Cloud Save</button></div>`+(memo.account?L('<p class="help">Linked to your Google account. Sign in with the same account on another device to continue.</p>'):'');
   },
   // app.js passes the JSON it just wrote to localStorage.
   afterSave(json=JSON.stringify(getState())){
@@ -126,7 +139,8 @@ export function createCloudUI({client,storage,version,getState,replaceState,open
    if(paused){setStatus(CHOOSE);return;}
    if(shouldUpload({dirty:true,busy,paused,monthChanged,lastPush,now:Date.now()}))push();else{setStatus(PENDING);schedule();}
   },
-  async open(){
+  // signIn() waits for this first comparison with the cloud.
+  open(){return opened??=(async()=>{
    if(!memo){ready=true;return;}
    setStatus(L('Checking cloud save…'));
    const code=memo.code,r=await client.load(code);
@@ -139,7 +153,28 @@ export function createCloudUI({client,storage,version,getState,replaceState,open
    if(decision==='upload'){push();return;}
    if(decision==='use-remote'){pending={row:r.row,save:remoteSave(r.row.data),code};if(pending.save){useRemote();return;}}
    ask(r.row);
+  })();},
+  // A new device (month 0) continues the account's save; progress on both sides asks which one to keep.
+  async signIn(store){
+   if(account?.uid===store.uid)return;
+   const a=account={uid:store.uid,store,code:null};
+   await opened;
+   const got=await store.get();
+   if(account!==a)return;
+   if(!got.ok){account=null;toast(UNAVAILABLE);return;}
+   a.code=got.code;
+   if(got.code&&got.code===memo?.code){linkCode();return;}
+   if(got.code){
+    const r=await client.load(got.code);
+    if(account!==a)return;
+    if(!r.ok){account=null;toast(L('Could not reach the cloud. Try again in a moment.'));return;}
+    if(r.row){pending={row:r.row,save:remoteSave(r.row.data),code:got.code};if(pending.save&&getState().month===0)useRemote();else showCompare();return;}
+   }
+   // No save on the account yet, or it was deleted: this device's game becomes the account's save.
+   if(!memo||memo.account&&memo.account!==a.uid)await create(false);else linkCode();
   },
+  // Signing out keeps this device's game but stops syncing it to that account.
+  signOut(){account=null;if(memo?.account)stop(L('Signed out. Your game stays on this device but no longer syncs to your Google account.'));},
   linked:()=>!!memo,
   async sendFeedback(text){return(await client.feedback(text,version,memo?.code??null)).ok;}
  };

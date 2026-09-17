@@ -10,7 +10,9 @@ export function authError(code){
  if(code==='auth/too-many-requests')return L('Too many sign-in attempts. Please try again later.');
  return L('Sign-in is unavailable right now. You can keep playing and try again later.');
 }
-export function accountHTML({configured,ready,busy,user,error}){
+// sync is true when cloud saves are available, so signing in carries the game to other devices.
+export function accountHTML({configured,ready,busy,user,error},sync=false){
+ const help=!sync?L('Sign-in identifies your account. Game progress stays in this browser; use Cloud Save or export to move it between devices.'):user?L('Your game syncs to this Google account. Sign in with the same account on another device to continue.'):L('Sign in to save your game to your Google account and continue on any device.');
  const disabled=!ready||busy?'disabled':'';
- return `<h3>${L('Account')}</h3>${user?`<p>${L('Signed in as')} <strong>${esc(user.displayName||user.email||L('Player'))}</strong></p><button class="full" data-auth="sign-out" ${disabled}>${L('Sign Out')}</button>`:`<div class="button-row"><button data-auth="google" ${disabled}>${L('Sign in with Google')}</button></div>`}<p class="help">${L('Sign-in identifies your account. Game progress stays in this browser; use Cloud Save or export to move it between devices.')}</p>${!configured?`<p class="help">${L('Account sign-in is being set up. You can keep playing without signing in.')}</p>`:busy?`<p role="status">${L('Connecting to your account…')}</p>`:''}${error?`<p role="alert">${authError(error)}</p>${!ready?`<button data-auth="retry" ${busy?'disabled':''}>${L('Retry Sign-In Connection')}</button>`:''}`:''}`;
+ return `<h3>${L('Account')}</h3>${user?`<p>${L('Signed in as')} <strong>${esc(user.displayName||user.email||L('Player'))}</strong></p><button class="full" data-auth="sign-out" ${disabled}>${L('Sign Out')}</button>`:`<div class="button-row"><button data-auth="google" ${disabled}>${L('Sign in with Google')}</button></div>`}<p class="help">${help}</p>${!configured?`<p class="help">${L('Account sign-in is being set up. You can keep playing without signing in.')}</p>`:busy?`<p role="status">${L('Connecting to your account…')}</p>`:''}${error?`<p role="alert">${authError(error)}</p>${!ready?`<button data-auth="retry" ${busy?'disabled':''}>${L('Retry Sign-In Connection')}</button>`:''}`:''}`;
 }

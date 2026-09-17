@@ -1,21 +1,26 @@
 import {L} from './i18n.js';
+import {shortcutBrowser,shortcutGuide} from './shortcut.js';
 
-let installPrompt=null,offlineReady=false,registration=null,failed=false;
+let installPrompt=null,offlineReady=false,registration=null,failed=false,appInstalled=false;
 const standalone=()=>window.matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
 function status(){
  if(failed)return L('Offline setup could not finish. Reopen the game online to retry.');
  if(registration?.waiting)return L('An update is ready. Close all game windows and reopen to apply it.');
- return offlineReady?L('Ready for offline play. Live prices, cloud saves and new online images need a connection.'):L('Preparing offline play. Keep this window open until it is ready.');
+ return offlineReady?L('Ready for offline play. Live prices and new online images need a connection.'):L('Preparing offline play. Keep this window open until it is ready.');
 }
 function refresh(){
  document.querySelectorAll('[data-pwa-status]').forEach(el=>el.textContent=status());
  document.querySelectorAll('[data-pwa-install]').forEach(el=>el.hidden=!installPrompt||standalone());
+ document.querySelectorAll('[data-shortcut-button]').forEach(el=>el.hidden=shortcutAdded());
 }
+// True once the game runs as an installed app or was just installed from this tab.
+export const shortcutAdded=()=>appInstalled||standalone();
+export function shortcutDialog(){return shortcutGuide(shortcutBrowser(navigator.userAgent,navigator.maxTouchPoints),!!installPrompt&&!standalone());}
 export function pwaSettings(){
  return `<section class="pwa-settings"><h3>${L('Play from your home screen')}</h3><p>${standalone()?L('You are playing in the installed app.'):L('Install SUPER RICH to open it directly from your home screen.')}</p><button type="button" class="primary full" data-pwa-install ${!installPrompt||standalone()?'hidden':''}>${L('Install SUPER RICH')}</button><p data-pwa-status role="status">${status()}</p><details><summary>${L('Installation and saved games')}</summary><p>${L('iPhone / iPad: open this address in Safari, tap Share, then Add to Home Screen. Android / PC: use Install SUPER RICH above, or the browser menu to install or add to your home screen.')}</p><p>${L('Saves stay in this browser or installed app. Before switching devices or installing, export your save in Settings and import it if needed. Installation alone does not sync saves.')}</p></details></section>`;
 }
 window.addEventListener('beforeinstallprompt',event=>{event.preventDefault();installPrompt=event;refresh();});
-window.addEventListener('appinstalled',()=>{installPrompt=null;refresh();});
+window.addEventListener('appinstalled',()=>{installPrompt=null;appInstalled=true;refresh();});
 document.addEventListener('click',async event=>{
  if(!event.target.closest('[data-pwa-install]')||!installPrompt)return;
  const prompt=installPrompt;installPrompt=null;refresh();

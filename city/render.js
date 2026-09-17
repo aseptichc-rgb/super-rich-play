@@ -4,12 +4,13 @@ import {drawBuildingArt,buildingArtPending} from './building-art.js';
 import {drawSceneryArt,sceneryPending} from './scenery-art.js';
 import {landmarkAnchor,landmarkBuildError} from './landmark-construction.js';
 import {createWorldLife} from './world-life.js';
+import {reducedMotion} from './motion.js';
 import {flexState} from './flex.js';
 import {selectedModel} from './luxury-models.js';
 import {drawMapYacht,YACHT_DESIGNS} from './map-vehicles.js';
 import {mansionDesign,MANSION_COLORS,MANSION_HIT} from './mansion.js';
 import {mansionArtURL,estateArtURL} from './mansion-art.js';
-import {SIZE,BOULEVARD,TYPES,coords,canBuild,footprintCells,buildingArea,mapOffset} from './engine.js';
+import {SIZE,BOULEVARD,TYPES,coords,canBuild,footprintCells,buildingArea,mapOffset,buildingName} from './engine.js';
 // Expansion adds facade detail with only a small change to the architectural envelope.
 export function buildingHeight(type,level){const step=Math.max(0,Math.min(2,level-1)),shape=TYPES[type]?.shape||type;
  if(type==='hq')return 170+step*5;if(type==='office')return 134+step*4;if(type==='hotel')return 74+step*3;if(type==='monument')return 72+step*3;if(type==='condo')return 48+step*3;
@@ -41,7 +42,6 @@ export function createRenderer(canvas,getState,getAnalysis,onTile,onHover){
  const MARGIN=200,cacheCanvas=offscreen(),cacheCtx=cacheCanvas.getContext('2d'),stamp=offscreen();let cache=null,shift={x:0,y:0};
  function offscreen(){return typeof document==='undefined'?{width:0,height:0,getContext:()=>ctx}:document.createElement('canvas');}
  const halfW=28,halfH=14;
- const reducedMotion=window.matchMedia('(prefers-reduced-motion: reduce)');
  function resize(){const r=canvas.getBoundingClientRect();w=r.width;h=r.height;dpr=Math.min(2,Math.max(window.devicePixelRatio||1,1.5));canvas.width=w*dpr;canvas.height=h*dpr;}
  new ResizeObserver(resize).observe(canvas);resize();
  function origin(){return{x:w*.5+panX,y:h*.5-260*zoom+panY};}
@@ -94,7 +94,7 @@ export function createRenderer(canvas,getState,getAnalysis,onTile,onHover){
  }
  function line(a,b,color,width=1){ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.strokeStyle=color;ctx.lineWidth=width*zoom;ctx.stroke();}
  function circle(p,r,color){if(recordingHit){const pts=[];for(let n=0;n<12;n++)pts.push({x:p.x+Math.cos(n*Math.PI/6)*r*zoom,y:p.y+Math.sin(n*Math.PI/6)*r*zoom});record(pts);}ctx.beginPath();ctx.arc(p.x,p.y,r*zoom,0,Math.PI*2);ctx.fillStyle=color;ctx.fill();}
- function assetBadge(x,y,t){const p=imageTops.get(y*SIZE+x)||screen(x+.5,y+.5,badgeHeight(t.type,t.level)+16),label=`✦ ${t.landmark?.name||TYPES[t.type].name}${t.type==='plot'?'':' · Lv.'+t.level}`;ctx.font=`bold ${Math.max(10,11*zoom)}px sans-serif`;ctx.textAlign='center';const width=ctx.measureText(label).width+14;if(recordingHit)record([{x:p.x-width/2,y:p.y-13*zoom},{x:p.x+width/2,y:p.y-13*zoom},{x:p.x+width/2,y:p.y+6*zoom},{x:p.x-width/2,y:p.y+6*zoom}]);ctx.fillStyle='#2f4d3eeb';ctx.fillRect(p.x-width/2,p.y-13*zoom,width,19*zoom);ctx.fillStyle='#ffe59a';ctx.fillText(label,p.x,p.y+1*zoom);}
+ function assetBadge(x,y,t){const p=imageTops.get(y*SIZE+x)||screen(x+.5,y+.5,badgeHeight(t.type,t.level)+16),label=`✦ ${t.landmark?.name||buildingName(t)}${t.type==='plot'?'':' · Lv.'+t.level}`;ctx.font=`bold ${Math.max(10,11*zoom)}px sans-serif`;ctx.textAlign='center';const width=ctx.measureText(label).width+14;if(recordingHit)record([{x:p.x-width/2,y:p.y-13*zoom},{x:p.x+width/2,y:p.y-13*zoom},{x:p.x+width/2,y:p.y+6*zoom},{x:p.x-width/2,y:p.y+6*zoom}]);ctx.fillStyle='#2f4d3eeb';ctx.fillRect(p.x-width/2,p.y-13*zoom,width,19*zoom);ctx.fillStyle='#ffe59a';ctx.fillText(label,p.x,p.y+1*zoom);}
  function tree(x,y,scale=1){
   const p=screen(x,y),r=10*scale*zoom;
   ctx.fillStyle='#203c3430';ctx.beginPath();ctx.ellipse(p.x+9*scale*zoom,p.y+4*zoom,r*1.7,r*.55,.3,0,Math.PI*2);ctx.fill();
@@ -132,14 +132,14 @@ export function createRenderer(canvas,getState,getAnalysis,onTile,onHover){
   const landmark=drawLandmark(ctx,t,screen(x+.5,y+.5),zoom);
   if(t.landmark&&!landmark)pendingImages=true;
   const picture=landmark||(!t.landmark&&drawBuildingArt(ctx,t,screen(x+1,y+1),zoom));
-  const artPending=!t.landmark&&buildingArtPending(t.type,t.level);if(artPending)pendingImages=true;
+  const artPending=!t.landmark&&buildingArtPending(t.type,t.level,t.footprint);if(artPending)pendingImages=true;
   if(picture){recordingHit.image=picture.image;recordingHit.path.rect(picture.x,picture.y,picture.width,picture.height);extend(recordingHit.box,picture.x,picture.y);extend(recordingHit.box,picture.x+picture.width,picture.y+picture.height);imageTops.set(y*SIZE+x,{x:picture.x+picture.width/2,y:picture.y-12*zoom});recordingHit=null;drawingFootprint=null;return picture;}
   // Leave the lot empty until the sprite loads rather than flashing the older procedural building.
   if(artPending){endHit();drawingFootprint=null;return;}
   const scale=buildingScale(t.type,t.level),p=screen(x+.5,y+.5),width=scale===1?1:[.90,.94,.98][Math.max(0,Math.min(2,t.level-1))];
   ctx.save();ctx.translate(p.x,p.y);ctx.scale(width,scale);ctx.translate(-p.x,-p.y);
   buildingTransform=width===1&&scale===1?null:{x:x+.5,y:y+.5,width,scale};const custom=false;buildingBody(x,y,t);buildingTransform=null;
-  if(!custom&&TYPES[t.type]?.group&&!TYPES[t.type].managed&&!['garden','citypark','condo'].includes(t.type)&&t.level>=2){
+  if(!custom&&TYPES[t.type]?.group&&(!TYPES[t.type].managed||t.type==='hospital')&&!['garden','citypark','condo'].includes(t.type)&&t.level>=2){
    const c=TYPES[t.type].color,z=buildingHeight(t.type,t.level);
    // A stepped penthouse and a broad colonnaded entrance distinguish expanded buildings.
    box(x+.22,y+.22,.56,.56,z+5,'#d5dfcd','#617b83','#b7c9c0',z);
@@ -540,7 +540,7 @@ export function createRenderer(canvas,getState,getAnalysis,onTile,onHover){
  function render(time,phase=0){
   life.update(time);
   ctx.setTransform(dpr,0,0,dpr,0,0);ctx.lineJoin='round';ctx.lineCap='round';
-  if(reducedMotion.matches)time=0;
+  if(reducedMotion())time=0;
   const s=getState(),a=getAnalysis();
   if(viewState===s&&viewOffset!==mapOffset(s))panY-=(mapOffset(s)-viewOffset)*2*halfH*zoom;viewState=s;viewOffset=mapOffset(s);
   faded=occluders(s);fadeKey=[...faded].sort((p,q)=>p-q).join();
@@ -551,22 +551,23 @@ export function createRenderer(canvas,getState,getAnalysis,onTile,onHover){
   const combined=!!landmarkPlacement||TYPES[tool]?.group&&(buildFootprint.width>1||buildFootprint.height>1);
   const footprint=landmarkPlacement?.footprint||(combined?buildFootprint:{width:1,height:1});
   if(selected>=0){for(const j of footprintCells(selected,combined?footprint:s.tiles[selected].footprint)){const{x,y}=coords(j);tile(x,y,'#f8f0b42b','#f5e6a5',1);}}
-  if(hover>=0){const anchor=landmarkPlacement?(landmarkAnchor(s,hover,landmarkPlacement.design,footprint)??hover):hover,{x,y}=coords(anchor);const ok=landmarkPlacement?!landmarkBuildError(s,anchor,landmarkPlacement.design,footprint):tool==='inspect'||tool==='pan'||!canBuild(s,hover,tool,combined||TYPES[tool]?.group==='property'?'buy':'lease',combined?buildFootprint:undefined);
+  if(hover>=0){const anchor=landmarkPlacement?(landmarkAnchor(s,hover,landmarkPlacement.design,footprint)??hover):hover,{x,y}=coords(anchor);const ok=landmarkPlacement?!landmarkBuildError(s,anchor,landmarkPlacement.design,footprint):tool==='inspect'||!canBuild(s,hover,tool,combined||TYPES[tool]?.group==='property'?'buy':'lease',combined?buildFootprint:undefined);
    for(let dy=0;dy<footprint.height;dy++)for(let dx=0;dx<footprint.width;dx++)tile(x+dx,y+dy,ok?'#f6ffe255':'#e9947755',ok?'#f8ffe0':'#bb604f',2);
    if(TYPES[tool]?.radius){const radius=TYPES[tool].radius;for(let yy=0;yy<SIZE;yy++)for(let xx=0;xx<SIZE;xx++)if(Math.hypot(xx-x,yy-y)<=radius)tile(xx,yy,'#fff8ba12','#e8e8b344',1);}
   }
   if(groundView)return;
   const collection=flexState(s).owned;
-  if(collection.includes('yacht')){world=mapOffset(s);const yy=16+(reducedMotion.matches?0:Math.sin(time*.0005)*.15),model=selectedModel(s,'yacht');const art=drawMapYacht(ctx,screen,22.4,yy+.2,model,time);const design=YACHT_DESIGNS[model.id],p=art?.top||screen(22.4,yy+.2,design.roof+Math.max(0,design.levels-1)*7+26);world=0;ctx.font='bold 11px sans-serif';ctx.textAlign='center';ctx.fillStyle='#21485a';ctx.fillText('✦ '+model.name,p.x,p.y);}
+  if(collection.includes('yacht')){world=mapOffset(s);const yy=16+(reducedMotion()?0:Math.sin(time*.0005)*.15),model=selectedModel(s,'yacht');const art=drawMapYacht(ctx,screen,22.4,yy+.2,model,time);const design=YACHT_DESIGNS[model.id],p=art?.top||screen(22.4,yy+.2,design.roof+Math.max(0,design.levels-1)*7+26);world=0;ctx.font='bold 11px sans-serif';ctx.textAlign='center';ctx.fillStyle='#21485a';ctx.fillText('✦ '+model.name,p.x,p.y);}
   life.drawFront(time,phase);
  }
  function point(e){const r=canvas.getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top};}
- canvas.addEventListener('pointerdown',e=>{if(e.button!==0&&e.button!==1&&e.button!==2)return;const p=point(e);down={...p,panX,panY,pan:tool==='pan'||e.button!==0||e.altKey,moved:false};canvas.setPointerCapture(e.pointerId);});
- canvas.addEventListener('pointermove',e=>{const p=point(e);under=groundView?-1:groundTile(p.x,p.y);hover=pick(p.x,p.y);onHover(hover);if(!down)return;if(Math.hypot(p.x-down.x,p.y-down.y)>6)down.moved=true;if(down.pan){panX=down.panX+p.x-down.x;panY=down.panY+p.y-down.y;}});
- canvas.addEventListener('pointerup',e=>{if(down&&!down.pan&&!down.moved){const p=point(e),i=pick(p.x,p.y);if(i>=0||i===MANSION_HIT)onTile(i);}down=null;});
- canvas.addEventListener('pointercancel',()=>{down=null;});canvas.addEventListener('pointerleave',()=>{hover=-1;under=-1;onHover(-1);});canvas.addEventListener('contextmenu',e=>e.preventDefault());
+ const cursorFor=v=>v==='inspect'||v==='pan'?'default':'crosshair';
+ canvas.addEventListener('pointerdown',e=>{if(e.button!==0&&e.button!==1&&e.button!==2)return;const p=point(e);down={...p,panX,panY,button:e.button,moved:false};canvas.setPointerCapture(e.pointerId);});
+ canvas.addEventListener('pointermove',e=>{const p=point(e);under=groundView?-1:groundTile(p.x,p.y);hover=pick(p.x,p.y);onHover(hover);if(!down)return;if(Math.hypot(p.x-down.x,p.y-down.y)>6){down.moved=true;canvas.style.cursor='grabbing';}if(down.moved){panX=down.panX+p.x-down.x;panY=down.panY+p.y-down.y;}});
+ canvas.addEventListener('pointerup',e=>{if(down&&down.button===0&&!down.moved){const p=point(e),i=pick(p.x,p.y);if(i>=0||i===MANSION_HIT)onTile(i);}down=null;canvas.style.cursor=cursorFor(tool);});
+ canvas.addEventListener('pointercancel',()=>{down=null;canvas.style.cursor=cursorFor(tool);});canvas.addEventListener('pointerleave',()=>{hover=-1;under=-1;onHover(-1);});canvas.addEventListener('contextmenu',e=>e.preventDefault());
  canvas.tabIndex=0;
  canvas.addEventListener('keydown',e=>{if(!['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Enter'].includes(e.key))return;e.preventDefault();if(hover<0)hover=(9+mapOffset(getState()))*(SIZE+1);if(e.key==='Enter'){onTile(hover);return;}let{x,y}=coords(hover);if(e.key==='ArrowUp')y--;if(e.key==='ArrowDown')y++;if(e.key==='ArrowLeft')x--;if(e.key==='ArrowRight')x++;hover=Math.max(0,Math.min(SIZE-1,y))*SIZE+Math.max(0,Math.min(SIZE-1,x));onHover(hover);});
  canvas.addEventListener('wheel',e=>{e.preventDefault();zoom=Math.max(.45,Math.min(2.3,zoom*(e.deltaY>0?.92:1.08)));},{passive:false});
- return{render,focus(i){const{x,y}=coords(i);zoom=w<650?1.1:1.5;panX=-(x-y)*halfW*zoom;panY=260*zoom-(x+y+1)*halfH*zoom;},burst:life.burst,visit:life.visit,setLandmarkPlacement(design,footprint){landmarkPlacement=design?{design,footprint:{...footprint}}:null;selected=-1;canvas.style.cursor=design?'crosshair':'default';},setTool(v,footprint={width:1,height:1}){landmarkPlacement=null;tool=v;buildFootprint={...footprint};canvas.style.cursor=v==='pan'?'grab':v==='inspect'?'default':'crosshair';},setLayer(v){layer=v;},setGroundView(v){groundView=!!v;hover=-1;onHover(-1);},select(i){selected=i;},zoom(delta){zoom=Math.max(.45,Math.min(2.3,zoom+delta));},home(){zoom=w<650?.64:Math.min(1,w/1120);panX=0;panY=(w<650?-55:-100)-mapOffset(getState())*2*halfH*zoom;},position:screen};
+ return{render,focus(i){const{x,y}=coords(i);zoom=w<650?1.1:1.5;panX=-(x-y)*halfW*zoom;panY=260*zoom-(x+y+1)*halfH*zoom;},burst:life.burst,visit:life.visit,setLandmarkPlacement(design,footprint){landmarkPlacement=design?{design,footprint:{...footprint}}:null;selected=-1;canvas.style.cursor=design?'crosshair':cursorFor(tool);},setTool(v,footprint={width:1,height:1}){landmarkPlacement=null;tool=v;buildFootprint={...footprint};canvas.style.cursor=cursorFor(v);},setLayer(v){layer=v;},setGroundView(v){groundView=!!v;hover=-1;onHover(-1);},select(i){selected=i;},zoom(delta){zoom=Math.max(.45,Math.min(2.3,zoom+delta));},home(){zoom=w<650?.64:Math.min(1,w/1120);panX=0;panY=(w<650?-55:-100)-mapOffset(getState())*2*halfH*zoom;},position:screen};
 }

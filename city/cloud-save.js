@@ -40,7 +40,8 @@ export function readCloud(storage){
  try{
   const v=JSON.parse(storage.get(CLOUD_KEY)),code=normalizeCode(v?.code);
   if(!code||code!==v.code||!Number.isInteger(v.revision)||v.revision<1)return null;
-  return{code,revision:v.revision,syncedAt:typeof v.syncedAt==='string'?v.syncedAt:null,dirty:v.dirty===true};
+  // account is the Google uid this save code is linked to; manual save codes have none.
+  return{code,revision:v.revision,syncedAt:typeof v.syncedAt==='string'?v.syncedAt:null,dirty:v.dirty===true,...(typeof v.account==='string'&&v.account?{account:v.account}:{})};
  }catch{return null;}
 }
 export function writeCloud(storage,memo){storage.set(CLOUD_KEY,memo?JSON.stringify(memo):null);}

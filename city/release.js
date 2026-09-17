@@ -12,7 +12,10 @@ export const FEEDBACK_URL='';
 export function releaseChannel(hostname=''){return /\.github\.io$|(^|\.)itch\.(zone|io)$|\.hwcdn\.net$/i.test(String(hostname))?'play':'full';}
 // The landmark studio ships three built-in designs, so it works everywhere. AI drafts and uploads need the
 // private design server and are switched off until that server is wired up again.
-export function releaseFeatures(hostname='',cloud=false){const play=releaseChannel(hostname)==='play';return{channel:play?'play':'full',landmarkStudio:true,aiLandmarks:false,legacyModes:!play,cloudSave:!!cloud};}
+// Google sign-in and cloud saves are switched off for now: games save in this browser and continue on the next visit.
+// Set to true to show Settings → Account and Cloud Save again.
+export const ONLINE_SAVES=false;
+export function releaseFeatures(hostname='',cloud=false,online=ONLINE_SAVES){const play=releaseChannel(hostname)==='play';return{channel:play?'play':'full',landmarkStudio:true,aiLandmarks:false,legacyModes:!play,cloudSave:online&&!!cloud,accountLogin:online};}
 export const FEEDBACK_QUESTIONS=[
  {id:'bored',label:L('Where did it get boring?'),placeholder:L('e.g. Nothing new to do after year 2')},
  {id:'stuck',label:L('Where were you stuck or confused?'),placeholder:L('e.g. I could not tell what the Owner Time sliders do')},

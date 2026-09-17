@@ -24,7 +24,7 @@ export function addPrestige(s,n){s.prestige=Math.max(0,Math.round(((s.prestige||
 export function settlePrestige(s){
  if(s.prestige)s.prestige=Math.max(0,Math.round(s.prestige*(1-PRESTIGE_DECAY)*10)/10);
  const owned=s.tiles.filter(t=>t.owner==='player');
- const gain=(owned.some(t=>t.type==='hq')?10:0)+(owned.some(t=>t.type==='monument')?30:0)+Math.min(5,owned.filter(t=>t.type==='citypark').length)*2+(owned.some(t=>t.type==='themepark')?5:0);
+ const gain=(owned.some(t=>t.type==='hq')?10:0)+(owned.some(t=>t.type==='monument')?30:0)+Math.min(5,owned.filter(t=>t.type==='citypark').length)*2+(owned.some(t=>t.type==='themepark')?5:0)+owned.filter(t=>t.type==='hospital').map(t=>t.level).sort((a,b)=>b-a).slice(0,3).reduce((n,level)=>n+level*2,0);
  if(gain)addPrestige(s,gain);
 }
 export function foundationQuote(s,wealth){return Math.max(5000000,Math.round(wealth*.05));}
