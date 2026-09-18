@@ -43,6 +43,9 @@ export function investIndex(s,amount){
  s.log.unshift(L`↗ Index basket · ${orders.length} companies by market cap · ₲${Math.round(cost).toLocaleString('en-US')} (fees included)`);s.log=s.log.slice(0,25);
  return{ok:true,msg:L`Index basket bought · ${orders.length} companies weighted by market cap`,orders,cost};
 }
+// Buying by share count: one index share costs the index level in ₲ plus the 0.5% fee, still bought as the basket.
+export function investIndexUnits(s,units){if(!Number.isInteger(units)||units<1)return{ok:false,msg:L('Check the quantity.')};return investIndex(s,units*ensureMarket(s).index*(1+FEE));}
+export const maxIndexUnits=s=>Math.max(0,Math.floor(s.money/(ensureMarket(s).index*(1+FEE))));
 // A decision event's one-day plunge cuts every price at once. The index moves with its basket, and the latest
 // chart point shows the new level instead of waiting for month end.
 export function shockPrices(s,factor){

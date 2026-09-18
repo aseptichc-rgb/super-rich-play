@@ -7,18 +7,22 @@ const ART_ALIAS=Object.freeze({citypark:'park'});
 const artType=type=>Object.hasOwn(ART_ALIAS,type)?ART_ALIAS[type]:type;
 export const artTier=(type,level=1)=>TIERED_ART.includes(artType(type))?Math.max(1,Math.min(3,level||1)):1;
 // Long lots (2×1, 3×1 and their mirrors) use `<type>[-tier]-wide.webp`, drawn for a 3×1 lot whose long side runs toward the lower right.
-export const WIDE_ART=Object.freeze(['hotel','resort','office','hq','cafe','market','studio','workshop','rental','condo','hospital','themepark']);
+export const WIDE_ART=Object.freeze(['hotel','resort','office','hq','cafe','market','studio','workshop','rental','condo','hospital','themepark','housing']);
 export const wideLot=footprint=>{const width=footprint?.width||1,height=footprint?.height||1;return Math.max(width,height)>=2*Math.min(width,height);};
+// 3×2 and 2×3 lots use `<type>[-tier]-broad.webp`, drawn for a 3×2 lot whose long side runs toward the lower right; every building that can stand on a combined lot has one.
+export const BROAD_ART=Object.freeze(['golf','garden','park','monument','hotel','resort','office','hq','cafe','market','studio','workshop','rental','condo','hospital','housing','themepark']);
+export const broadLot=footprint=>{const width=footprint?.width||1,height=footprint?.height||1;return Math.min(width,height)===2&&Math.max(width,height)===3;};
 export function buildingArtURL(type,level=1,footprint){
  const id=artType(type);if(!Object.hasOwn(BUILDING_ART,id))return null;
- const tier=artTier(type,level),wide=WIDE_ART.includes(id)&&wideLot(footprint);return `city/assets/buildings/${id}${tier>1?'-'+tier:''}${wide?'-wide':''}.webp`;
+ const tier=artTier(type,level),lot=WIDE_ART.includes(id)&&wideLot(footprint)?'-wide':BROAD_ART.includes(id)&&broadLot(footprint)?'-broad':'';return `city/assets/buildings/${id}${tier>1?'-'+tier:''}${lot}.webp`;
 }
 const images=new Map();
 function entry(type,level=1,footprint){
  const url=buildingArtURL(type,level,footprint);
  if(!url||typeof Image==='undefined')return null;
  if(!images.has(url)){
-  const image=new Image(),item={image,pending:true,wide:url.endsWith('-wide.webp')};images.set(url,item);
+  // depth: how many squares deep a long-lot sprite's three-square base is (0 for square art).
+  const image=new Image(),item={image,pending:true,depth:url.endsWith('-wide.webp')?1:url.endsWith('-broad.webp')?2:0};images.set(url,item);
   image.onload=()=>{item.pending=false;};image.onerror=()=>{item.pending=false;};
   image.src=url;
  }
@@ -29,13 +33,14 @@ export const buildingArtPending=(type,level=1,footprint)=>entry(type,level,footp
 // Steeper art is flattened to at most ART_SLOPE_CAP, then narrowed so its base stays on its own lot instead of spilling onto roads and neighbors.
 export const ART_SLOPE=Object.freeze({atelier:.55,'atelier-2':.56,'atelier-3':.56,cafe:.53,'cafe-2':.52,'cafe-3':.52,clinic:.56,condo:.59,'condo-2':.56,'condo-3':.55,factory:.6,fire:.57,garden:.72,'garden-2':.71,'garden-3':.69,golf:.61,'golf-2':.62,'golf-3':.63,hall:.58,home:.6,hospital:.5,'hospital-2':.5,'hospital-3':.5,hotel:.57,'hotel-2':.58,'hotel-3':.57,housing:.59,hq:.63,'hq-2':.61,'hq-3':.61,market:.54,'market-2':.54,'market-3':.55,monument:.54,'monument-2':.55,'monument-3':.56,office:.59,'office-2':.59,'office-3':.6,park:.65,'park-2':.69,'park-3':.73,plaza:.7,rental:.61,'rental-2':.63,'rental-3':.63,resort:.64,'resort-2':.84,'resort-3':.84,school:.61,shop:.57,studio:.58,'studio-2':.55,'studio-3':.57,themepark:.59,tower:.59,water:.58,workshop:.57,'workshop-2':.62,'workshop-3':.62});
 export const ART_SLOPE_CAP=.64;
-export function buildingArtBounds(t,p,zoom,imageWidth,imageHeight,wide=false){
+export function buildingArtBounds(t,p,zoom,imageWidth,imageHeight,depth=0){
  const width=t.footprint?.width||1,height=t.footprint?.height||1,side=Math.min(width,height);
  const tier=Math.max(1,Math.min(3,t.level||1)),growth=[.84,.92,1][tier-1],art=artTier(t.type,t.level);
- if(wide){
-  // Wide art is a 3×1 base on the 2:1 grid, scaled to fit the lot (k = 1 on a 3×1 lot) and centered on it.
-  const k=Math.min(Math.max(width,height)/3,side)*growth*zoom,w=112*k*.98,h=w*imageHeight/imageWidth;
-  const x=p.x-(width-height)*14*zoom,y=p.y-(width+height)*7*zoom+28*k;
+ if(depth){
+  // Long-lot art is a base three squares long and `depth` deep on the 2:1 grid (3×1 wide, 3×2 broad), scaled to fit the lot
+  // (k = 1 on a lot of its own size) and centered on it.
+  const k=Math.min(Math.max(width,height)/3,side/depth)*growth*zoom,w=28*(3+depth)*k*.98,h=w*imageHeight/imageWidth;
+  const x=p.x-(width-height)*14*zoom,y=p.y-(width+height)*7*zoom+7*(3+depth)*k;
   return{x:x-w/2,y:y-h,width:w,height:h};
  }
  const slope=Math.max(.5,ART_SLOPE[artType(t.type)+(art>1?'-'+art:'')]||.5),ground=Math.min(slope,ART_SLOPE_CAP),flatten=ground/slope;
@@ -52,10 +57,10 @@ export function drawBuildingArt(ctx,t,p,zoom){
  let item;for(const args of [[t.level,t.footprint],[t.level],[1]]){item=entry(t.type,...args);if(ready(item))break;}
  const image=item?.image;
  if(!image?.complete||!image.naturalWidth)return false;
- const bounds=buildingArtBounds(t,p,zoom,image.naturalWidth,image.naturalHeight,item.wide);
+ const bounds=buildingArtBounds(t,p,zoom,image.naturalWidth,image.naturalHeight,item.depth);
  ctx.save();ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
- // Wide art runs toward the lower right; a lot deeper than it is wide shows the sprite mirrored.
- if(item.wide&&(t.footprint?.height||1)>(t.footprint?.width||1)){ctx.translate(bounds.x*2+bounds.width,0);ctx.scale(-1,1);}
+ // Long-lot art runs toward the lower right; a lot deeper than it is wide shows the sprite mirrored.
+ if(item.depth&&(t.footprint?.height||1)>(t.footprint?.width||1)){ctx.translate(bounds.x*2+bounds.width,0);ctx.scale(-1,1);}
  ctx.drawImage(image,bounds.x,bounds.y,bounds.width,bounds.height);ctx.restore();
  return{...bounds,image};
 }
