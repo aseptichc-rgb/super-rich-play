@@ -105,3 +105,7 @@ button{font-size:.875rem}
  .newsbar{height:auto;min-height:40px;padding:8px 13px}.news-tag{display:none}
  .newsbar>#news{white-space:normal;line-height:1.5}
 }
+.top-actions .new-game-button{white-space:nowrap;font-size:.75rem;padding:8px 10px;border-color:#b4c6a5}
+.new-game-current{display:flex;flex-direction:column;gap:4px;margin:14px 0;padding:12px 14px;border:1px solid #e4c9b8;border-radius:10px;background:#fbf3ec}.new-game-current span{font-size:.875rem;color:#52644e}
+.new-game-confirm{display:flex;gap:8px;align-items:center;margin:14px 0 4px;font-weight:600;color:#8a3b30}
+@media(max-width:720px){.top-actions .new-game-button{padding:4px 7px}.top-actions .new-game-button span{display:none}}

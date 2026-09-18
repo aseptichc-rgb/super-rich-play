@@ -43,6 +43,13 @@ export function investIndex(s,amount){
  s.log.unshift(L`↗ Index basket · ${orders.length} companies by market cap · ₲${Math.round(cost).toLocaleString('en-US')} (fees included)`);s.log=s.log.slice(0,25);
  return{ok:true,msg:L`Index basket bought · ${orders.length} companies weighted by market cap`,orders,cost};
 }
+// A decision event's one-day plunge cuts every price at once. The index moves with its basket, and the latest
+// chart point shows the new level instead of waiting for month end.
+export function shockPrices(s,factor){
+ const m=ensureMarket(s),cap=()=>m.listed.reduce((n,id)=>n+marketCap(s,id),0),before=cap();
+ for(const k of Object.keys(s.prices))s.prices[k]=Math.max(5,Math.round(s.prices[k]*factor*100)/100);
+ m.index=Math.round(m.index*cap()/before*100)/100;if(m.indexHistory.length)m.indexHistory[m.indexHistory.length-1]=m.index;
+}
 function delist(s,id){
  const m=s.market,k=stockInfo(id),qty=s.holdings[id];ensureBasis(s);const lost=s.costBasis[id]||0;s.realizedGains-=lost;
  const short=m.shorts?.[id];

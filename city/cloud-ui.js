@@ -176,6 +176,8 @@ export function createCloudUI({client,storage,version,getState,replaceState,open
   // Signing out keeps this device's game but stops syncing it to that account.
   signOut(){account=null;if(memo?.account)stop(L('Signed out. Your game stays on this device but no longer syncs to your Google account.'));},
   linked:()=>!!memo,
+  // A brand-new game leaves the cloud save as it is; this device just stops syncing to it.
+  stopSync(message){if(memo)stop(message);},
   async sendFeedback(text){return(await client.feedback(text,version,memo?.code??null)).ok;}
  };
 }

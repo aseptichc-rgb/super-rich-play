@@ -43,7 +43,7 @@ export const TYPES={
  golf:{name:L('Golf Course'),group:'property',icon:'⛳',cost:1000000,upkeep:18000,color:'#78aa58',shape:'golf',base:100000,staff:0,managed:true,desc:L('A golf course with a clubhouse and full course. Green-fee income depends on location · Runs automatically · Expands up to 3 tiers.')},
  citypark:{name:L('Public Park'),group:'property',icon:'🌳',cost:120000,upkeep:1500,color:'#83b17b',shape:'park',base:0,staff:0,desc:L('A park for residents. Earns no rent, but lifts foot traffic for buildings within 4 tiles and adds Reputation +2 monthly (up to 5 parks) · Expands up to 3 tiers.')},
  housing:{name:L('Housing Complex'),group:'property',icon:'🏘',cost:320000,upkeep:3000,color:'#afc897',shape:'home',base:26000,staff:0,desc:L('Homes that pay rent every month. Residents bring foot traffic to shops, hotels and offices within 4 tiles · Higher rent means more vacancies.')},
- hospital:{name:L('Hospital'),group:'property',icon:'🏥',cost:800000,upkeep:14000,color:'#9cc7d4',shape:'tower',base:70000,staff:0,managed:true,tiers:[L('Clinic'),L('Hospital','tier'),L('General Hospital')],desc:L('Opens as a neighborhood clinic, expands into a hospital and then a general hospital. Earns more where foot traffic is high · Reputation +2 monthly per tier (up to 3 hospitals) · Runs itself.')},
+ hospital:{name:L('Hospital'),group:'property',icon:'🏥',cost:800000,upkeep:14000,color:'#9cc7d4',shape:'tower',base:70000,staff:0,managed:true,tiers:[L('Clinic'),L('Hospital','tier'),L('General Hospital')],desc:L('Opens as a neighborhood clinic, expands into a hospital and then a general hospital. Earns more where foot traffic is high · Lifts foot traffic and land prices within 4 tiles · Reputation +2 monthly per tier (up to 3 hospitals) · Runs itself.')},
  themepark:{name:L('Theme Park'),group:'property',icon:'🎡',cost:2500000,upkeep:45000,color:'#e39a6a',shape:'themepark',base:240000,staff:0,managed:true,unlock:10000000,desc:L('Unlocks in the Developer chapter (peak net worth ₲10,000,000). A tourist magnet: joins hotel, resort and golf clusters, lifts foot traffic within 4 tiles and adds Reputation +5 monthly · Runs itself.')},
  plot:{name:L('Owned Lot'),group:'land',icon:'▱',cost:0,upkeep:0,color:'#c8bb88',base:0,staff:0,desc:L('Empty land you bought early. It never auto-develops, so build whatever you like here.')},
  hotel:{name:L('Hotel'),group:'property',icon:'🏨',cost:250000,upkeep:5000,color:'#d6b16c',shape:'shop',base:20000,staff:0,managed:true,desc:L('Opens as soon as it is built! Profit depends on location and the economy · Clustering with nearby hotels and resorts lifts revenue.')},
@@ -163,13 +163,19 @@ export function landUplift(s,i){
  }
  return 1+Math.min(UPLIFT.cap,sum);
 }
-export function landPrice(s,i){return Math.round(baseLandPrice(s,i)*landUplift(s,i));}
+// Foot traffic prices a location. 50 is an ordinary street; each point above or below moves land price by 2% and rent by 1.5%,
+// so the quietest lots (35) sell for 70% and rent for 78%, while the busiest (100) sell for 2× and rent for 1.75×.
+// A multi-tile building's land all takes the anchor's foot traffic, which never counts the building itself.
+export const TRAFFIC={neutral:50,land:.02,rent:.015};
+export function trafficFactor(footfall,slope){return 1+(footfall-TRAFFIC.neutral)*slope;}
+export function landPrice(s,i,footfall=location(s,buildingAnchor(s,i)).footfall){return Math.round(baseLandPrice(s,i)*landUplift(s,i)*trafficFactor(footfall,TRAFFIC.land));}
 // What a new building did nearby, versus the same map without it: the average land price within three tiles and the
 // monthly revenue of the player's buildings within four tiles (the foot-traffic radius). Revenue can also fall (crowding, owner time).
+// Covers land-uplift types and amenities (public parks, hospitals, theme parks, landmarks), which lift land through foot traffic.
 export function developmentImpacts(s,before){
  const impacts=[];
  for(let j=0;j<s.tiles.length;j++){
-  const t=s.tiles[j];if(!UPLIFT_TYPES[t?.type]||buildingAnchor(s,j)!==j||before[j]?.type===t.type)continue;
+  const t=s.tiles[j];if(!(UPLIFT_TYPES[t?.type]||amenityPower(t))||buildingAnchor(s,j)!==j||before[j]?.type===t.type)continue;
   const cells=footprintCells(j,t.footprint),gone=cells.length?cells:[j],prev={...s,tiles:s.tiles.map((x,k)=>gone.includes(k)?before[k]:x)},{x,y}=coords(j);
   let now=0,was=0,rent=0,assets=0;
   for(let k=0;k<s.tiles.length;k++){
@@ -228,10 +234,10 @@ export function buyParcel(s,i){
  awardAssetFame(s,`parcel:${i}`,q.total,TYPES[q.type].name+L(' acquired'));
  const msg=wasRival?L`Acquired rival's ${TYPES[q.type].name} · ₲${q.total.toLocaleString()} (50% premium) · Reputation +15`:L`${TYPES[q.type].name} purchased · ₲${q.total.toLocaleString()}`;s.log.unshift(msg);s.log=s.log.slice(0,25);return{ok:true,msg};
 }
-// Parks, gardens, theme parks and landmarks lift foot traffic for other buildings within 4 tiles. A garden (₲1,600) adds 12 per level;
-// pricier builds add more, growing with build cost^0.15 (public park 23, theme park 36, hotel landmark about 50).
+// Parks, gardens, hospitals, theme parks and landmarks lift foot traffic for other buildings within 4 tiles. A garden (₲1,600) adds 12 per level;
+// pricier builds add more, growing with build cost^0.15 (public park 23, clinic about 30, theme park 36, hotel landmark about 50).
 // Only a theme park lifts itself, by a fixed 18 per level that ignores build cost, so its pre-build quote matches the finished park.
-export function amenityPower(t){return t?.type&&(['park','garden','citypark','themepark'].includes(t.type)||t.landmark)?Math.round(12*t.level*Math.pow(Math.max(1,(t.constructionCost??TYPES[t.type]?.cost??1600)/1600),.15)):0;}
+export function amenityPower(t){return t?.type&&(['park','garden','citypark','hospital','themepark'].includes(t.type)||t.landmark)?Math.round(12*t.level*Math.pow(Math.max(1,(t.constructionCost??TYPES[t.type]?.cost??1600)/1600),.15)):0;}
 // Foot traffic is not fixed: homes, parks and the attractions below within four tiles all feed it, so expanding a
 // resort or finishing a landmark lifts the neighbors. A building's own lot is skipped so it never inflates itself.
 export const ATTRACTION={resort:10,golf:8,hotel:6,office:4,hall:3,shop:2,cafe:2,market:2,hq:20,monument:30};
@@ -285,7 +291,7 @@ export function developmentQuote(s,i,type,level=1,footprint=s.tiles[i]?.footprin
  // Managed revenue rides the business cycle, tourism clusters, crowding, the owner's reputation premium and on-site attention.
  const synergy=synergyReport(view,i,type),crowding=crowdingReport(view,i,footprint),premium=d.managed?reputationSummary(s).premium:1,cycle=d.managed?cycleFactor(s):1,attention=d.managed?ownerAttention(view):null,boost=cycle*(1+synergy.bonus)*premium*(attention?attention.multiplier:1)*(d.managed?crowding.multiplier:1);
  // Everything except the level multiplier is rounded first, so an expansion always earns an exact multiple of level 1.
- let revenue=Math.round(incomeFactor(s)*d.base*(d.managed?(.55+score*1.15)*boost:1)*Math.pow(area,1.3)*(loc.access?1:OFF_ROAD.revenue)*(type==='office'&&loc.boulevard?BOULEVARD.rent:1))*level,cost=d.upkeep*level*area;
+ let revenue=Math.round(incomeFactor(s)*d.base*(d.managed?(.55+score*1.15)*boost:1)*Math.pow(area,1.3)*(loc.access?1:OFF_ROAD.revenue)*(type==='office'?(loc.boulevard?BOULEVARD.rent:1)*trafficFactor(loc.footfall,TRAFFIC.rent):1))*level,cost=d.upkeep*level*area;
  if(!d.managed&&d.group&&type!=='plot'){
   const virtual={...s,tiles:s.tiles.map((t,j)=>cells.includes(j)?j===i?{terrain:'land',type,owner:'player',tenure:'buy',level,price:100,quality:1,staff:d.staff,marketing:false,footprint}: {terrain:'land',type:'extension',owner:null,level:1,buildingAnchor:i}:t)};
   const report=businessReport(virtual,i);revenue=report.revenue;cost=report.cost;
@@ -317,7 +323,7 @@ export function businessReport(s,i,context={}){
  let demand=clamp((loc.footfall/80)*(1-(price-100)*.009)*(1+(quality-1)*.2)/(1+loc.competition*.17),.1,1.55);
  if(['studio','workshop'].includes(t.type))demand=clamp((.7+s.skill*.009)*(1-(price-100)*.008)*(1+(quality-1)*.16)/(1+loc.competition*.12),.1,1.6);
  const staffing=clamp((staff+manage*.8)/Math.max(1,d.staff+level-1),.15,1.2);
- const area=buildingArea(t),revenue=incomeFactor(s)*(loc.access?1:OFF_ROAD.revenue)*(rental&&loc.boulevard?BOULEVARD.rent:1)*Math.pow(area,1.3)*d.base*(rental?occupancy*cycle:demand*staffing*manage*health*cycle)*(price/100)*(1+(level-1)*.65);
+ const area=buildingArea(t),revenue=incomeFactor(s)*(loc.access?1:OFF_ROAD.revenue)*(rental?(loc.boulevard?BOULEVARD.rent:1)*trafficFactor(loc.footfall,TRAFFIC.rent):1)*Math.pow(area,1.3)*d.base*(rental?occupancy*cycle:demand*staffing*manage*health*cycle)*(price/100)*(1+(level-1)*.65);
  const wages=staff*390*area,lease=t.tenure==='lease'?Math.round(landPrice(s,i)*.035):0,maintenance=d.upkeep*level*area;
  const marketing=t.marketing?150:0,boost=t.marketing&&!rental?revenue*.18:0;
  const gross=Math.round(revenue+boost),goods=rental?0:gross*(.29+quality*.07),cost=Math.round(goods+wages+lease+maintenance+marketing);
@@ -340,7 +346,7 @@ function analyzeAt(s){
  const lifestyleCosts=lifestyleCostReport(s),living=lifestyleCosts.total,tuition=s.plan.learn*4,interest=Math.round(s.debt*.012+(s.market?.margin||0)*MARGIN_RATE),stocks=investment.market;
  const compound=compoundSummary(s),creative=projectReport(s),empire=empireSummary(s),bonus=s.effect?.bonus||0,net=wage+revenue-expense-living-tuition-interest+bonus+creative.income+investment.dividends+empire.income+(compound.auto?0:compound.income);
  const inventory=journeyInventoryValue(s),art=artPortfolio(s),wealth=startupSummary(s).assets+acquisitionSummary(s).assets+s.money+assets+stocks+inventory+empire.assets+art.value+compoundSummary(s).assets-s.debt-(s.market?.margin||0)+(s.market?.shorts?shortValue(s):0),connected=new Set();s.tiles.forEach((t,i)=>{if(t.type==='road')connected.add(i);});
- return{inventory,art,lifestyleCosts,career,investment,creative,empire,economy:economyReport(s),compound,owned,reports,businessCount,revenue,expense,assets,wage,living,tuition,interest,stocks,bonus,net,wealth,passive:owned.filter(({t})=>TYPES[t.type]?.group==='property').reduce((n,{i})=>n+reports[i].profit,0)+empire.income,free:160-s.plan.work-s.plan.manage-s.plan.learn-(s.concept==='rich-life'?0:(s.plan.create||0))-(s.plan.inspect||0)-(s.plan.curate||0),attention:ownerAttention(s),connected,active:s.tiles.map(()=>true),details:s.tiles.map((t,i)=>{const l=location(s,i);return{connected:l.access,pollution:100-l.footfall,value:Math.round(landPrice(s,i)/80),education:l.residents>40,health:l.amenity>0,fire:t.owner==='player'};})};
+ return{inventory,art,lifestyleCosts,career,investment,creative,empire,economy:economyReport(s),compound,owned,reports,businessCount,revenue,expense,assets,wage,living,tuition,interest,stocks,bonus,net,wealth,passive:owned.filter(({t})=>TYPES[t.type]?.group==='property').reduce((n,{i})=>n+reports[i].profit,0)+empire.income,free:160-s.plan.work-s.plan.manage-s.plan.learn-(s.concept==='rich-life'?0:(s.plan.create||0))-(s.plan.inspect||0)-(s.plan.curate||0),attention:ownerAttention(s),connected,active:s.tiles.map(()=>true),details:s.tiles.map((t,i)=>{const l=location(s,i);return{connected:l.access,pollution:100-l.footfall,value:Math.round(landPrice(s,i,buildingAnchor(s,i)===i?l.footfall:undefined)/80),education:l.residents>40,health:l.amenity>0,fire:t.owner==='player'};})};
 }
 export function canBuild(s,i,type,tenure='lease',footprint){
  if(footprint){

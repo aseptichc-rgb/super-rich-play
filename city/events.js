@@ -1,6 +1,7 @@
 // Decision events for the rich life. Stakes scale with net worth; some choices pay off months later.
 import {L} from './i18n.js';
 import {hashRoll} from './rng.js';
+import {shockPrices} from './market.js';
 const money=n=>'₲'+Math.round(n).toLocaleString('en-US');
 const pct=(wealth,p,min=0)=>Math.max(min,Math.round(wealth*p));
 // Spending stops growing at the Tycoon chapter's ₲30M; investments keep scaling because they return the stake.
@@ -73,7 +74,7 @@ export function applyRichChoice(s,o){
  s.stress=clamp(s.stress+(o.stress||0),0,100);s.skill=clamp(s.skill+(o.skill||0),0,100);
  if(o.fame)s.prestige=Math.max(0,(s.prestige||0)+o.fame);
  if(o.memories){s.lifestyle??={spent:0,memories:0,last:{}};s.lifestyle.memories+=o.memories;}
- if(o.prices)for(const k of Object.keys(s.prices))s.prices[k]=Math.max(5,Math.round(s.prices[k]*o.prices*100)/100);
+ if(o.prices)shockPrices(s,o.prices);
  if(o.multiplier)s.effect={bonus:0,remaining:o.months||1,multiplier:o.multiplier};else if(o.bonus)s.effect={bonus:o.bonus,remaining:2};
  if(o.later){s.pending??=[];const seq=(s.pendingSerial=(s.pendingSerial||0)+1);s.pending.push({id:seq,label:o.later.label,month:s.month+o.later.months,amount:o.later.amount,chance:o.later.chance,fallback:o.later.fallback||0,penalty:o.later.penalty||null,roll:hashRoll(s.seed,seq,'pending')});}
  if(o.action==='sell-to-rival'&&Number.isInteger(o.tile)){const t=s.tiles[o.tile];if(t?.owner==='player'){t.owner='rival';t.tree=false;delete t.assetLedger;if(s.rival){s.rival.tiles.push(o.tile);s.rival.acquired=(s.rival.acquired||0)+1;}}}
