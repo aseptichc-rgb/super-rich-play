@@ -679,6 +679,13 @@ export default {
 "Creative progress +25% while owned":"보유 중 창작 진행 속도 +25%",
 "Match day in the owner box":"구단주석에서 경기 관람",
 "Stress −5 monthly while owned":"보유 중 매월 스트레스 −5",
+"Shaking hands with business leaders at a skyscraper reception at dusk":"해 질 녘 초고층 빌딩 리셉션에서 재계 인사들과 악수하는 장면",
+"Deals start with a handshake. Tonight the city's business elite came to meet you.":"거래는 악수에서 시작됩니다. 오늘 밤 도시의 재계 인사들이 당신을 만나러 왔습니다.",
+"Walking the red carpet at a premiere your network hosts":"내 방송사가 여는 프리미어의 레드카펫을 걷는 장면",
+"Flashbulbs and cheers. The premiere your network hosts is tonight's biggest story.":"쏟아지는 플래시와 환호. 내 방송사가 연 프리미어가 오늘 밤 최고의 화제입니다.",
+"Cheering a goal from the owner's box at a floodlit stadium":"조명이 켜진 경기장의 구단주석에서 골에 환호하는 장면",
+"The stadium erupts. From the owner's box, every goal feels like your own.":"경기장이 들썩입니다. 구단주석에서 보는 골은 모두 내 골처럼 느껴집니다.",
+"<span class=\"eyebrow\">OWNER'S CLUB · {0}</span><h2>{1}</h2><figure class=\"experience-scene\"><img src=\"./city/assets/owners/{2}.jpg\" alt=\"{3}\" width=\"1536\" height=\"1024\"><figcaption>{4}</figcaption></figure><div class=\"flex-summary\" role=\"status\"><b>Reputation +{5}{6}{7}</b><span>Reputation {8} · {9}</span></div><button data-action=\"owners\" class=\"primary full\">Back to the Owners Club →</button>":"<span class=\"eyebrow\">OWNER'S CLUB · {0}</span><h2>{1}</h2><figure class=\"experience-scene\"><img src=\"./city/assets/owners/{2}.jpg\" alt=\"{3}\" width=\"1536\" height=\"1024\"><figcaption>{4}</figcaption></figure><div class=\"flex-summary\" role=\"status\"><b>명성 +{5}{6}{7}</b><span>명성 {8} · {9}</span></div><button data-action=\"owners\" class=\"primary full\">오너스 클럽으로 돌아가기 →</button>",
 "Private Owner":"프라이빗 오너",
 "Economy":"경제",
 "Starting reputation title":"기본 명성 칭호",
@@ -1976,4 +1983,6 @@ export default {
 // construction.js foot traffic
 "{0}/100 · Land price {1} · Rent {2}":"{0}/100 · 땅값 {1} · 임대료 {2}",
 "{0}/100 · Land price {1}":"{0}/100 · 땅값 {1}",
+// render.js billboard
+"Medical AI data · Build to approval":"의료 AI 데이터 구축부터 허가·검증까지",
 };

@@ -67,7 +67,7 @@ import {listedStocks,indexWeights,investIndexUnits,maxIndexUnits,ipoFate,FEE} fr
 import {buyOnMargin,repayMargin,openShort,closeShort,addPlan,removePlan,ensureBroker,MARGIN_RATE,MARGIN_LIMIT,SHORT_FEE} from './broker.js';
 import {portfolioReview} from './market-report.js';
 import {MOONSHOT_OUTCOMES,ventureOffering,ventureCompany,ensureVentures,investVenture,ventureSummary} from './venture.js';
-import {reputationSummary,ownerActivity,EMPIRE_ASSETS,ensureEmpire,empireDialog,empireSummary,acquireEmpireAsset} from './empire.js';
+import {reputationSummary,ownerActivity,ownerScene,EMPIRE_ASSETS,ensureEmpire,empireDialog,empireSummary,acquireEmpireAsset} from './empire.js';
 import {acquisitionsDialog,buyCompany,sellCompany} from './acquisitions.js';
 import {startShift,resolveOrder,ordersFor} from './activity.js';
 import {PATHS,projectQuote,startProject,archiveProject} from './projects.js';
@@ -295,7 +295,7 @@ $('#app').addEventListener('click',e=>{
  if(b.dataset.startupSell){const r=sellStartup(state,Number(b.dataset.startupSell));if(r.ok){changed();openDialog('growth',startupsDialog(state));}toast(r.msg);return;}
  if(b.dataset.action==='acquisitions'){openDialog('growth',acquisitionsDialog(state));return;}
  if(b.dataset.companyBuy||b.dataset.companySell){const r=b.dataset.companyBuy?buyCompany(state,b.dataset.companyBuy):sellCompany(state,Number(b.dataset.companySell));if(r.ok){changed();audio.play('win');}openDialog('growth',acquisitionsDialog(state));toast(r.msg);return;}
- if(b.dataset.ownerActivity){const r=ownerActivity(state,b.dataset.ownerActivity);if(r.ok){changed();audio.play('win');}owners();toast(r.msg);return;}
+ if(b.dataset.ownerActivity){const id=b.dataset.ownerActivity,r=ownerActivity(state,id);if(r.ok){changed();audio.play('win');openDialog('growth',ownerScene(state,id));}else owners();toast(r.msg);return;}
  if(b.dataset.propertyParty!==undefined){const i=Number(b.dataset.propertyParty),r=hostPropertyParty(state,i);if(r.ok){changed();audio.play('win');}inspectAsset(i);toast(r.msg);return;}
  if(b.dataset.choice!==undefined){const r=chooseEvent(state,Number(b.dataset.choice));toast(r.msg);if(r.ok){closeDialog();changed();}return;}
  if(b.dataset.action==='new-game'){openDialog('new',newGameDialog(state,analysis.wealth,{cloudLinked:!!cloudUI?.linked()}));return;}

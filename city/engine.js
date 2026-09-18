@@ -72,7 +72,7 @@ const RETIRED_EVENTS=[
 export function migrateSave(s){return onMap(s,()=>migrateSaveAt(s));}
 function migrateSaveAt(s){
  if(s?.concept==='rich-life'&&Number.isInteger(s.plan?.create)&&s.plan.create>=0)s.plan.create=0;
- if(s){ensureEconomy(s);ensureMarket(s);retireCompoundAccounts(s);s.growthStartMonth??=s.month;if(s.tiles?.length===SIZE*SIZE)installBoulevards(s);repairVentureNames(s);}
+ if(s){ensureEconomy(s);ensureMarket(s);retireCompoundAccounts(s);s.growthStartMonth??=s.month;if(s.tiles?.length===SIZE*SIZE){installBoulevards(s);thinRoadSlabs(s);}repairVentureNames(s);}
  if(s&&RETIRED_EVENTS.some(e=>JSON.stringify(e)===JSON.stringify(s.event)))s.event=null;
  if(s?.event?.id==='networking')s.event=null;
  if(Array.isArray(s?.eventLog))s.eventLog=s.eventLog.filter(id=>id!=='networking');
@@ -103,6 +103,24 @@ export function installBoulevards(s){
  for(let n=0;n<SIZE;n++)for(const i of new Set([index(n,axis),index(axis,n)])){
   const t=s.tiles[i];if(t.owner==='player'||(t.type&&t.type!=='road'))continue;
   Object.assign(t,{type:'road',owner:'npc',level:1,tree:false,boulevard:true,bridge:t.terrain==='water'});
+ }
+}
+// Older saves grew 2×2 slabs of NPC road. Peel them back to one-tile streets, outermost tiles first, without removing
+// boulevards or bridges, cutting any building off the road, or splitting the road network. Idempotent.
+export function thinRoadSlabs(s){
+ const isRoad=j=>s.tiles[j].type==='road',road=(x,y)=>x>=0&&y>=0&&x<SIZE&&y<SIZE&&isRoad(index(x,y));
+ const inSlab=j=>{const{x,y}=coords(j);return[[-1,-1],[1,-1],[-1,1],[1,1]].some(([dx,dy])=>road(x+dx,y)&&road(x,y+dy)&&road(x+dx,y+dy));};
+ const linked=ends=>{const seen=new Set([ends[0]]),queue=[ends[0]];for(let k=0;k<queue.length;k++)for(const n of neighbors(queue[k]))if(isRoad(n)&&!seen.has(n)){seen.add(n);queue.push(n);}return ends.every(n=>seen.has(n));};
+ const clear=j=>{
+  const t=s.tiles[j],ends=neighbors(j).filter(isRoad),served=neighbors(j).filter(n=>s.tiles[n].type&&!isRoad(n)).map(n=>buildingAnchor(s,n));
+  s.tiles[j]={terrain:t.terrain,type:null,level:1,tree:false,owner:null};
+  if(linked(ends)&&served.every(a=>hasRoadAccess(s,a,s.tiles[a].footprint)))return true;
+  s.tiles[j]=t;return false;
+ };
+ for(;;){
+  const slab=s.tiles.map((t,j)=>j).filter(j=>isRoad(j)&&s.tiles[j].owner!=='player'&&!s.tiles[j].boulevard&&s.tiles[j].terrain==='land'&&inSlab(j));
+  slab.sort((a,b)=>neighbors(a).filter(isRoad).length-neighbors(b).filter(isRoad).length||a-b);
+  if(!slab.some(clear))return s;
  }
 }
 export function hasBoulevardAccess(s,i,footprint){return footprintCells(i,footprint).some(j=>neighbors(j).some(n=>s.tiles[n].type==='road'&&s.tiles[n].boulevard===true));}
@@ -208,7 +226,10 @@ export function advanceNeighborhood(s){
  // Boulevard extensions and roads opened by map expansion don't raise the threshold.
  const roads=s.tiles.filter((t,i)=>{const x=coords(i).x-mapOffset(s),y=coords(i).y-mapOffset(s);return t.type==='road'&&x>=0&&y>=0&&x<BASE_SIZE&&y<BASE_SIZE&&!(t.boulevard&&(x<3||x>19||y<3||y>21));}).length;
  if(s.month%3===0&&buildings>=34+Math.max(0,roads-99)*6){
-  const extensions=s.tiles.map((t,j)=>j).filter(j=>vacant(j)&&neighbors(j).some(n=>s.tiles[n].type==='road')&&neighbors(j).some(vacant));
+  // A new road never completes a 2×2 square of road, so streets stay one tile wide instead of spreading into slabs.
+  const road=(x,y)=>x>=0&&y>=0&&x<SIZE&&y<SIZE&&s.tiles[index(x,y)].type==='road';
+  const slab=j=>{const{x,y}=coords(j);return[[-1,-1],[1,-1],[-1,1],[1,1]].some(([dx,dy])=>road(x+dx,y)&&road(x,y+dy)&&road(x+dx,y+dy));};
+  const extensions=s.tiles.map((t,j)=>j).filter(j=>vacant(j)&&neighbors(j).some(n=>s.tiles[n].type==='road')&&neighbors(j).some(vacant)&&!slab(j));
   const score=j=>neighbors(j).filter(vacant).length*20+s.tiles.reduce((n,t,k)=>n+(t.type&&!['road','plot'].includes(t.type)&&dist(j,k)<=3?1:0),0)+roll(j)*10;
   extensions.sort((a,b)=>score(b)-score(a));
   if(extensions.length){const j=extensions[0];Object.assign(s.tiles[j],{type:'road',owner:'npc',level:1,tree:false});s.log.unshift(L`Road extended · Connected to (${coords(j).x+1}, ${coords(j).y+1})`);}
