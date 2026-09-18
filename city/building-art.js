@@ -7,7 +7,7 @@ const ART_ALIAS=Object.freeze({citypark:'park'});
 const artType=type=>Object.hasOwn(ART_ALIAS,type)?ART_ALIAS[type]:type;
 export const artTier=(type,level=1)=>TIERED_ART.includes(artType(type))?Math.max(1,Math.min(3,level||1)):1;
 // Long lots (2×1, 3×1 and their mirrors) use `<type>[-tier]-wide.webp`, drawn for a 3×1 lot whose long side runs toward the lower right.
-export const WIDE_ART=Object.freeze(['hotel','resort','office','hq','cafe','market','studio','workshop','rental','condo','hospital','themepark','housing']);
+export const WIDE_ART=Object.freeze(['hotel','resort','office','hq','cafe','market','studio','workshop','rental','condo','hospital','themepark','housing','golf','garden','park']);
 export const wideLot=footprint=>{const width=footprint?.width||1,height=footprint?.height||1;return Math.max(width,height)>=2*Math.min(width,height);};
 // 3×2 and 2×3 lots use `<type>[-tier]-broad.webp`, drawn for a 3×2 lot whose long side runs toward the lower right; every building that can stand on a combined lot has one.
 export const BROAD_ART=Object.freeze(['golf','garden','park','monument','hotel','resort','office','hq','cafe','market','studio','workshop','rental','condo','hospital','housing','themepark']);
@@ -60,7 +60,8 @@ export function drawBuildingArt(ctx,t,p,zoom){
  const bounds=buildingArtBounds(t,p,zoom,image.naturalWidth,image.naturalHeight,item.depth);
  ctx.save();ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
  // Long-lot art runs toward the lower right; a lot deeper than it is wide shows the sprite mirrored.
- if(item.depth&&(t.footprint?.height||1)>(t.footprint?.width||1)){ctx.translate(bounds.x*2+bounds.width,0);ctx.scale(-1,1);}
+ const mirror=!!item.depth&&(t.footprint?.height||1)>(t.footprint?.width||1);
+ if(mirror){ctx.translate(bounds.x*2+bounds.width,0);ctx.scale(-1,1);}
  ctx.drawImage(image,bounds.x,bounds.y,bounds.width,bounds.height);ctx.restore();
- return{...bounds,image};
+ return{...bounds,image,mirror};
 }
