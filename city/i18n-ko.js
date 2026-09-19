@@ -1983,6 +1983,4 @@ export default {
 // construction.js foot traffic
 "{0}/100 · Land price {1} · Rent {2}":"{0}/100 · 땅값 {1} · 임대료 {2}",
 "{0}/100 · Land price {1}":"{0}/100 · 땅값 {1}",
-// render.js billboard
-"Medical AI data · Build to approval":"의료 AI 데이터 구축부터 허가·검증까지",
 };

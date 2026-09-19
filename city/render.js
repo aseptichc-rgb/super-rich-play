@@ -445,27 +445,23 @@ export function createRenderer(canvas,getState,getAnalysis,onTile,onHover){
   }
   endHit();world=0;
  }
- // A large mediwork.ai billboard stands on pylons in the river, between rows the boulevard bridge and road growth never cross
- // (new roads only claim land). Its face looks back across the water at the city, so the lettering is sheared like a wall.
+ // A building-sized mediwork AI billboard stands on two poles in the river off the west bank, in rows the boulevard bridge and road
+ // growth never cross (new roads only claim land). Its face is a wall seen from the city side, so the logo is sheared with it.
  function billboard(s){
   world=mapOffset(s);
-  const xb=23.3,y0=3.8,y1=10.2,base=30,top=base+64,W=(y1-y0)*halfW,H=top-base,accent='#3d8bff',posts=[y0+1,(y0+y1)/2,y1-1];
+  const xb=22.7,y0=5.3,y1=8.3,base=18,top=base+28,W=(y1-y0)*halfW,H=top-base,posts=[y0+.6,y1-.6];
   ctx.globalAlpha=layer==='assets'?.22:1;
-  for(const y of posts){poly([screen(xb-.42,y-.2),screen(xb-.02,y-.2),screen(xb-.02,y+.2),screen(xb-.42,y+.2)],'#9aa7a6','#c8d4d0');box(xb-.29,y-.07,.14,.14,base,'#6c7880','#4d585f','#5d686f');}
-  poly([screen(xb-.18,y0,top),screen(xb,y0,top),screen(xb,y1,top),screen(xb-.18,y1,top)],'#d9dee2');
-  poly([screen(xb-.18,y1,base),screen(xb,y1,base),screen(xb,y1,top),screen(xb-.18,y1,top)],'#27313d');
+  for(const y of posts){poly([screen(xb-.3,y-.12),screen(xb-.06,y-.12),screen(xb-.06,y+.12),screen(xb-.3,y+.12)],'#9aa7a6','#c8d4d0');box(xb-.22,y-.05,.1,.1,base,'#5d686f','#48545b','#5d686f');}
+  poly([screen(xb-.1,y0,top),screen(xb,y0,top),screen(xb,y1,top),screen(xb-.1,y1,top)],'#46524c');
+  poly([screen(xb-.1,y1,base),screen(xb,y1,base),screen(xb,y1,top),screen(xb-.1,y1,top)],'#2e3a34');
   const o=screen(xb,y1,top);ctx.save();ctx.translate(o.x,o.y);ctx.transform(zoom,-halfH/halfW*zoom,0,zoom,0,0);
-  const face=ctx.createLinearGradient(0,0,W,H);face.addColorStop(0,'#0c1a2e');face.addColorStop(1,'#16325a');ctx.fillStyle=face;ctx.fillRect(0,0,W,H);
-  const glow=ctx.createLinearGradient(0,0,0,H*.45);glow.addColorStop(0,'rgba(255,248,220,.22)');glow.addColorStop(1,'rgba(255,248,220,0)');ctx.fillStyle=glow;ctx.fillRect(0,0,W,H);
-  ctx.strokeStyle='#e8edf2';ctx.lineWidth=2;ctx.strokeRect(1,1,W-2,H-2);ctx.fillStyle=accent;ctx.fillRect(12,H-11,W-24,2.5);
-  let size=30;ctx.font=`bold ${size}px sans-serif`;const fit=ctx.measureText('mediwork.ai').width;if(fit>W-28){size*=(W-28)/fit;ctx.font=`bold ${size}px sans-serif`;}
-  const name=ctx.measureText('mediwork').width,ai=ctx.measureText('.ai').width,left=(W-name-ai)/2;
-  ctx.textAlign='left';ctx.fillStyle='#ffffff';ctx.fillText('mediwork',left,H*.56);ctx.fillStyle=accent;ctx.fillText('.ai',left+name,H*.56);
-  const tagline=L('Medical AI data · Build to approval');ctx.font='600 8px sans-serif';const room=ctx.measureText(tagline).width;if(room>W-28)ctx.font=`600 ${8*(W-28)/room}px sans-serif`;
-  ctx.textAlign='center';ctx.fillStyle='#c9d6e6';ctx.fillText(tagline,W/2,H-17);ctx.restore();
-  box(xb,y0,.28,y1-y0,base-2,'#8a969c','#5e696f','#737f85',base-5);
-  for(const y of posts){line(screen(xb,y,top),screen(xb+.3,y,top+7),'#4d585f',1.2);circle(screen(xb+.3,y,top+7),2.2,'#fff4c8');}
-  ctx.globalAlpha=1;world=0;
+  ctx.fillStyle='#2f4a3f';ctx.fillRect(0,0,W,H);ctx.fillStyle='#fbfaf6';ctx.fillRect(1.5,1.5,W-3,H-3);
+  // The logo: a red mark of three crossing bars each way, then the wordmark, laid out in the logo's own proportions (6 marks wide).
+  const m=Math.min(H*.52,(W-13)/6),left=(W-6*m)/2,cx=left+m/2,cy=H/2,t=m*.049,p=m*.1156;
+  ctx.fillStyle='#c1121f';for(const k of [-1,0,1]){ctx.fillRect(cx+k*p-t/2,cy-m/2,t,m);ctx.fillRect(left,cy+k*p-t/2,m,t);}
+  const family='"Century Gothic","Futura","Avenir Next","Segoe UI",sans-serif';ctx.font=`400 20px ${family}`;
+  ctx.font=`400 ${20*4.63*m/ctx.measureText('mediwork AI').width}px ${family}`;ctx.textAlign='left';ctx.fillStyle='#111111';ctx.fillText('mediwork AI',left+1.36*m,cy+.384*m);
+  ctx.restore();ctx.globalAlpha=1;world=0;
  }
  function scene(s,a){
   const cw=w+2*MARGIN,ch=h+2*MARGIN;
@@ -485,7 +481,7 @@ export function createRenderer(canvas,getState,getAnalysis,onTile,onHover){
   }
   for(let sum=0;sum<SIZE*2;sum++)for(let x=0;x<SIZE;x++){const y=sum-x;if(y<0||y>=SIZE)continue;depth=sum;column=x;const i=y*SIZE+x,t=s.tiles[i],assetFocus=layer==='assets'&&s.tiles[t.buildingAnchor??i].owner!=='player';
    if(sum===27+2*mapOffset(s)&&x===5+mapOffset(s))estate(s);
-   if(!groundView&&sum===33+2*mapOffset(s)&&x===23+mapOffset(s))billboard(s);
+   if(!groundView&&sum===30+2*mapOffset(s)&&x===22+mapOffset(s))billboard(s);
    if(assetFocus)ctx.globalAlpha=.22;
    if(t.type==='road'&&t.terrain==='water')bridge(x,y,s);
    if(groundView){
