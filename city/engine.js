@@ -255,8 +255,8 @@ export function buyParcel(s,i){
  awardAssetFame(s,`parcel:${i}`,q.total,TYPES[q.type].name+L(' acquired'));
  const msg=wasRival?L`Acquired rival's ${TYPES[q.type].name} · ₲${q.total.toLocaleString()} (50% premium) · Reputation +15`:L`${TYPES[q.type].name} purchased · ₲${q.total.toLocaleString()}`;s.log.unshift(msg);s.log=s.log.slice(0,25);return{ok:true,msg};
 }
-// Parks, gardens, hospitals, theme parks and landmarks lift foot traffic for other buildings within 4 tiles. A garden (₲1,600) adds 12 per level;
-// pricier builds add more, growing with build cost^0.15 (public park 23, clinic about 30, theme park 36, hotel landmark about 50).
+// Parks, gardens, hospitals, theme parks and landmarks lift foot traffic for other buildings within 4 tiles. A garden (₲1,600) adds 6 per level;
+// pricier builds add more, growing with build cost^0.15 (public park 11, clinic about 30, theme park 36, hotel landmark about 50).
 // Only a theme park lifts itself, by a fixed 18 per level that ignores build cost, so its pre-build quote matches the finished park.
 export function amenityPower(t){return t?.type&&(['park','garden','citypark','hospital','themepark'].includes(t.type)||t.landmark)?Math.round((['park','garden','citypark'].includes(t.type)?6:12)*t.level*Math.pow(Math.max(1,(t.constructionCost??TYPES[t.type]?.cost??1600)/1600),.15)):0;}
 // Foot traffic is not fixed: homes, parks and the attractions below within four tiles all feed it, so expanding a
