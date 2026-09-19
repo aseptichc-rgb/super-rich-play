@@ -96,6 +96,20 @@ export function createRenderer(canvas,getState,getAnalysis,onTile,onHover){
  function line(a,b,color,width=1){ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.strokeStyle=color;ctx.lineWidth=width*zoom;ctx.stroke();}
  function circle(p,r,color){if(recordingHit){const pts=[];for(let n=0;n<12;n++)pts.push({x:p.x+Math.cos(n*Math.PI/6)*r*zoom,y:p.y+Math.sin(n*Math.PI/6)*r*zoom});record(pts);}ctx.beginPath();ctx.arc(p.x,p.y,r*zoom,0,Math.PI*2);ctx.fillStyle=color;ctx.fill();}
  function assetBadge(x,y,t){const p=imageTops.get(y*SIZE+x)||screen(x+.5,y+.5,badgeHeight(t.type,t.level)+16),label=`✦ ${t.landmark?.name||buildingName(t)}${t.type==='plot'?'':' · Lv.'+t.level}`;ctx.font=`bold ${Math.max(10,11*zoom)}px sans-serif`;ctx.textAlign='center';const width=ctx.measureText(label).width+14;if(recordingHit)record([{x:p.x-width/2,y:p.y-13*zoom},{x:p.x+width/2,y:p.y-13*zoom},{x:p.x+width/2,y:p.y+6*zoom},{x:p.x-width/2,y:p.y+6*zoom}]);ctx.fillStyle='#2f4d3eeb';ctx.fillRect(p.x-width/2,p.y-13*zoom,width,19*zoom);ctx.fillStyle='#ffe59a';ctx.fillText(label,p.x,p.y+1*zoom);}
+ // Mountain tiles share corner heights, so a range reads as one massif: corners rise with how deep the four tiles around them
+ // sit inside the range, each tile peaks above its corners, and the tallest peaks carry snow.
+ function mountain(s,x,y){
+  const rock=(a,b)=>a>=0&&b>=0&&a<SIZE&&b<SIZE&&s.tiles[b*SIZE+a].terrain==='mountain',cross=[[1,0],[-1,0],[0,1],[0,-1]];
+  const inner=(a,b)=>rock(a,b)&&cross.every(([dx,dy])=>rock(a+dx,b+dy)),deep=(a,b)=>inner(a,b)&&cross.every(([dx,dy])=>inner(a+dx,b+dy));
+  const level=(a,b)=>rock(a,b)?1+inner(a,b)+deep(a,b):0;
+  const rise=(a,b)=>{const n=Math.min(level(a-1,b-1),level(a,b-1),level(a-1,b),level(a,b));return n?n*17+(a*7+b*13)%8:0;};
+  const z=[rise(x,y),rise(x+1,y),rise(x+1,y+1),rise(x,y+1)],height=Math.max(...z)+16+(x*11+y*5)%12;
+  const apex=screen(x+.5+((x+y)%3-1)*.1,y+.5,height),corner=[screen(x,y,z[0]),screen(x+1,y,z[1]),screen(x+1,y+1,z[2]),screen(x,y+1,z[3])];
+  for(const[a,b,color]of[[0,1,'#8d9a8c'],[3,0,'#a3ad9a'],[1,2,'#5f7268'],[2,3,'#7c8c7b']])poly([corner[a],corner[b],apex],color,color);
+  if(height<62)return;
+  const cap=p=>({x:apex.x+(p.x-apex.x)*.4,y:apex.y+(p.y-apex.y)*.4});
+  for(const[a,b,color]of[[0,1,'#e4e9e4'],[3,0,'#fafaf5'],[1,2,'#cfd9d8'],[2,3,'#eef1ea']])poly([cap(corner[a]),cap(corner[b]),apex],color,color);
+ }
  function tree(x,y,scale=1){
   const p=screen(x,y),r=10*scale*zoom;
   ctx.fillStyle='#203c3430';ctx.beginPath();ctx.ellipse(p.x+9*scale*zoom,p.y+4*zoom,r*1.7,r*.55,.3,0,Math.PI*2);ctx.fill();
@@ -378,7 +392,7 @@ export function createRenderer(canvas,getState,getAnalysis,onTile,onHover){
    depth=-1;column=x;const i=y*SIZE+x,t=s.tiles[i],road=(xx,yy)=>xx>=0&&yy>=0&&xx<SIZE&&yy<SIZE&&s.tiles[yy*SIZE+xx].type==='road';
    ctx.globalAlpha=layer==='assets'&&t.owner!=='player'?.3:1;
    const tone=(Math.sin(x*.72+y*.37)+1)*2;
-   const surface=t.terrain==='water'?water:`hsl(85,22%,${64+tone}%)`;tile(x,y,surface,surface);
+   const surface=t.terrain==='water'?water:t.terrain==='mountain'?`hsl(95,13%,${50+tone}%)`:`hsl(85,22%,${64+tone}%)`;tile(x,y,surface,surface);
    if(t.terrain==='water'&&t.type!=='road'){
     animate(tileBox(x,y,0,12*zoom),time=>{for(let n=0;n<3;n++){const p=screen(x+.15+n*.25,y+.25+n*.21),wave=Math.sin(time*.0007+y+n)*2*zoom;line({x:p.x-4*zoom,y:p.y+wave},{x:p.x+(6+n*2)*zoom,y:p.y+wave},n===1?'#c4e0d326':'#b4d8d91b',.6);}});
     continue;
@@ -504,7 +518,8 @@ export function createRenderer(canvas,getState,getAnalysis,onTile,onHover){
      if(asset.owner==='rival'){const center=picture?{x:picture.x+picture.width/2,y:picture.y-7*zoom}:screen(p.x+.5,p.y+.5,badgeHeight(asset.type,asset.level)+8);circle(center,7,'#a83d37');ctx.fillStyle='#fff3e6';ctx.font=`bold ${9*zoom}px sans-serif`;ctx.textAlign='center';ctx.fillText('⚑',center.x,center.y+3*zoom);}
      endHit();
     }
-   }else if(t.tree&&t.terrain==='land'){startHit(-1);tree(x+.5,y+.5,.85+((x+y)%3)*.1);endHit();}
+   }else if(t.terrain==='mountain'){startHit(-1);mountain(s,x,y);endHit();}
+   else if(t.tree&&t.terrain==='land'){startHit(-1);tree(x+.5,y+.5,.85+((x+y)%3)*.1);endHit();}
    if(layer==='assets'&&s.tiles[t.buildingAnchor??i].owner==='player')tile(x,y,'#ffd75f88','#fff0a8',2);if(layer!=='normal'&&layer!=='assets'&&t.terrain==='land'){const d=a.details[i];let val=layer==='pollution'?1-d.pollution/100:layer==='value'?d.value/130:layer==='services'?(d.education+d.health+d.fire)/3:(d.connected?1:0);val=Math.max(0,Math.min(1,val));tile(x,y,`hsla(${val*130},55%,48%,.42)`);}
    ctx.globalAlpha=1;startHit(-1);
    const badgeRoot=t.buildingAnchor??i,badgeAsset=s.tiles[badgeRoot];

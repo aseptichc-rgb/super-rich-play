@@ -1,11 +1,8 @@
-// Billboard creatives shown on the map. These are placeholder brands: to show a real company logo,
-// add `logo:'city/assets/billboards/<file>.png'` to an entry (or add new entries). The logo is fitted
-// inside the panel on the entry's background color; the name is drawn only while there is no logo.
+// Billboard creatives shown on the map. Every billboard carries the mediwork AI logo, which replaced the placeholder brands.
+// To add an advertiser, add an entry with `logo:'city/assets/billboards/<file>.png'`. The logo is fitted inside the panel
+// on the entry's background color; the name is drawn only while there is no logo.
 export const BILLBOARD_ADS=[
- {name:'NOVA',color:'#d8443c',ink:'#fff6e8'},
- {name:'LUMINA',color:'#2f6f8f',ink:'#f4fbff'},
- {name:'ORBIT',color:'#f1c84b',ink:'#3a2f12'},
- {name:'ZEST',color:'#3f8f5a',ink:'#f3fff2'}
+ {name:'mediwork AI',color:'#ffffff',ink:'#111111',logo:'city/assets/billboards/mediwork-ai.png'}
 ];
 // Each building keeps one advertiser, picked by its tile index, so saves need no ad data.
 export const billboardAd=i=>BILLBOARD_ADS[i%BILLBOARD_ADS.length];
