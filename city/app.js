@@ -73,12 +73,13 @@ import {startShift,resolveOrder,ordersFor} from './activity.js';
 import {PATHS,projectQuote,startProject,archiveProject} from './projects.js';
 import {createAudio} from './audio.js';
 const audio=createAudio();
-import {TYPES,STOCKS,MILESTONES,analyze,build,sellAsset,demolishAsset,upgrade,installBillboard,trade,setPlan,tick,chooseEvent,eventShortfall,validSave,migrateSave,coords,landPrice,location,assetValue,canBuild,parcelQuote,buyParcel,buildingAnchor,developmentImpacts,buildingName,expandMap,useMap,index,mapOffset} from './engine.js';
+import {TYPES,STOCKS,MILESTONES,analyze,build,sellAsset,demolishAsset,upgrade,installBillboard,trade,setPlan,tick,chooseEvent,eventShortfall,validSave,migrateSave,coords,landPrice,location,assetValue,canBuild,parcelQuote,buyParcel,buildingAnchor,developmentImpacts,buildingName,expandMap,fillMap,useMap,index,mapOffset} from './engine.js';
 import {createRenderer} from './render.js';
 import {createRichGame as createGame,RICH_GOALS,lifestyleDialog,experienceScene,enjoyExperience} from './rich-life.js';
 const $=s=>document.querySelector(s),money=n=>'₲'+Math.round(n).toLocaleString('en-US'),esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let state=createGame(),loadWarning='',resumed=false;
 try{const raw=sessionSave(localStorage,devSession);if(raw){const saved=migrateSave(JSON.parse(raw));if(validSave(saved)){state=saved;resumed=true;}else loadWarning=L('Could not read the save. Your existing save will not be overwritten.');}}catch{loadWarning=L('Auto-save is unavailable. Use file export instead.');}
+fillMap(state);
 ensureBasis(state);
 ensureVentures(state);
 ensureEmpire(state);
@@ -128,7 +129,7 @@ function developerPanel(){
  speed=0;renderHUD();
  openDialog('developer',`<h2>${L('Developer Test')}</h2><p>${L('Separate test save · Cloud sync off. Your normal game is preserved.')}</p><label class="field-label" for="dev-money">${L('Test cash balance')}<input id="dev-money" type="number" min="0" max="1000000000000" step="1" value="${Math.round(state.money)}"></label><p class="help">${L('Enter a whole number from 0 to 1,000,000,000,000. Peak net worth can increase; lowering cash keeps previous unlocks.')}</p><div class="button-row">${[10000000,100000000,1000000000].map(n=>`<button data-dev-money="${n}">${money(n)}</button>`).join('')}</div><div class="button-row"><button class="primary" data-action="dev-apply">${L('Apply test balance')}</button><button data-action="dev-exit">${L('Return to normal game')}</button></div>`);
 }
-function loadSave(candidate){state=candidate;ensureBasis(state);saveBlocked=false;selected=-1;renderer.select(-1);speed=0;elapsed=0;closeDialog();selectTool('inspect');changed();renderer.home();}
+function loadSave(candidate){state=fillMap(candidate);ensureBasis(state);saveBlocked=false;selected=-1;renderer.select(-1);speed=0;elapsed=0;closeDialog();selectTool('inspect');changed();renderer.home();}
 function renderHUD(){
  let economy=$('#economy-status');if(!economy){economy=document.createElement('div');economy.id='economy-status';$('#wealth-growth').before(economy);}economy.innerHTML=economyBanner(state);
  let flexEntry=$('#flex-entry');if(!flexEntry){flexEntry=document.createElement('button');flexEntry.id='flex-entry';flexEntry.dataset.action='flex';$('#wealth-growth').after(flexEntry);}flexEntry.innerHTML=L`<span>✦ My Flex</span><small>Sports car · Mansion · Yacht ${flexState(state).owned.length}/3 →</small>`;
@@ -299,7 +300,7 @@ $('#app').addEventListener('click',e=>{
  if(b.dataset.propertyParty!==undefined){const i=Number(b.dataset.propertyParty),r=hostPropertyParty(state,i);if(r.ok){changed();audio.play('win');}inspectAsset(i);toast(r.msg);return;}
  if(b.dataset.choice!==undefined){const r=chooseEvent(state,Number(b.dataset.choice));toast(r.msg);if(r.ok){closeDialog();changed();}return;}
  if(b.dataset.action==='new-game'){openDialog('new',newGameDialog(state,analysis.wealth,{cloudLinked:!!cloudUI?.linked()}));return;}
- if(b.dataset.action==='new-game-start'){if(!$('#new-game-confirm')?.checked)return;const name=$('#new-game-name')?.value||'';cloudUI?.stopSync();state=freshGame(name);saveBlocked=false;selected=-1;renderer.select(-1);speed=0;elapsed=0;closeDialog();selectTool('inspect');changed();renderer.home();toast(L('A new story begins.'));return;}
+ if(b.dataset.action==='new-game-start'){if(!$('#new-game-confirm')?.checked)return;const name=$('#new-game-name')?.value||'';cloudUI?.stopSync();state=fillMap(freshGame(name));saveBlocked=false;selected=-1;renderer.select(-1);speed=0;elapsed=0;closeDialog();selectTool('inspect');changed();renderer.home();toast(L('A new story begins.'));return;}
  if(b.dataset.rivalTarget!==undefined){const i=Number(b.dataset.rivalTarget);closeDialog();renderer.focus(i);selected=i;renderer.select(i);renderer.burst(i,L('⚑ Lot the rival is targeting'),'loss');return;}
  if(b.dataset.eventTile!==undefined){const i=Number(b.dataset.eventTile);closeDialog();renderer.focus(i);selected=i;renderer.select(i);renderer.burst(i,L('⚑ The building in the offer'),'loss');toast(L('Press ↦ to return to the offer'));return;}
  if(b.dataset.action==='language'){if(b.dataset.lang!==lang){save();switchLanguage(b.dataset.lang);}return;}

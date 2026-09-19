@@ -160,7 +160,15 @@ export function expandMap(s,i){
  const cells=footprintCells(i,s.tiles[i]?.footprint),old=SIZE,g=Math.min(MAP_GROWTH,Math.floor((MAX_SIZE-old)/2)),edge=j=>{const{x,y}=coords(j);return[x===0,y===0,x===old-1,y===old-1];};
  const sides=[0,1,2,3].filter(k=>cells.some(j=>edge(j)[k]));
  if(!sides.length||g<1)return i;
- const next=old+g*2,o=mapOffset(s)+g,move=j=>(Math.floor(j/old)+g)*next+j%old+g;
+ const move=growMap(s,g,sides);
+ s.log.unshift(L`Map expanded · ${g} tiles of new land and roads opened on every side`);s.log=s.log.slice(0,25);
+ return move(i);
+}
+// Every game plays on the whole map: new and older saves grow to MAX_SIZE in one step, the original city at the center.
+export function fillMap(s){useMap(s);const g=Math.floor((MAX_SIZE-SIZE)/2);if(g>=1)growMap(s,g,[]);return s;}
+// Adds g tiles of land on every side, moves every saved tile index, runs edge roads out and lays a road along the given sides.
+function growMap(s,g,sides){
+ const old=SIZE,next=old+g*2,o=mapOffset(s)+g,move=j=>(Math.floor(j/old)+g)*next+j%old+g;
  const tiles=Array.from({length:next*next},(_,k)=>{const x=k%next-o,y=Math.floor(k/next)-o;return{terrain:terrainAt(x,y),type:null,level:1,tree:(Math.abs(x*31+y*7)+s.seed)%17<3,owner:null};});
  s.tiles.forEach((t,j)=>{if(t.buildingAnchor!==undefined)t.buildingAnchor=move(t.buildingAnchor);tiles[move(j)]=t;});
  // Every saved tile index moves with the grid.
@@ -175,8 +183,7 @@ export function expandMap(s,i){
   if(tiles[index(x,y)].type==='road')for(let k=1;k<=g&&tiles[index(x+dx*k,y+dy*k)].terrain!=='mountain';k++)road(x+dx*k,y+dy*k);
  installBoulevards(s);
  for(const side of sides)for(let n=0;n<next;n++){const [x,y]=[[g-1,n],[n,g-1],[g+old,n],[n,g+old]][side];if(tiles[index(x,y)].terrain==='land')road(x,y);}
- s.log.unshift(L`Map expanded · ${g} tiles of new land and roads opened on every side`);s.log=s.log.slice(0,25);
- return move(i);
+ return move;
 }
 function baseLandPrice(s,i){let{x,y}=coords(i);x-=mapOffset(s);y-=mapOffset(s);return (2600+Math.max(0,12-Math.hypot(x-10,y-10))*230+(x>=18?800:0))*(1+s.month*.002)*marketFactor(s)*(hasRoadAccess(s,i)?1:OFF_ROAD.land)*(hasBoulevardAccess(s,i)?BOULEVARD.land:1);}
 // Development premium: parks, gardens, homes, hotels and resorts within three tiles lift land prices (rate × level), up to +30%.
@@ -400,7 +407,9 @@ function analyzeAt(s){
  const lifestyleCosts=lifestyleCostReport(s),living=lifestyleCosts.total,tuition=s.plan.learn*4,interest=Math.round(s.debt*.012+(s.market?.margin||0)*MARGIN_RATE),stocks=investment.market;
  const compound=compoundSummary(s),creative=projectReport(s),empire=empireSummary(s),bonus=s.effect?.bonus||0,net=wage+revenue-expense-living-tuition-interest+bonus+creative.income+investment.dividends+empire.income+(compound.auto?0:compound.income);
  const inventory=journeyInventoryValue(s),art=artPortfolio(s),wealth=startupSummary(s).assets+acquisitionSummary(s).assets+s.money+assets+stocks+inventory+empire.assets+art.value+compoundSummary(s).assets-s.debt-(s.market?.margin||0)+(s.market?.shorts?shortValue(s):0),connected=new Set();s.tiles.forEach((t,i)=>{if(t.type==='road')connected.add(i);});
- return{inventory,art,lifestyleCosts,career,investment,creative,empire,economy:economyReport(s),compound,owned,reports,businessCount,revenue,expense,assets,wage,living,tuition,interest,stocks,bonus,net,wealth,passive:owned.filter(({t})=>TYPES[t.type]?.group==='property').reduce((n,{i})=>n+reports[i].profit,0)+empire.income,free:160-s.plan.work-s.plan.manage-s.plan.learn-(s.concept==='rich-life'?0:(s.plan.create||0))-(s.plan.inspect||0)-(s.plan.curate||0),attention:ownerAttention(s),connected,active:s.tiles.map(()=>true),details:s.tiles.map((t,i)=>{const l=location(s,i);return{connected:l.access,pollution:100-l.footfall,value:Math.round(landPrice(s,i,buildingAnchor(s,i)===i?l.footfall:undefined)/80),education:l.residents>40,health:l.amenity>0,fire:t.owner==='player'};})};
+ // Per-tile overlay data is only drawn in the data map views, so it is worked out on first use instead of every refresh.
+ let details;
+ return{inventory,art,lifestyleCosts,career,investment,creative,empire,economy:economyReport(s),compound,owned,reports,businessCount,revenue,expense,assets,wage,living,tuition,interest,stocks,bonus,net,wealth,passive:owned.filter(({t})=>TYPES[t.type]?.group==='property').reduce((n,{i})=>n+reports[i].profit,0)+empire.income,free:160-s.plan.work-s.plan.manage-s.plan.learn-(s.concept==='rich-life'?0:(s.plan.create||0))-(s.plan.inspect||0)-(s.plan.curate||0),attention:ownerAttention(s),connected,active:s.tiles.map(()=>true),get details(){return details??=onMap(s,()=>s.tiles.map((t,i)=>{const l=location(s,i);return{connected:l.access,pollution:100-l.footfall,value:Math.round(landPrice(s,i,buildingAnchor(s,i)===i?l.footfall:undefined)/80),education:l.residents>40,health:l.amenity>0,fire:t.owner==='player'};}));}};
 }
 export function canBuild(s,i,type,tenure='lease',footprint){
  if(footprint){
