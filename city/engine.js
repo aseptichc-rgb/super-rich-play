@@ -334,8 +334,27 @@ export function assetSaleReport(s,i){
  const ledger=assetLedger(s,i),invested=ledger.initial+ledger.upgrades,value=assetValue(s,i),gain=value-ledger.initial,netGain=value-invested,totalGain=netGain+ledger.operating;
  return{...ledger,protectedPrincipal:t.type==='office'&&marketFactor(s)===1,name:TYPES[t.type].name,area:buildingArea(t),annualGrowth:buildingAnnualGrowth(t),invested,value,gain,netGain,totalGain,roi:ledger.initial?gain/ledger.initial*100:null,totalRoi:invested?totalGain/invested*100:null};
 }
+// Billboards: lots of 2×2 or more, landmarks and the HQ tower can rent out ad space. Ad income is a share of the
+// building's own revenue that grows with foot traffic up to 100; installing costs a year of that income.
+export const BILLBOARD={base:.06,traffic:.08,payback:12};
+export function billboardEligible(t){return t?.owner==='player'&&!!TYPES[t.type]?.base&&t.type!=='golf'&&(!!t.landmark||t.type==='hq'||(t.footprint?.width>=2&&t.footprint?.height>=2));}
+const billboardIncome=(revenue,footfall)=>Math.round(revenue*(BILLBOARD.base+BILLBOARD.traffic*Math.min(100,footfall)/100));
+export function billboardQuote(s,i){
+ i=buildingAnchor(s,i);const t=s.tiles[i];if(!billboardEligible(t))return null;
+ const r=businessReport(s,i),income=r.billboard||billboardIncome(r.revenue,r.loc.footfall);
+ return{installed:!!t.billboard,income,cost:income*BILLBOARD.payback};
+}
+export function installBillboard(s,i){
+ i=buildingAnchor(s,i);const q=billboardQuote(s,i);
+ if(!q)return{ok:false,msg:L('Billboards fit lots of 2×2 tiles or more, landmarks and the HQ Tower.')};
+ if(q.installed)return{ok:false,msg:L('This building already has a billboard.')};
+ if(s.mode!=='sandbox'&&s.money<q.cost)return{ok:false,msg:L('Not enough cash for the billboard.')};
+ const t=s.tiles[i];t.assetLedger??=assetLedger(s,i);t.assetLedger.upgrades+=q.cost;if(s.mode!=='sandbox')s.money-=q.cost;t.billboard=true;
+ const msg=L`Billboard installed on ${buildingName(t)} · ₲${q.cost.toLocaleString('en-US')} paid · Ad income +₲${q.income.toLocaleString('en-US')}/mo`;s.log.unshift(msg);s.log=s.log.slice(0,25);
+ return{ok:true,msg};
+}
 export function businessReport(s,i,context={}){
- if(TYPES[s.tiles[i].type]?.managed){const t=s.tiles[i],q=developmentQuote(s,i,t.type,t.level),revenue=q.revenue*(t.landmark?10:1),cost=q.cost;return{revenue,cost,profit:revenue-cost,occupancy:Math.round(60+q.score*40),demand:Math.round(q.score*100),wages:0,lease:0,maintenance:cost,goods:0,marketing:0,loc:q.loc,manage:100,crowding:q.crowding};}
+ if(TYPES[s.tiles[i].type]?.managed){const t=s.tiles[i],q=developmentQuote(s,i,t.type,t.level),billboard=t.billboard&&billboardEligible(t)?billboardIncome(q.revenue*(t.landmark?10:1),q.loc.footfall):0,revenue=q.revenue*(t.landmark?10:1)+billboard,cost=q.cost;return{billboard,revenue,cost,profit:revenue-cost,occupancy:Math.round(60+q.score*40),demand:Math.round(q.score*100),wages:0,lease:0,maintenance:cost,goods:0,marketing:0,loc:q.loc,manage:100,crowding:q.crowding};}
  const t=s.tiles[i],d=TYPES[t.type],loc=location(s,i),rental=['rental','condo','housing'].includes(t.type),businessCount=context.businessCount??s.tiles.filter(t=>t.owner==='player'&&TYPES[t.type]?.group==='business').length;
  const manage=clamp(s.plan.manage/Math.max(1,businessCount*28),.3,1.2),health=1-Math.max(0,s.stress-65)*.009;
  const price=t.price||100,quality=t.quality||1,staff=t.staff??d.staff,level=t.level;
@@ -347,8 +366,9 @@ export function businessReport(s,i,context={}){
  const area=buildingArea(t),revenue=incomeFactor(s)*(loc.access?1:OFF_ROAD.revenue)*(rental?(loc.boulevard?BOULEVARD.rent:1)*trafficFactor(loc.footfall,TRAFFIC.rent):1)*Math.pow(area,1.3)*d.base*(rental?occupancy*cycle:demand*staffing*manage*health*cycle)*(price/100)*(1+(level-1)*.65);
  const wages=staff*390*area,lease=t.tenure==='lease'?Math.round(landPrice(s,i)*.035):0,maintenance=d.upkeep*level*area;
  const marketing=t.marketing?150:0,boost=t.marketing&&!rental?revenue*.18:0;
- const gross=Math.round(revenue+boost),goods=rental?0:gross*(.29+quality*.07),cost=Math.round(goods+wages+lease+maintenance+marketing);
- return{revenue:gross,cost,profit:gross-cost,occupancy:Math.round(occupancy*100),demand:Math.round(demand*100),wages,lease,maintenance,goods:Math.round(goods),marketing,loc,manage:Math.round(manage*100)};
+ const sales=Math.round(revenue+boost),goods=rental?0:sales*(.29+quality*.07),cost=Math.round(goods+wages+lease+maintenance+marketing);
+ const billboard=t.billboard&&billboardEligible(t)?billboardIncome(sales,loc.footfall):0,gross=sales+billboard;
+ return{billboard,revenue:gross,cost,profit:gross-cost,occupancy:Math.round(occupancy*100),demand:Math.round(demand*100),wages,lease,maintenance,goods:Math.round(goods),marketing,loc,manage:Math.round(manage*100)};
 }
 // What amenities within 4 tiles add to an earning building: its report now minus the same report with their effect off.
 // Level 0 switches an amenity off while the building stays, so competition and tourism clusters are unchanged.

@@ -1,5 +1,6 @@
 import {L} from './i18n.js';
 import {drawLandmark} from './landmarks.js';
+import {billboardAd,drawBillboard} from './billboards.js';
 import {drawBuildingArt,buildingArtPending} from './building-art.js';
 import {drawSceneryArt,sceneryPending} from './scenery-art.js';
 import {landmarkAnchor,landmarkBuildError} from './landmark-construction.js';
@@ -497,6 +498,8 @@ export function createRenderer(canvas,getState,getAnalysis,onTile,onHover){
     if((!asset.footprint||last===i)&&t.type!=='road'){
      if(faded.has(root))ctx.globalAlpha*=.3;
      const picture=building(p.x,p.y,asset);startHit(-1);
+     // The billboard stands at the front corner of the lot, larger on bigger lots.
+     if(asset.billboard){const f=asset.footprint||{width:1,height:1};if(!drawBillboard(ctx,billboardAd(root),screen(p.x+f.width-.12,p.y+f.height-.12),zoom*Math.min(1.4,.8+.15*(f.width+f.height-2))))pendingImages=true;}
      if(asset.owner==='player'){const center=picture?{x:picture.x+picture.width/2,y:picture.y-7*zoom}:screen(p.x+(asset.footprint?.width||1)/2,p.y+(asset.footprint?.height||1)/2,badgeHeight(asset.type,asset.level));circle(center,5,'#f3d68c');}
      if(asset.owner==='rival'){const center=picture?{x:picture.x+picture.width/2,y:picture.y-7*zoom}:screen(p.x+.5,p.y+.5,badgeHeight(asset.type,asset.level)+8);circle(center,7,'#a83d37');ctx.fillStyle='#fff3e6';ctx.font=`bold ${9*zoom}px sans-serif`;ctx.textAlign='center';ctx.fillText('⚑',center.x,center.y+3*zoom);}
      endHit();

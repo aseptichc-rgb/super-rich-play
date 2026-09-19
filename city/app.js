@@ -73,7 +73,7 @@ import {startShift,resolveOrder,ordersFor} from './activity.js';
 import {PATHS,projectQuote,startProject,archiveProject} from './projects.js';
 import {createAudio} from './audio.js';
 const audio=createAudio();
-import {TYPES,STOCKS,MILESTONES,analyze,build,sellAsset,demolishAsset,upgrade,trade,setPlan,tick,chooseEvent,eventShortfall,validSave,migrateSave,coords,landPrice,location,assetValue,canBuild,parcelQuote,buyParcel,buildingAnchor,developmentImpacts,buildingName,expandMap,useMap,index,mapOffset} from './engine.js';
+import {TYPES,STOCKS,MILESTONES,analyze,build,sellAsset,demolishAsset,upgrade,installBillboard,trade,setPlan,tick,chooseEvent,eventShortfall,validSave,migrateSave,coords,landPrice,location,assetValue,canBuild,parcelQuote,buyParcel,buildingAnchor,developmentImpacts,buildingName,expandMap,useMap,index,mapOffset} from './engine.js';
 import {createRenderer} from './render.js';
 import {createRichGame as createGame,RICH_GOALS,lifestyleDialog,experienceScene,enjoyExperience} from './rich-life.js';
 const $=s=>document.querySelector(s),money=n=>'₲'+Math.round(n).toLocaleString('en-US'),esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -340,6 +340,7 @@ $('#app').addEventListener('click',e=>{
  else if(action==='borrow'&&state.debt<20000){state.debt+=5000;state.money+=5000;changed();toast(L('Borrowed ₲5,000 · ₲60 monthly interest added'));}
  else if(action==='repay'){const n=Math.min(5000,state.debt);if(state.money>=n){state.money-=n;state.debt-=n;changed();}}
  else if(action==='upgrade'){const r=upgrade(state,selected);changed();if(r.ok){closeDialog();renderer.burst(selected,'LEVEL UP!');audio.play('build');}else inspectAsset(selected);toast(r.msg);}
+ else if(action==='billboard'){const r=installBillboard(state,selected);changed();if(r.ok)audio.play('build');inspectAsset(selected);toast(r.msg);}
  else if(action==='demolish'){openDialog('demolish',demolitionDialog(state,selected));}
  else if(action==='confirm-demolish'){const r=demolishAsset(state,selected);if(r.ok){closeDialog();changed();inspectAsset(selected);}toast(r.msg);}
  else if(action==='sell'){openDialog('sell',saleDialog(assetSaleReport(state,selected)));}
