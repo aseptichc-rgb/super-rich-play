@@ -28,7 +28,7 @@ import {FIREBASE_CONFIG} from './firebase-config.js';
 import {createAuth} from './auth.js';
 import {accountHTML,welcomeHTML,accountConflictHTML,saveStatus} from './auth-ui.js';
 import {createAccountSave,accountSaveClient} from './account-save.js';
-import {catchUp,awayDialog} from './offline.js';
+import {catchUp,awayDialog,createAwayReward} from './offline.js';
 const cloudStyles=document.createElement('link');cloudStyles.rel='stylesheet';cloudStyles.href='./city/cloud.css';document.head.append(cloudStyles);
 // app.js imports the engine's location() helper, so the browser address must be read from window.location.
 const cloud=cloudClient({url:SUPABASE_URL,key:SUPABASE_KEY});
@@ -63,7 +63,7 @@ import {createJourneyUI} from './journey-ui.js';
 import {chapterProgress,journeyState} from './journey.js';
 import {REWARDS,rewardDay,rewardStatus,grantReward} from './rewards.js';
 import {createDemoSession,rewardProviderMode} from './reward-provider.js';
-let rewardSession=null;
+let rewardSession=null,awayReward=null;
 import {ensureBasis} from './investment.js';
 import {CAREERS,chooseCareer} from './careers.js';
 import {STOCK_TYPES,stockInfo,dividendPerShare} from './stocks.js';
@@ -295,7 +295,7 @@ function developmentBurst(e){if(Math.abs(e.land)>=.001)renderer.burst(e.tile,L`L
 // Away from the game (closed or in the background), the city keeps running at the pace set in offline.js.
 // Runs on load and when the page becomes visible again; a dialog reports what happened, then any waiting decision opens.
 function resumeCurrentStory(){if(modal)return;const sync=accountSync?.snapshot();if(sync?.user&&['checking','syncing','conflict'].includes(sync.status))return;if(!resumeAway()){if(state.shift)showRush();else if(state.event)showEvent();}}
-function resumeAway(){if(saveBlocked||modal||!Number.isFinite(state.savedAt))return false;const r=catchUp(state,Date.now());if(!r.months){if(r.stop==='cashflow')setTimeout(()=>toast(L('Cash flow is negative, so the city waited for you instead of running on.')),2500);return false;}changed();renderDock();dialogQueue=[];if(state.ending&&!state.ending.shown){state.ending.shown=true;save();dialogQueue.push({type:'ending',html:endingDialog(state)});}if(state.shift)dialogQueue.push({fn:showRush});else if(state.event)dialogQueue.push({fn:showEvent});openDialog('away',awayDialog(state,r));renderer.burst(analysis.owned[0]?.i??-1,(r.earned>=0?'+':'')+money(r.earned),r.earned<0?'loss':'coin');return true;}
+function resumeAway(){if(saveBlocked||modal||!Number.isFinite(state.savedAt))return false;const r=catchUp(state,Date.now());if(!r.months){if(r.stop==='cashflow')setTimeout(()=>toast(L('Cash flow is negative, so the city waited for you instead of running on.')),2500);return false;}changed();renderDock();dialogQueue=[];if(state.ending&&!state.ending.shown){state.ending.shown=true;save();dialogQueue.push({type:'ending',html:endingDialog(state)});}if(state.shift)dialogQueue.push({fn:showRush});else if(state.event)dialogQueue.push({fn:showEvent});awayReward={id:crypto.randomUUID(),offer:null};awayReward.offer=createAwayReward(state,r,awayReward.id);openDialog('away',awayDialog(state,r,rewardProviderMode(window.location.hostname)));renderer.burst(analysis.owned[0]?.i??-1,(r.earned>=0?'+':'')+money(r.earned),r.earned<0?'loss':'coin');return true;}
 function month(){if(state.shift){showRush();return;}if(state.event){showEvent();return;}if(modal)return;const n=state.milestones.length,finished=analysis.creative.completions;tick(state);const ventureResults=state.ventures.latest||[];changed();renderDock();renderer.burst(analysis.owned[0]?.i??-1,(state.lastReport.net>=0?'+':'')+money(state.lastReport.net),state.lastReport.net<0?'loss':'coin');audio.play(finished.length?'win':'coin');if(finished.length){const p=state.projects.find(p=>p.id===finished[0]);toast(L`✦ ${p.name} complete! ${p.royalty?L`${money(p.royalty)}/mo from next month`:L`${money(p.sale)} settled`}`);renderer.burst(-1,L('New work complete!'));}if(state.milestones.length>n)toast(L('✦ New wealth goal reached!'));
  const r=state.lastReport;dialogQueue=[];
  if(state.ending&&!state.ending.shown){state.ending.shown=true;save();dialogQueue.push({type:'ending',html:endingDialog(state)});renderer.burst(-1,L`LEGACY · Grade ${state.ending.grade}`,'coin');}
@@ -465,6 +465,11 @@ function showRewards(){
 function beginReward(kind){
  if(rewardSession)return;
  if(rewardProviderMode(window.location.hostname)!=='local-demo'){toast(L('No real ad service is connected yet.'));return;}
+ if(kind==='away'){
+  if(modal!=='away'||!awayReward?.offer.amount)return;
+  rewardSession=createDemoSession({id:awayReward.id,kind,day:rewardDay()});
+  openDialog('reward-preview',`<h2>${L('Double your away earnings')}</h2><p>${L('Developer reward preview · Not a real ad')}</p><p>${L('Finish the preview to receive the extra settlement. Closing early keeps only your original earnings.')}</p><div class="reward-progress"><i id="reward-progress-fill"></i></div><p id="reward-countdown" role="status">5${L('s left')}</p><button data-action="close" class="full">${L('Skip and Return to the Game')}</button>`);return;
+ }
  const status=rewardStatus(state,kind);if(!status.ok){toast(status.msg);showRewards();return;}
  const r=REWARDS[kind];rewardSession=createDemoSession({id:crypto.randomUUID(),kind,day:rewardDay()});
  openDialog('reward-preview',L`<span class="eyebrow">TEST PREVIEW · Not a real ad</span><h2>${r.name} reward preview</h2><p>Finish the preview and <b>${r.label}</b> lands in your game. Close it early and nothing is granted, with no penalty to your play.</p><div class="reward-preview-art"><span>${r.icon}</span><b>A small boost for your idea</b><small>A developer preview with no external ad and no ad revenue</small></div><div class="reward-progress"><i id="reward-progress-fill"></i></div><p id="reward-countdown" class="reward-countdown" role="status">5s left</p><button data-action="close" class="full">Skip and Return to the Game</button><p class="help">The preview only advances while this screen is visible. Game time pauses meanwhile.</p>`);
@@ -476,6 +481,11 @@ function advanceReward(dt){
  $('#reward-progress-fill').style.width=((5000-remaining)/50)+'%';
  const label=Math.ceil(remaining/1000)+L('s left');if($('#reward-countdown').textContent!==label)$('#reward-countdown').textContent=label;
  const receipt=rewardSession.complete();if(!receipt)return;rewardSession=null;
+ if(receipt.kind==='away'){
+  const bonus=awayReward?.offer.amount||0,granted=awayReward?.offer.claim(state,receipt);awayReward=null;
+  if(granted){changed();renderDock();audio.play('win');toast(L`Away earnings doubled · Extra ${money(bonus)} saved`);}
+  closeDialog();nextQueued();return;
+ }
  const result=grantReward(state,receipt);changed();
  if(!result.ok){toast(result.msg);showRewards();return;}
  audio.play('win');renderer.burst(analysis.owned[0]?.i??-1,REWARDS[receipt.kind].label+L(' claimed'));

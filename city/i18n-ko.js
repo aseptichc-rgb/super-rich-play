@@ -2,6 +2,13 @@
 // Placeholders {0}, {1}, ... stand for the template's ${...} values in English order.
 // "context::Text" keys hold a second wording for L('Text','context').
 export default {
+"Double your away earnings":"복귀 정산액 2배 받기",
+"Receive an extra {0}. Your original settlement is already saved.":"광고 완료 시 {0}을 추가로 받습니다. 기본 정산액은 이미 저장되었습니다.",
+"Preview 2× reward · No real ad":"2배 보상 체험 · 실제 광고 아님",
+"Watch an ad for 2× earnings · Coming soon":"광고 보고 정산액 2배 · 광고 준비 중",
+"Finish the preview to receive the extra settlement. Closing early keeps only your original earnings.":"체험을 완료하면 추가 정산액을 받습니다. 중간에 닫아도 기본 정산액은 유지됩니다.",
+"Skip and Return to the Game":"건너뛰고 게임으로",
+"Away earnings doubled · Extra {0} saved":"복귀 정산액 2배 완료 · 추가 {0} 저장됨",
 "Developer account · Changes apply to your current game and are saved to your Google account.":"개발자 계정 · 변경한 자금은 현재 게임에 적용되며 Google 계정에 저장됩니다.",
 "Adjust Funds":"자금 조정",
 "Game Settings":"게임 설정",
