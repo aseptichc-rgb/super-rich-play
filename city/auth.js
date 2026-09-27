@@ -1,4 +1,4 @@
-// Firebase owns credentials and session persistence; game saves stay independent.
+// Firebase owns credentials and session persistence; account-save.js synchronizes game progress.
 export async function loadFirebase(){
  const [app,auth]=await Promise.all([
   import('https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js'),
@@ -6,7 +6,7 @@ export async function loadFirebase(){
  ]);
  return {...app,...auth};
 }
-export function createAuth({config,language='en',loadSDK=loadFirebase,onChange=()=>{}}){
+export function createAuth({config,language='en',loadSDK=loadFirebase,onChange=()=>{},timers={set:(fn,ms)=>setTimeout(fn,ms),clear:id=>clearTimeout(id)}}){
  const configured=['apiKey','authDomain','projectId','appId'].every(k=>typeof config?.[k]==='string'&&config[k].trim());
  let sdk,auth,starting=null,ready=false,busy=false,user=null,error='';
  const snapshot=()=>({configured,ready,busy,user,error});
@@ -33,12 +33,13 @@ export function createAuth({config,language='en',loadSDK=loadFirebase,onChange=(
  async function signIn(){
   if(!ready||busy)return false;
   busy=true;error='';emit();
+  let timer;
   try{
    const p=new sdk.GoogleAuthProvider();
    p.setCustomParameters({prompt:'select_account'});
-   const result=await sdk.signInWithPopup(auth,p);user=result.user;return true;
+   const result=await Promise.race([sdk.signInWithPopup(auth,p),new Promise((_,reject)=>{timer=timers.set(()=>reject({code:'auth/timeout'}),30000);})]);user=result.user;return true;
   }catch(e){if(!['auth/popup-closed-by-user','auth/cancelled-popup-request'].includes(e?.code))error=e?.code||'auth/unavailable';return false;}
-  finally{busy=false;emit();}
+  finally{timers.clear(timer);busy=false;emit();}
  }
  async function signOut(){
   if(!ready||busy)return false;

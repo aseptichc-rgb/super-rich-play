@@ -18,3 +18,8 @@ export function setTestMoney(state,input,enabled){
  state.highestWealth=Math.max(state.highestWealth,analyze(state).wealth);
  return true;
 }
+
+// Account tools only act after this signed-in account's save has finished loading/syncing.
+export function developerAccount(user,sync){
+ return user?.email?.toLowerCase()==='kjykjj04@gmail.com'&&user.emailVerified===true&&user.providerData?.some(p=>p.providerId==='google.com')===true&&sync?.user?.uid===user.uid&&sync.status==='saved';
+}

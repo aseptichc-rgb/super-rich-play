@@ -321,6 +321,15 @@ export function crowdingReport(s,i,footprint=s.tiles[i]?.footprint){
 }
 // Mountain view: a mountain within three tiles lifts the location score of resorts, hotels and golf courses.
 export const MOUNTAIN_VIEW={resort:.25,hotel:.1,golf:.1};
+// Signature buildings grow the managed-property portfolio after each paid month.
+export const SIGNATURE_GROWTH={capital:5000000,rate:.01,maxRate:.25,maxMultiplier:1000};
+export const signatureBuilding=t=>t.type==='hq'||t.type==='monument'||!!t.landmark;
+export const signatureInvestment=t=>(t.constructionCost??(TYPES[t.type]?.cost||0)*(t.landmark?100:1))+(t.assetLedger?.upgrades||0);
+export function signatureGrowth(s){
+ const invested=s.concept==='rich-life'?s.tiles.filter(t=>t.owner==='player'&&signatureBuilding(t)).reduce((sum,t)=>sum+signatureInvestment(t),0):0;
+ const rate=Math.min(SIGNATURE_GROWTH.maxRate,invested/SIGNATURE_GROWTH.capital*SIGNATURE_GROWTH.rate),multiplier=s.concept==='rich-life'?(s.signatureMultiplier??1):1;
+ return{invested,rate,multiplier,next:Math.min(SIGNATURE_GROWTH.maxMultiplier,multiplier*(1+rate))};
+}
 export function developmentQuote(s,i,type,level=1,footprint=s.tiles[i]?.footprint){
  // A contract quote sees the finished map: the new building at the quoted level, owned by the player, replacing what stood in its footprint.
  const cells=footprintCells(i,footprint),view=footprint?{...s,tiles:s.tiles.map((t,j)=>cells.includes(j)?j===i?{...t,type,footprint,level,owner:'player'}:{terrain:'land',type:null,level:1}:t)}:s;
@@ -330,7 +339,7 @@ export function developmentQuote(s,i,type,level=1,footprint=s.tiles[i]?.footprin
  const area=cells.length||1,factor=(d.managed?.75+score*.6:1)*(loc.access?1:OFF_ROAD.construction),construction=Math.round(d.cost*factor*Math.pow(area,1.05));
  const land=cells.reduce((sum,j)=>sum+(s.tiles[buildingAnchor(s,j)]?.owner==='player'&&s.tiles[buildingAnchor(s,j)].tenure==='buy'?0:landPrice(s,j)),0);
  // Managed revenue rides the business cycle, tourism clusters, crowding, the owner's reputation premium and on-site attention.
- const synergy=synergyReport(view,i,type),crowding=crowdingReport(view,i,footprint),premium=d.managed?reputationSummary(s).premium:1,cycle=d.managed?cycleFactor(s):1,attention=d.managed?ownerAttention(view):null,boost=cycle*(1+synergy.bonus)*premium*(attention?attention.multiplier:1)*(d.managed?crowding.multiplier:1);
+ const synergy=synergyReport(view,i,type),crowding=crowdingReport(view,i,footprint),premium=d.managed?reputationSummary(s).premium:1,cycle=d.managed?cycleFactor(s):1,attention=d.managed?ownerAttention(view):null,boost=cycle*(1+synergy.bonus)*premium*(attention?attention.multiplier:1)*(d.managed?crowding.multiplier:1)*(d.managed&&s.concept==='rich-life'?(s.signatureMultiplier??1):1);
  // Everything except the level multiplier is rounded first, so an expansion always earns an exact multiple of level 1.
  let revenue=Math.round(incomeFactor(s)*d.base*(d.managed?(.55+score*1.15)*boost:1)*Math.pow(area,1.3)*(loc.access?1:OFF_ROAD.revenue)*(type==='office'?(loc.boulevard?BOULEVARD.rent:1)*trafficFactor(loc.footfall,TRAFFIC.rent):1))*level,cost=d.upkeep*level*area;
  if(!d.managed&&d.group&&type!=='plot'){
@@ -491,7 +500,7 @@ function fireSale(s){
 function repayDebt(s){if(!(s.debt>0)||!(s.money>0))return 0;const pay=Math.min(s.debt,Math.floor(s.money*.5));if(pay<=0)return 0;s.debt-=pay;s.money-=pay;if(!s.debt){s.log.unshift(L('✓ Debt fully repaid'));s.log=s.log.slice(0,25);}return pay;}
 const nearPlayer=(s,i)=>{const p=coords(i);return s.tiles.some((t,k)=>t.owner==='player'&&Math.hypot(coords(k).x-p.x,coords(k).y-p.y)<=4);};
 export function tick(s){
- if(s.event||s.shift)return analyze(s);ensureEconomy(s);const previousMarket=marketFactor(s),rich=s.concept==='rich-life',chapterBefore=rich?chapterOf(s).n:0,tilesBefore=rich?s.tiles.map(t=>({...t})):null;s.growthStartMonth??=s.month;const a=analyze(s);for(const {t,i} of a.owned){t.assetLedger??=assetLedger(s,i);t.assetLedger.operating+=a.reports[i]?.profit||0;}s.money+=a.net;advanceProjects(s);if(s.empire){s.empire.acquiredMonths??={};for(const id of s.empire.owned)s.empire.acquiredMonths[id]??=s.month;}settleCompound(s);s.month++;
+ if(s.event||s.shift)return analyze(s);ensureEconomy(s);const previousMarket=marketFactor(s),rich=s.concept==='rich-life',chapterBefore=rich?chapterOf(s).n:0,tilesBefore=rich?s.tiles.map(t=>({...t})):null;s.growthStartMonth??=s.month;const a=analyze(s);for(const {t,i} of a.owned){t.assetLedger??=assetLedger(s,i);t.assetLedger.operating+=a.reports[i]?.profit||0;}s.money+=a.net;advanceProjects(s);if(s.empire){s.empire.acquiredMonths??={};for(const id of s.empire.owned)s.empire.acquiredMonths[id]??=s.month;}settleCompound(s);if(rich)s.signatureMultiplier=signatureGrowth(s).next;s.month++;
  const crashed=advanceEconomy(s);
  advanceNeighborhood(s);
  advanceVentures(s);advanceStartups(s);
@@ -524,6 +533,7 @@ export function validSave(s){
 }
 function validSaveAt(s){
  if(!validEconomy(s)||!validLandmarks(s))return false;
+ if(s?.signatureMultiplier!==undefined&&(!Number.isFinite(s.signatureMultiplier)||s.signatureMultiplier<1||s.signatureMultiplier>SIGNATURE_GROWTH.maxMultiplier))return false;
  if(s?.growthStartMonth!==undefined&&(!Number.isInteger(s.growthStartMonth)||s.growthStartMonth<0||s.growthStartMonth>s.month))return false;
  if(Array.isArray(s?.tiles)&&!s.tiles.every(t=>t?.assetLedger===undefined||(t.assetLedger&&['initial','upgrades','buildingValue'].every(k=>Number.isFinite(t.assetLedger[k])&&t.assetLedger[k]>=0)&&Number.isFinite(t.assetLedger.operating)&&['since','valuationMonth'].every(k=>Number.isInteger(t.assetLedger[k])&&t.assetLedger[k]>=0&&t.assetLedger[k]<=s.month)&&typeof t.assetLedger.estimated==='boolean')))return false;
  if(!s||!validReputation(s)||!validAcquisitions(s)||!validStartups(s)||!validCompound(s)||!validFlex(s)||!validArt(s)||!validRichLife(s)||!validVentures(s)||!validEmpire(s))return false;

@@ -1,0 +1,7 @@
+.celebration-image{position:relative;margin:18px 0;overflow:hidden;border-radius:14px;background:#e8e4d7;border:1px solid #d6c8a5}
+.celebration-image img{display:block;width:100%;height:auto;max-height:48vh;object-fit:cover}
+.celebration-image figcaption{position:absolute;left:0;right:0;bottom:0;padding:28px 18px 13px;background:linear-gradient(transparent,#142b24d9);color:#fff0c9;font-size:11px;letter-spacing:1px;text-align:left}
+.celebration-result h2{margin-bottom:12px}.celebration-message{line-height:1.8;color:#506454}
+.celebration-result .landmark-preview{margin:14px 0}.celebration-result .landmark-preview img{max-height:180px;object-fit:contain}
+.venture-result .celebration-image{margin-bottom:20px}
+@media(max-width:600px){.celebration-image{border-radius:10px}.celebration-image img{max-height:36vh}.celebration-image figcaption{font-size:10px}}

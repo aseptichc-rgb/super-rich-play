@@ -10,6 +10,7 @@ const SYNCED=L('✓ Saved · Cloud synced'),PENDING=L('✓ Saved · Cloud sync p
 // Nothing is uploaded while the page closes: a closing page never reads the reply, so this device would fall behind
 // the cloud's revision and ask about a conflict on the next visit. Unsynced changes go up the next time the game opens.
 export function createCloudUI({client,storage,version,getState,replaceState,openDialog,closeDialog,toast,setStatus,showSettings,scenarioName,timers={set:(fn,ms)=>setTimeout(fn,ms),clear:id=>clearTimeout(id)}}){
+ let disposed=false;
  let memo=readCloud(storage),busy=false,again=false,paused=false,applying=false,lastPush=0,lastMonth=getState().month,timer=0,pending=null,opened=null;
  // The signed-in Google account: {uid, store from account-save.js, code it points at}. Null when signed out.
  let account=null;
@@ -34,13 +35,13 @@ export function createCloudUI({client,storage,version,getState,replaceState,open
  function schedule(){timers.clear(timer);timer=timers.set(()=>push(),Math.max(1000,SYNC_INTERVAL-(Date.now()-lastPush)));}
  function stop(message){remember(null);paused=false;pending=null;synced=null;ready=true;timers.clear(timer);setStatus(LOCAL);if(message)toast(message);}
  async function push(){
-  if(!memo||paused||!ready)return;
+  if(disposed||!memo||paused||!ready)return;
   if(busy){again=true;return;}
   const s=getState(),json=JSON.stringify(s);
   busy=true;again=false;timers.clear(timer);setStatus(L('Syncing…'));
   const code=memo.code,r=await client.push(code,s,memo.revision,meta(s));
   busy=false;lastPush=Date.now();
-  if(memo?.code!==code)return;
+  if(disposed||memo?.code!==code)return;
   if(!r.ok){setStatus(FAILED);schedule();return;}
   const res=r.result;
   if(res.ok){synced=json;remember({...memo,revision:res.revision,syncedAt:res.updated_at,dirty:again});setStatus(again?PENDING:SYNCED);if(again)schedule();return;}
@@ -51,7 +52,7 @@ export function createCloudUI({client,storage,version,getState,replaceState,open
  async function compare(row){
   if(!memo)return;
   const code=memo.code;
-  if(!row){const r=await client.load(code);if(memo?.code!==code)return;if(!r.ok){setStatus(FAILED);toast(L('Could not reach the cloud. Try again in a moment.'));return;}if(!r.row){stop(L('This cloud save no longer exists, so syncing stopped. Your game is still saved here.'));return;}row=r.row;}
+  if(!row){const r=await client.load(code);if(disposed||memo?.code!==code)return;if(!r.ok){setStatus(FAILED);toast(L('Could not reach the cloud. Try again in a moment.'));return;}if(!r.row){stop(L('This cloud save no longer exists, so syncing stopped. Your game is still saved here.'));return;}row=r.row;}
   pending={row,save:remoteSave(row.data),code};showCompare();
  }
  const side=(title,s,extra='')=>`<section class="cloud-side"><h3>${title}</h3>${s?L`<p><b>${when(s)}</b></p><p>Net worth ${money(analyze(s).wealth)}</p><p>${esc(scenarioName(s))}</p>`:L('<p role="alert">This save could not be read.</p>')}${extra}</section>`;
@@ -79,6 +80,7 @@ export function createCloudUI({client,storage,version,getState,replaceState,open
   busy=true;const s=getState();let r;
   for(let tries=0;tries<3;tries++){
    const code=newCode();r=await client.create(code,s,meta(s));
+   if(disposed)return;
    if(r.ok){busy=false;lastPush=Date.now();paused=false;ready=true;synced=JSON.stringify(s);remember({code,revision:r.revision,syncedAt:new Date().toISOString(),dirty:false});setStatus(SYNCED);if(show)showCode(code);linkCode();return;}
    if(r.error!=='taken')break;
   }
@@ -89,7 +91,7 @@ export function createCloudUI({client,storage,version,getState,replaceState,open
   const code=normalizeCode(document.querySelector('#cloud-code-input')?.value);
   if(!code){toast(L('Enter the 16-character save code, like K7QM-3XRA-94TD-PW2E.'));return;}
   if(busy)return;
-  busy=true;const r=await client.load(code);busy=false;
+  busy=true;const r=await client.load(code);busy=false;if(disposed)return;
   if(!r.ok){toast(L('Could not reach the cloud. Try again in a moment.'));return;}
   if(!r.row){toast(L('No cloud save matches that code.'));return;}
   const save=remoteSave(r.row.data);
@@ -105,12 +107,12 @@ export function createCloudUI({client,storage,version,getState,replaceState,open
  }
  async function remove(){
   if(!memo||busy)return;
-  busy=true;const r=await client.remove(memo.code);busy=false;
+  busy=true;const r=await client.remove(memo.code);busy=false;if(disposed)return;
   if(!r.ok){toast(L('Could not reach the cloud. Nothing was deleted.'));return;}
   stop(L('Cloud save deleted. Your game is still saved on this device.'));closeDialog();showSettings();
  }
  document.addEventListener('click',e=>{
-  const b=e.target.closest('[data-cloud]');if(!b)return;e.preventDefault();
+  const b=e.target.closest('[data-cloud]');if(!b||disposed)return;e.preventDefault();
   const a=b.dataset.cloud;
   if(a==='create')create();
   else if(a==='load-code')loadCode();
@@ -124,13 +126,14 @@ export function createCloudUI({client,storage,version,getState,replaceState,open
   else if(a==='delete-confirm')remove();
  });
  return{
+  dispose(){disposed=true;timers.clear(timer);},
   settingsHTML(){
    if(!memo)return L`<h3>Cloud Save</h3><p class="help">Continue this game on another device with a save code. No sign-up needed. Anyone with the code can open, overwrite or delete the save, and a lost code can't be recovered.</p><button data-cloud="create" class="full">Save to Cloud</button><label class="field-label">Already have a code?<input id="cloud-code-input" maxlength="24" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="XXXX-XXXX-XXXX-XXXX"></label><button data-cloud="load-code">Continue With a Save Code</button>`;
    return L`<h3>Cloud Save</h3><p class="help">This game syncs to the cloud. Enter the code on another device to continue there. Keep it private: anyone with it can open, overwrite or delete this save.</p><p class="cloud-code">${formatCode(memo.code)}</p><div class="button-row"><button data-cloud="copy">Copy Code</button>${paused?L('<button class="primary" data-cloud="compare">Choose Which Save to Keep</button>'):L('<button data-cloud="sync">Sync Now</button>')}</div><div class="button-row"><button data-cloud="stop">Stop Syncing on This Device</button><button data-cloud="delete">Delete Cloud Save</button></div>`+(memo.account?L('<p class="help">Linked to your Google account. Sign in with the same account on another device to continue.</p>'):'');
   },
   // app.js passes the JSON it just wrote to localStorage.
   afterSave(json=JSON.stringify(getState())){
-   if(!memo||applying)return;
+   if(disposed||!memo||applying)return;
    const s=getState(),monthChanged=s.month!==lastMonth;lastMonth=s.month;
    if(json===synced&&!memo.dirty)return;
    if(!memo.dirty)remember({...memo,dirty:true});
@@ -145,7 +148,7 @@ export function createCloudUI({client,storage,version,getState,replaceState,open
    setStatus(L('Checking cloud save…'));
    const code=memo.code,r=await client.load(code);
    ready=true;
-   if(memo?.code!==code)return;
+   if(disposed||memo?.code!==code)return;
    if(!r.ok){setStatus(FAILED);if(memo.dirty)schedule();return;}
    const decision=decideOnOpen({...memo,dirty:loadedDirty},r.row);
    if(decision==='forget'){stop(L('Your cloud save no longer exists, so syncing stopped. Your game is still saved here.'));return;}
