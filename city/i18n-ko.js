@@ -721,10 +721,10 @@ export default {
 " · Mountain view":" · 산 전망",
 " · Est.":" · 추정",
 "<br>No purchase record in the older save, so investment and gain are estimates.":"<br>이전 저장의 매입 기록이 없어 투자금과 손익은 추정치입니다.",
-"Expand for +{0} monthly profit!":"확장하면 월 수익 +{0}!",
+"Expand for +{0} monthly profit!":"증축하면 월 수익 +{0}!",
 "Fully expanded! Build something new on the next lot.":"최대 확장 완료! 다음 부지에 새 건물을 지어보세요.",
 "Lv.3 Complete":"Lv.3 완성",
-"Expand · ":"확장하기 · ",
+"Expand · ":"증축하기 · ",
 "Upgrade to {0} · {1}":"{0}으로 업그레이드 · {1}",
 // economy.js
 "Market crash · Asset prices down {0}%. A chance to buy the dip with cash.":"폭락장 · 자산 시세 {0}% 하락. 현금으로 저가 매수할 기회입니다.",
