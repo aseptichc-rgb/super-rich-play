@@ -351,9 +351,10 @@ export function developmentQuote(s,i,type,level=1,footprint=s.tiles[i]?.footprin
  const area=cells.length||1,factor=(d.managed?.75+score*.6:1)*(loc.access?1:OFF_ROAD.construction),construction=Math.round(d.cost*factor*Math.pow(area,1.05));
  const land=cells.reduce((sum,j)=>sum+(s.tiles[buildingAnchor(s,j)]?.owner==='player'&&s.tiles[buildingAnchor(s,j)].tenure==='buy'?0:landPrice(s,j)),0);
  // Managed revenue rides the business cycle, tourism clusters, crowding, the owner's reputation premium and on-site attention.
+ // Location risk is deliberately curved: prime sites retain the old ceiling, while weak sites can fall below fixed upkeep.
  const synergy=synergyReport(view,i,type),crowding=crowdingReport(view,i,footprint),premium=d.managed?reputationSummary(s).premium:1,cycle=d.managed?cycleFactor(s):1,attention=d.managed?ownerAttention(view):null,boost=cycle*(1+synergy.bonus)*premium*(attention?attention.multiplier:1)*(d.managed?crowding.multiplier:1)*(d.managed&&s.concept==='rich-life'?(s.signatureMultiplier??1):1);
  // Everything except the level multiplier is rounded first, so an expansion always earns an exact multiple of level 1.
- let revenue=Math.round(incomeFactor(s)*d.base*(d.managed?(.55+score*1.15)*boost:1)*Math.pow(area,1.3)*(loc.access?1:OFF_ROAD.revenue)*(type==='office'?(loc.boulevard?BOULEVARD.rent:1)*trafficFactor(loc.footfall,TRAFFIC.rent):1))*level,cost=d.upkeep*level*area;
+ let revenue=Math.round(incomeFactor(s)*d.base*(d.managed?(.08+1.62*Math.pow(score,1.5))*boost:1)*Math.pow(area,1.3)*(loc.access?1:OFF_ROAD.revenue)*(type==='office'?(loc.boulevard?BOULEVARD.rent:1)*trafficFactor(loc.footfall,TRAFFIC.rent):1))*level,cost=d.upkeep*level*area;
  if(!d.managed&&d.group&&type!=='plot'){
   const virtual={...s,tiles:s.tiles.map((t,j)=>cells.includes(j)?j===i?{terrain:'land',type,owner:'player',tenure:'buy',level,price:100,quality:1,staff:d.staff,marketing:false,footprint}: {terrain:'land',type:'extension',owner:null,level:1,buildingAnchor:i}:t)};
   const report=businessReport(virtual,i);revenue=report.revenue;cost=report.cost;
@@ -400,7 +401,8 @@ export function businessReport(s,i,context={}){
  const manage=clamp(s.plan.manage/Math.max(1,businessCount*28),.3,1.2),health=1-Math.max(0,s.stress-65)*.009;
  const price=t.price||100,quality=t.quality||1,staff=t.staff??d.staff,level=t.level;
  const cycle=cycleFactor(s);
- let occupancy=clamp(.84+(loc.amenity*.005)+(loc.footfall-55)*.002-(price-100)*.008, .15,1);
+ // A weak rental market now produces real vacancies instead of a near-guaranteed 80% floor.
+ let occupancy=clamp(.24+(loc.footfall-35)*.025+loc.amenity*.003-(price-100)*.008,.08,1);
  let demand=clamp((loc.footfall/80)*(1-(price-100)*.009)*(1+(quality-1)*.2)/(1+loc.competition*.17),.1,1.55);
  if(['studio','workshop'].includes(t.type))demand=clamp((.7+(s.concept==='rich-life'?70:s.skill)*.009)*(1-(price-100)*.008)*(1+(quality-1)*.16)/(1+loc.competition*.12),.1,1.6);
  const staffing=clamp((staff+manage*.8)/Math.max(1,d.staff+level-1),.15,1.2);
