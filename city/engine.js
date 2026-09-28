@@ -28,6 +28,7 @@ import {advanceVentures,validVentures,repairVentureNames} from './venture.js';
 import {empireSummary,validEmpire,settleOwnerBenefits} from './empire.js';
 import {acquisitionSummary,validAcquisitions} from './acquisitions.js';
 import {lifestyleCostReport} from './living-costs.js';
+import {lifeEnded} from './longevity.js';
 // Personal wealth simulation. All money is fictional G; one tick is one month.
 export const SAVE_KEY='super-rich-life-v2';
 // The map is square. Building on its edge opens MAP_GROWTH tiles of land on every side, so the
@@ -500,7 +501,7 @@ function fireSale(s){
 function repayDebt(s){if(!(s.debt>0)||!(s.money>0))return 0;const pay=Math.min(s.debt,Math.floor(s.money*.5));if(pay<=0)return 0;s.debt-=pay;s.money-=pay;if(!s.debt){s.log.unshift(L('✓ Debt fully repaid'));s.log=s.log.slice(0,25);}return pay;}
 const nearPlayer=(s,i)=>{const p=coords(i);return s.tiles.some((t,k)=>t.owner==='player'&&Math.hypot(coords(k).x-p.x,coords(k).y-p.y)<=4);};
 export function tick(s){
- if(s.event||s.shift)return analyze(s);ensureEconomy(s);const previousMarket=marketFactor(s),rich=s.concept==='rich-life',chapterBefore=rich?chapterOf(s).n:0,tilesBefore=rich?s.tiles.map(t=>({...t})):null;s.growthStartMonth??=s.month;const a=analyze(s);for(const {t,i} of a.owned){t.assetLedger??=assetLedger(s,i);t.assetLedger.operating+=a.reports[i]?.profit||0;}s.money+=a.net;advanceProjects(s);if(s.empire){s.empire.acquiredMonths??={};for(const id of s.empire.owned)s.empire.acquiredMonths[id]??=s.month;}settleCompound(s);if(rich)s.signatureMultiplier=signatureGrowth(s).next;s.month++;
+ if(s.event||s.shift||lifeEnded(s))return analyze(s);ensureEconomy(s);const previousMarket=marketFactor(s),rich=s.concept==='rich-life',chapterBefore=rich?chapterOf(s).n:0,tilesBefore=rich?s.tiles.map(t=>({...t})):null;s.growthStartMonth??=s.month;const a=analyze(s);for(const {t,i} of a.owned){t.assetLedger??=assetLedger(s,i);t.assetLedger.operating+=a.reports[i]?.profit||0;}s.money+=a.net;advanceProjects(s);if(s.empire){s.empire.acquiredMonths??={};for(const id of s.empire.owned)s.empire.acquiredMonths[id]??=s.month;}settleCompound(s);if(rich)s.signatureMultiplier=signatureGrowth(s).next;s.month++;
  const crashed=advanceEconomy(s);
  advanceNeighborhood(s);
  advanceVentures(s);advanceStartups(s);
@@ -522,7 +523,7 @@ export function tick(s){
  if(rich){const chapter=chapterOf(s);if(chapter.n>chapterBefore){s.lastReport.chapterUp=chapter.n;s.log.unshift(L`✦ CHAPTER ${chapter.n} · ${chapter.name} begins! ${chapter.unlocks[0]} unlocked`);}
   if(!s.ending&&(s.month>=120||s.highestWealth>=300000000)){s.ending=endingReport(s,after);s.log.unshift(L`✦ Legacy ending · Grade ${s.ending.grade} · ${s.ending.score.toLocaleString('en-US')} pts`);}}
  s.history.push({prices:{...s.prices},month:s.month,wealth:Math.round(after.wealth),money:Math.round(s.money),net:a.net});s.history=s.history.slice(-36);
- if(rich){scheduleRichEvent(s,{wealth:after.wealth,fame:reputationSummary(s).fame})||rivalOffer(s,after.wealth);}
+ if(rich){if(!lifeEnded(s))scheduleRichEvent(s,{wealth:after.wealth,fame:reputationSummary(s).fame})||rivalOffer(s,after.wealth);}
  else if(EVENTS.length&&s.month%6===0)s.event=EVENTS[(Math.floor(s.month/6)-1)%EVENTS.length];
  if(s.money<0)s.log.unshift(L('Short on cash: close loss-making businesses or work more hours to restore cash flow.'));else s.log.unshift(L`Month ${s.month} report · ${a.net>=0?'+':''}${Math.round(a.net).toLocaleString()}G · Net worth ${Math.round(after.wealth).toLocaleString()}G · Economy ${economyReport(s).label}`);
  s.log=s.log.slice(0,25);return after;

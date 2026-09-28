@@ -59,5 +59,5 @@ export function createWorldLife(ctx,screen,box,circle,line,getState,getAnalysis,
  }
  function burst(i,text,kind='build'){if(i<0)i=homeRoad();const{x,y}=coords(i);particles.push({x,y,start:clock,life:2400,text,color:kind==='loss'?'#b95249':'#376b49'});if(!reducedMotion())for(let n=0;n<30;n++)particles.push({x,y,start:clock,life:1300+n%5*150,dx:Math.sin(n*2.4)*(35+n),dy:-20-Math.cos(n*1.5)*55,color:['#efc965','#ed9e75','#8dc38d','#92c9d2'][n%4]});}
  function visit(i){if(!hero)reset();const start=roads.reduce((best,n)=>{const p=coords(n),q=coords(best);return Math.hypot(p.x-hero.x,p.y-hero.y)<Math.hypot(q.x-hero.x,q.y-hero.y)?n:best;},roads[0]);const p=coords(start);hero.x=p.x;hero.y=p.y;hero.path=route(start,roadAt(i));hero.step=0;}
- return{update,drawTile,drawFront,burst,visit};
+ return{update,drawTile,drawFront,burst,visit,occupiedTiles:()=>buckets.keys()};
 }

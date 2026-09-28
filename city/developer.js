@@ -23,3 +23,7 @@ export function setTestMoney(state,input,enabled){
 export function developerAccount(user,sync){
  return user?.email?.toLowerCase()==='kjykjj04@gmail.com'&&user.emailVerified===true&&user.providerData?.some(p=>p.providerId==='google.com')===true&&sync?.user?.uid===user.uid&&sync.status==='saved';
 }
+
+export function developerToolsEnabled(session,user,sync){
+ return session.enabled||developerAccount(user,sync);
+}

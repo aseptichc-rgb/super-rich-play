@@ -117,3 +117,12 @@ button{font-size:.875rem}
 @media(max-width:720px){.property-build-card{min-width:258px}}
 
 .settings-layout{display:grid;gap:12px}.settings-card{padding:18px;border:1px solid var(--line,#dbe2d2);border-radius:14px;background:#fffef9}.settings-card h3{margin:0 0 12px}.settings-card .help{line-height:1.7}.settings-card summary{cursor:pointer;font-weight:700}.settings-card[open]>summary{margin-bottom:18px}.settings-card .field-label{margin-top:0}.settings-card .save-rule{padding:12px;background:#edf3e9;border-radius:8px}.settings-reset{background:#faf6ee}.settings-card strong,.settings-card .help{overflow-wrap:anywhere}
+
+/* Keep the map controls accessible while the large menus are collapsed. */
+.map-tools [data-action=toggle-menus]{width:auto;min-width:40px;height:auto;min-height:44px;gap:4px;padding:5px 3px;font-size:19px}
+.map-tools [data-action=toggle-menus] span{font-size:10px;white-space:nowrap}
+.world-wrap.menus-collapsed #live-card,.world-wrap.menus-collapsed #build-dock{display:none}
+.world-wrap.menus-collapsed .layer-control{bottom:65px}
+.world-wrap.menus-collapsed .month-progress{bottom:35px}
+.world-wrap.menus-collapsed .world-hint{bottom:12px}
+.world-wrap.menus-collapsed .tile-tip{bottom:65px}
