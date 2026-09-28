@@ -1,3 +1,4 @@
+import {hospitalized} from './health.js';
 // While the game is closed or in the background, the city keeps running: every AWAY_MONTH_MS of real time
 // settles one more month, up to AWAY_MAX_MONTHS a visit. The same month-end simulation (engine.tick) runs, so
 // nothing is invented: rent, dividends and upkeep settle as they would at 1× speed. The catch-up stops where
@@ -19,7 +20,7 @@ export function awayMonths(savedAt,now){
 export function catchUp(s,now=Date.now()){
  const wanted=awayMonths(s.savedAt,now),r={away:wanted?now-s.savedAt:0,wanted,months:0,cash:s.money,wealth:analyze(s).wealth,stop:null};
  while(r.months<wanted){
-  if(s.event||s.shift){r.stop='decision';break;}
+  if(!hospitalized(s)&&(s.event||s.shift)){r.stop='decision';break;}
   if(lifeEnded(s)){r.stop='lifetime';break;}
   if(analyze(s).net<0){r.stop='cashflow';break;}
   tick(s);r.months++;
@@ -35,7 +36,7 @@ export function awayText(ms){
  return L`${m} min`;
 }
 export function awayDialog(s,r,mode='unavailable'){
- const note=r.pending?L('A decision is waiting for you, so the books paused there. It opens next.'):r.stop==='cashflow'?L('Cash flow turned negative, so the books paused until you were back.'):r.stop==='ending'?L('Your legacy ending arrived while you were away.'):r.stop==='lifetime'?L('You reached age 100, so time stopped.'):r.months>=AWAY_MAX_MONTHS?L`The city settles at most ${AWAY_MAX_MONTHS} months a visit.`:'';
+ const note=r.pending?L('A decision is waiting for you, so the books paused there. It opens next.'):r.stop==='cashflow'?L('Cash flow turned negative, so the books paused until you were back.'):r.stop==='ending'?L('Your legacy ending arrived while you were away.'):r.stop==='lifetime'?L('Your life has ended, so time stopped.'):r.months>=AWAY_MAX_MONTHS?L`The city settles at most ${AWAY_MAX_MONTHS} months a visit.`:'';
  const html=L`<span class="eyebrow">WHILE YOU WERE AWAY</span><h2>Your city kept running.</h2><p>Away ${awayText(r.away)} · ${r.months} months settled</p><div class="legacy-score"><div><span>Cash</span><b>${signed(r.earned)}</b><small>Now ${money(s.money)}</small></div><div><span>Net worth</span><b>${signed(r.growth)}</b><small>Now ${money(r.wealth+r.growth)}</small></div><div><span>Calendar</span><b>Year ${Math.floor(s.month/12)+1} · Month ${s.month%12+1}</b><small>${r.months} months passed</small></div></div><p class="help">Every ${AWAY_MONTH_MS/60000} minutes away settles one month, up to ${AWAY_MAX_MONTHS} a visit, while cash flow stays positive. ${note}</p><button data-action="close" class="primary full">Back to My City</button>`;
  const bonus=r.earned>0&&r.months>0?`<section class="reward-notice"><b>${L('Double your away earnings')}</b><p>${L`Receive an extra ${money(r.earned)}. Your original settlement is already saved.`}</p><button class="primary full" data-reward="away" ${mode==='local-demo'?'':'disabled'}>${mode==='local-demo'?L('Preview 2× reward · No real ad'):L('Watch an ad for 2× earnings · Coming soon')}</button><p class="help">${mode==='local-demo'?L('Developer reward preview · Not a real ad'):L('No real ad provider is connected yet. Normal play works as usual.')}</p></section>`:'';
  return html.replace('<button data-action="close"',bonus+'<button data-action="close"');

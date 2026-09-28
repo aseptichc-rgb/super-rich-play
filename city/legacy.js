@@ -11,7 +11,7 @@ export const CHAPTERS=[
 ];
 export const SCENARIOS={
  heir:{name:L('Heir'),icon:'♛',tagline:L('Net worth ₲2,000,000 · mansion, sports car, 3 rentals, stocks'),desc:L('The default start. The assets are ready; the question is what you leave behind.')},
- selfmade:{name:L('Self-made'),icon:'⚒',tagline:L('Cash ₲500,000 · no assets · expertise 85'),desc:L('Start from nothing. The road to your first hotel is the longest, and the most thrilling.')},
+ selfmade:{name:L('Self-made'),icon:'⚒',tagline:L('Cash ₲500,000 · no assets'),desc:L('Start from nothing. The road to your first hotel is the longest, and the most thrilling.')},
  windfall:{name:L('Windfall'),icon:'✦',tagline:L('Cash ₲3,500,000 · mansion, car and yacht · 3× living costs'),desc:L('You bought everything at once. Upkeep eats your cash every month.')}
 };
 // New games only start as the heir. The other starts stay defined so saves that already use them keep loading.

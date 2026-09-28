@@ -5,6 +5,6 @@ export const CAREERS={
  specialist:{name:L('Pro Freelancer'),icon:'✧',hourly:29,skill:45,desc:L('Skill 45+. Sell your expertise by the hour.')},
  engineer:{name:L('Senior Specialist'),icon:'⌘',hourly:38,skill:70,desc:L('Skill 70+. Turn top-tier expertise into a top hourly rate.')},
 };
-export function wageQuote(s){const job=CAREERS[s.career]||CAREERS.flexible;const hourly=job.hourly+s.skill*.09,efficiency=1-Math.max(0,s.stress-65)*.007;return{job,hourly,wage:Math.round(s.plan.work*hourly*efficiency)};}
-export function chooseCareer(s,id){const job=CAREERS[id];if(!Object.hasOwn(CAREERS,id))return{ok:false,msg:L('Pick a career.')};if(s.skill<job.skill)return{ok:false,msg:L`Requires Skill ${job.skill} to apply.`};s.career=id;return{ok:true,msg:L`${job.name} selected · Allocate work hours and it shows in next month's pay.`};}
+export function wageQuote(s){const job=CAREERS[s.career]||CAREERS.flexible;const hourly=job.hourly+(s.concept==='rich-life'?70:s.skill)*.09,efficiency=1-Math.max(0,s.stress-65)*.007;return{job,hourly,wage:Math.round(s.plan.work*hourly*efficiency)};}
+export function chooseCareer(s,id){const job=CAREERS[id];if(!Object.hasOwn(CAREERS,id))return{ok:false,msg:L('Pick a career.')};if(s.concept!=='rich-life'&&s.skill<job.skill)return{ok:false,msg:L`Requires Skill ${job.skill} to apply.`};s.career=id;return{ok:true,msg:L`${job.name} selected · Allocate work hours and it shows in next month's pay.`};}
 export function validCareer(s){return s.career===undefined||Object.hasOwn(CAREERS,s.career);}

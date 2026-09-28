@@ -1,3 +1,4 @@
+import {transaction} from './health.js';
 import {L,lang,samePhrase} from './i18n.js';
 import {reputationSummary} from './empire.js';
 export const VENTURES={
@@ -56,7 +57,7 @@ export function repairVentureNames(s){
  return s;
 }
 
-export function investVenture(s,id,amount){
+function investVentureImpl(s,id,amount){
  const d=ventureOffering(s).companies.find(c=>c.id===id),v=ensureVentures(s);
  if(!d)return{ok:false,msg:L('Choose a company to invest in.')};
  if(!AMOUNTS.includes(amount))return{ok:false,msg:L('Check the investment amount.')};
@@ -92,3 +93,5 @@ export function validVentures(s){
 }
 
 export function ventureSummary(s){const v=ensureVentures(s);return{active:v.active,history:v.history,committed:v.active.reduce((n,i)=>n+i.amount,0),wins:v.history.filter(i=>i.success).length,losses:v.history.filter(i=>!i.success).length};}
+
+export function investVenture(s,...args){return transaction(s,()=>investVentureImpl(s,...args));}

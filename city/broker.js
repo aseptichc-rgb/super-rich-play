@@ -1,3 +1,4 @@
+import {transaction} from './health.js';
 import {L} from './i18n.js';
 import {ensureMarket,trade,investIndex,FEE} from './market.js';
 import {stockInfo,dividendPerShare} from './stocks.js';
@@ -12,7 +13,7 @@ export const longValue=s=>ensureBroker(s).listed.reduce((n,id)=>n+(s.holdings[id
 // What every short position would hand back if covered now: collateral minus the cost to buy back.
 export const shortValue=s=>Object.entries(ensureBroker(s).shorts).reduce((n,[id,p])=>n+p.collateral-s.prices[id]*p.qty,0);
 export function marginEquity(s){const m=ensureBroker(s),value=longValue(s),debt=m.margin,equity=value-debt;return{value,debt,equity,ratio:value>0?equity/value:debt>0?0:1};}
-export function buyOnMargin(s,id,qty){
+function buyOnMarginImpl(s,id,qty){
  const m=ensureBroker(s);if(!m.listed.includes(id)||!Number.isInteger(qty)||qty<1)return{ok:false,msg:L('Check the quantity.')};
  if(m.shorts[id])return{ok:false,msg:L('Cover the short position first.')};
  const cost=s.prices[id]*qty*(1+FEE),cash=Math.max(0,Math.min(s.money,cost)),borrow=Math.ceil((cost-cash)*100)/100;
@@ -27,7 +28,7 @@ export function repayMargin(s,amount){
  if(!Number.isFinite(amount)||!(pay>0))return{ok:false,msg:L('Nothing to repay, or not enough cash.')};
  s.money-=pay;m.margin=m.margin-pay<.005?0:m.margin-pay;return{ok:true,msg:L`Margin repaid · ₲${Math.round(pay).toLocaleString('en-US')}`};
 }
-export function openShort(s,id,qty){
+function openShortImpl(s,id,qty){
  const m=ensureBroker(s);if(!m.listed.includes(id)||!Number.isInteger(qty)||qty<1)return{ok:false,msg:L('Check the quantity.')};
  if(s.holdings[id]>0)return{ok:false,msg:L('Sell your shares before shorting this stock.')};
  const price=s.prices[id],proceeds=price*qty,extra=proceeds*(SHORT_COLLATERAL-1),fee=proceeds*FEE;
@@ -38,7 +39,7 @@ export function openShort(s,id,qty){
  else m.shorts[id]={qty,entry:price,collateral:proceeds+extra};
  return{ok:true,msg:L`Short sold ${qty} sh · Borrow fee ${(SHORT_FEE*100).toFixed(1)}%/mo · Dividends are owed while short`};
 }
-export function closeShort(s,id,qty){
+function closeShortImpl(s,id,qty){
  const m=ensureBroker(s),p=m.shorts[id];if(!p)return{ok:false,msg:L('No short position.')};
  qty??=p.qty;if(!Number.isInteger(qty)||qty<1||qty>p.qty)return{ok:false,msg:L('Check the quantity.')};
  const price=s.prices[id]||0,cover=price*qty,fee=cover*FEE,share=qty/p.qty,collateral=p.collateral*share,pnl=(p.entry-price)*qty-fee;
@@ -99,3 +100,9 @@ export function validBroker(s){
  if(m.plans!==undefined&&!(Array.isArray(m.plans)&&m.plans.every(p=>p&&(p.target==='index'||m.listed.includes(p.target))&&Number.isInteger(p.amount)&&p.amount>=PLAN_MIN)&&new Set(m.plans.map(p=>p.target)).size===m.plans.length))return false;
  return true;
 }
+
+export function buyOnMargin(s,...args){return transaction(s,()=>buyOnMarginImpl(s,...args),s.prices[args[0]]*args[1]);}
+
+export function openShort(s,...args){return transaction(s,()=>openShortImpl(s,...args),s.prices[args[0]]*args[1]);}
+
+export function closeShort(s,...args){return transaction(s,()=>closeShortImpl(s,...args),s.prices[args[0]]*(args[1]??s.market?.shorts?.[args[0]]?.qty??0));}

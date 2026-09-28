@@ -19,11 +19,11 @@ export function setTestMoney(state,input,enabled){
  return true;
 }
 
-// Account tools only act after this signed-in account's save has finished loading/syncing.
+// Keep account identity stable while normal save uploads are pending or in flight.
 export function developerAccount(user,sync){
- return user?.email?.toLowerCase()==='kjykjj04@gmail.com'&&user.emailVerified===true&&user.providerData?.some(p=>p.providerId==='google.com')===true&&sync?.user?.uid===user.uid&&sync.status==='saved';
+ return user?.email?.toLowerCase()==='kjykjj04@gmail.com'&&user.emailVerified===true&&user.providerData?.some(p=>p.providerId==='google.com')===true&&sync?.user?.uid===user.uid;
 }
 
 export function developerToolsEnabled(session,user,sync){
- return session.enabled||developerAccount(user,sync);
+ return session.enabled||(developerAccount(user,sync)&&['saved','pending','syncing'].includes(sync.status));
 }

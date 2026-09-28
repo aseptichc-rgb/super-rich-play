@@ -1,3 +1,5 @@
+import {healthReason} from './health.js';
+import {transaction} from './health.js';
 import {L} from './i18n.js';
 import {marketPrice,incomeFactor} from './economy.js';
 import {publicActivitiesPanel} from './reputation.js';
@@ -8,7 +10,7 @@ export const EMPIRE_ASSETS={
 };
 
 const money=n=>'₲'+Math.round(n).toLocaleString('en-US');
-export const OWNER_PERKS={company:{fame:50,monthly:3,label:L('Chairman networking'),gain:20,skill:3,stress:0,benefit:L('Chairman networking gives Skill +3'),alt:L('Shaking hands with business leaders at a skyscraper reception at dusk'),caption:L('Deals start with a handshake. Tonight the city\'s business elite came to meet you.')},broadcaster:{fame:150,monthly:5,label:L('Host a premiere'),gain:30,skill:2,stress:0,benefit:L('Creative progress +25% while owned'),alt:L('Walking the red carpet at a premiere your network hosts'),caption:L('Flashbulbs and cheers. The premiere your network hosts is tonight\'s biggest story.')},club:{fame:250,monthly:8,label:L('Match day in the owner box'),gain:40,skill:0,stress:20,benefit:L('Stress −5 monthly while owned'),alt:L('Cheering a goal from the owner\'s box at a floodlit stadium'),caption:L('The stadium erupts. From the owner\'s box, every goal feels like your own.')}};
+export const OWNER_PERKS={company:{fame:50,monthly:3,label:L('Chairman networking'),gain:20,skill:0,stress:0,benefit:L('Chairman networking builds reputation'),alt:L('Shaking hands with business leaders at a skyscraper reception at dusk'),caption:L('Deals start with a handshake. Tonight the city\'s business elite came to meet you.')},broadcaster:{fame:150,monthly:5,label:L('Host a premiere'),gain:30,skill:0,stress:0,benefit:L('Creative progress +25% while owned'),alt:L('Walking the red carpet at a premiere your network hosts'),caption:L('Flashbulbs and cheers. The premiere your network hosts is tonight\'s biggest story.')},club:{fame:250,monthly:8,label:L('Match day in the owner box'),gain:40,skill:0,stress:20,benefit:L('Stress −5 monthly while owned'),alt:L('Cheering a goal from the owner\'s box at a floodlit stadium'),caption:L('The stadium erupts. From the owner\'s box, every goal feels like your own.')}};
 export const REPUTATION_TIERS=[
  {min:0,name:L('Private Owner'),field:L('Economy'),relief:0,creative:1,ownerIncome:1,benefit:L('Starting reputation title')},
  {min:100,name:L('Community Patron'),field:L('Society'),relief:1,creative:1,ownerIncome:1,benefit:L('Stress −1 monthly')},
@@ -28,7 +30,7 @@ export function reputationSummary(s){const owned=s.empire?.owned||[],fame=owned.
 // Fame earned merely by buying assets or completing landmarks does not raise operating revenue; activity, giving and lifestyle fame do.
 function acquisitionFame(s){return Object.values(s.reputation?.assets||{}).reduce((n,v)=>n+v,0)+Object.values(s.empire?.landmarkFame||{}).reduce((n,v)=>n+v,0);}
 export function settleOwnerBenefits(s){const r=reputationSummary(s);if(!r.monthly&&!r.stressRelief)return;const e=ensureEmpire(s);e.earnedFame=(e.earnedFame||0)+r.monthly;s.stress=Math.max(0,s.stress-r.stressRelief);}
-export function ownerActivity(s,id){if(!Object.hasOwn(OWNER_PERKS,id)||!s.empire?.owned.includes(id))return{ok:false,msg:L('Acquire this asset first.')};const e=s.empire,d=OWNER_PERKS[id];if(e.lastActivities?.[id]===s.month)return{ok:false,msg:L('Already done this month.')};e.lastActivities??={};e.lastActivities[id]=s.month;e.earnedFame=(e.earnedFame||0)+d.gain;s.skill=Math.min(100,s.skill+d.skill);s.stress=Math.max(0,s.stress-d.stress);const msg=L`${d.label} · Reputation +${d.gain}${d.skill?L(' · Skill +')+d.skill:''}${d.stress?L(' · Stress −')+d.stress:''}`;s.log.unshift(msg);s.log=s.log.slice(0,25);return{ok:true,msg};}
+export function ownerActivity(s,id){const blocked=healthReason(s);if(blocked)return{ok:false,msg:blocked};if(!Object.hasOwn(OWNER_PERKS,id)||!s.empire?.owned.includes(id))return{ok:false,msg:L('Acquire this asset first.')};const e=s.empire,d=OWNER_PERKS[id];if(e.lastActivities?.[id]===s.month)return{ok:false,msg:L('Already done this month.')};e.lastActivities??={};e.lastActivities[id]=s.month;e.earnedFame=(e.earnedFame||0)+d.gain;s.stress=Math.max(0,s.stress-d.stress);const msg=L`${d.label} · Reputation +${d.gain}${d.skill?L(' · Skill +')+d.skill:''}${d.stress?L(' · Stress −')+d.stress:''}`;s.log.unshift(msg);s.log=s.log.slice(0,25);return{ok:true,msg};}
 
 export function ownerScene(s,id){const d=OWNER_PERKS[id],r=reputationSummary(s);return L`<span class="eyebrow">OWNER'S CLUB · ${EMPIRE_ASSETS[id].name}</span><h2>${d.label}</h2><figure class="experience-scene"><img src="./city/assets/owners/${id}.jpg" alt="${d.alt}" width="1536" height="1024"><figcaption>${d.caption}</figcaption></figure><div class="flex-summary" role="status"><b>Reputation +${d.gain}${d.skill?L` · Skill +${d.skill}`:''}${d.stress?L` · Stress −${d.stress}`:''}</b><span>Reputation ${r.fame.toLocaleString('en-US')} · ${r.tier.name}</span></div><button data-action="owners" class="primary full">Back to the Owners Club →</button>`;}
 
@@ -48,7 +50,7 @@ export function acquisitionReason(s,id,wealth){
  return null;
 }
 
-export function acquireEmpireAsset(s,id,wealth){
+function acquireEmpireAssetImpl(s,id,wealth){
  const error=acquisitionReason(s,id,wealth);if(error)return{ok:false,msg:error};
  const d=EMPIRE_ASSETS[id];if(s.mode!=='sandbox')s.money-=marketPrice(s,d.cost);const e=ensureEmpire(s);e.acquiredMonths??={};e.acquiredMonths[id]=s.month;
  ensureEmpire(s).owned.push(id);s.log.unshift(L`${d.icon} ${d.name} acquired · Now ${d.role} · ${money(marketPrice(s,d.cost))}`);s.log=s.log.slice(0,25);
@@ -70,3 +72,5 @@ export function empireDialog(s,wealth){
 export function reputationPanel(s){const r=reputationSummary(s),progress=r.next?Math.max(0,Math.min(100,(r.fame-r.tier.min)/(r.next.min-r.tier.min)*100)):100;return L`<section class="owner-reputation"><span>My reputation · No cap</span><h3>${r.fame.toLocaleString('en-US')} · ${r.tier.name}</h3><p>Current perk · ${r.tier.benefit}</p><p>Monthly reputation +${r.monthly}${r.next?L` · ${(r.next.min-r.fame).toLocaleString('en-US')} pts to next title ‘${r.next.name}’`:L(' · Reputation keeps growing after the top title')}</p><div class="reputation-progress" aria-label="Progress to next title"><i style="width:${progress}%"></i></div><div class="reputation-tiers">${REPUTATION_TIERS.map(t=>L`<span class="${r.fame>=t.min?'earned':''}${t===r.tier?' current':''}"><b>${r.fame>=t.min?'✓':'○'} ${t.name}</b><small>${t.min.toLocaleString('en-US')} pts · ${t.field}</small><em>${t.benefit}</em></span>`).join('')}</div><small>Earn society, culture, economy and politics titles in turn. Perks follow your current title and stack with broadcaster and club ownership perks.</small></section>`;}
 
 export function reputationDialog(s){return L`<span class="eyebrow">REPUTATION & GIVING</span><h2>My Reputation & Giving</h2>${reputationPanel(s)}${publicActivitiesPanel(s)}`;}
+
+export function acquireEmpireAsset(s,...args){return transaction(s,()=>acquireEmpireAssetImpl(s,...args));}

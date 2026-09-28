@@ -1,3 +1,4 @@
+import {transaction} from './health.js';
 // The compound account is the safe rung: a fixed dividend rate that ignores the business cycle.
 // Bigger returns and real risk live on the market instead (index fund, Office REIT).
 // Balances are units at normal prices; crash pricing discounts the valuation and the reinvestment price.
@@ -21,14 +22,14 @@ export function compoundSummary(s,month=s.month){
  return {assets,income,perAsset,auto:c?.auto??true,earned:c?.earned||0,last:c?.last||0,principal:c?.principal||0,lost:c?.lost||0,lastShock:c?.lastShock||null};
 }
 export function ensureCompound(s){return s.compound??={balances:{stocks:0},auto:true,earned:0,last:0,principal:0};}
-export function buyCompound(s,id){
+function buyCompoundImpl(s,id){
  if(s.concept!=='rich-life'||!Object.hasOwn(COMPOUND_ASSETS,id))return {ok:false,msg:L('Pick an asset to invest in.')};
  const d=COMPOUND_ASSETS[id],price=marketPrice(s,d.cost);if(s.money<price)return {ok:false,msg:L('Save up a little more cash.')};
  const c=ensureCompound(s);s.money-=price;c.balances[id]+=d.cost;c.principal+=price;
  return {ok:true,msg:d.name+L(' expanded! Monthly income +')+money(tieredIncome(d.cost,compoundRate(s,id)))};
 }
 // Withdrawals pay today's value in cash (a crash pays the discounted price). Principal shrinks in proportion; no fee.
-export function withdrawCompound(s,id,amount){
+function withdrawCompoundImpl(s,id,amount){
  const c=s.compound;if(s.concept!=='rich-life'||!Object.hasOwn(COMPOUND_ASSETS,id)||!(c?.balances?.[id]>0))return {ok:false,msg:L('There is nothing to withdraw.')};
  const market=marketFactor(s),value=c.balances[id]*market,cash=amount==='all'?value:Math.min(value,Number(amount));
  if(!(cash>0))return {ok:false,msg:L('Check the withdrawal amount.')};
@@ -75,3 +76,7 @@ export function compoundDialog(s){
  const c=compoundSummary(s),market=marketFactor(s);
  return L`<span class="eyebrow">COMPOUND PLAY · SAFE ACCOUNT</span><h2>Dividends that buy more dividends.</h2><p>This account pays a fixed rate whatever the economy does and never loses money. For bigger returns, take on market risk with the index fund or the Office REIT.${market<1?L` In this market crash, valuations are −${Math.round((1-market)*100)}% off list price and reinvestment buys at the discount.`:''}</p><div class="compound-totals"><div><small>My compound assets</small><strong>${money(c.assets)}</strong></div><div><small>Next month's income</small><strong class="positive">+${money(c.income)}</strong></div></div><button class="compound-toggle" data-action="compound-auto" aria-pressed="${c.auto}"><b>Auto-reinvest ${c.auto?'ON ✦':'OFF'}</b><span>${c.auto?L('Everything you earn goes back in'):L('Everything you earn is paid out as cash')}</span></button><div class="compound-grid">${Object.entries(COMPOUND_ASSETS).map(([id,d])=>{const value=s.compound?.balances[id]||0,level=value?1+Math.floor(Math.log2(Math.max(1,value/d.cost))):0,progress=value?(value/(d.cost*2**level))*100:0,rate=compoundRate(s,id),price=marketPrice(s,d.cost);return L`<section class="compound-asset"><span class="compound-icon">${d.icon}</span><h3>${d.name} <small>${d.risk}${level?' · Lv.'+level:''}</small></h3><p>${d.description}</p><strong>+${money(c.perAsset[id].income)} / month</strong><div class="meter"><i style="width:${progress}%"></i></div><small>${value?L`Balance ${money(value*market)} · this month ${(rate*100).toFixed(1)}%`:L`First month +${money(tieredIncome(d.cost,rate))} · ${(rate*100).toFixed(1)}% / month`}</small><button data-compound-buy="${id}" ${s.money<price?'disabled':''}>${value?L('Grow'):L('Invest')} · ${money(price)}</button>${value?L`<div class="button-row"><button data-compound-withdraw="${id}" data-amount="100000">Withdraw ₲100,000</button><button data-compound-withdraw="${id}" data-amount="all">Withdraw all</button></div>`:''}</section>`;}).join('')}</div><button class="primary full" data-action="compound-month">Advance a month and collect ✨</button>${c.last?L`<p class="compound-receipt" role="status">This month +${money(c.last)} ${c.auto?L('reinvested! Next month earns even more.'):L('paid out in cash!')}</p>`:''}<p class="help">Cash on hand ${money(s.money)} · Turn off auto-reinvest to build up cash for shopping.<br>In-game monthly rate: 1.2%, fixed. The first ₲1,000,000 earns 100%, the next ₲4,000,000 earns 60%, and anything above earns 35%. Income drops 30% during a crash or recovery. Rental building and Hotel & Resort accounts from older saves were converted into Office REIT shares.</p>`+L`<div class="button-row"><button data-action="stocks">Index fund · Office REIT · Listed stocks →</button></div>`;
 }
+
+export function buyCompound(s,...args){return transaction(s,()=>buyCompoundImpl(s,...args));}
+
+export function withdrawCompound(s,...args){return transaction(s,()=>withdrawCompoundImpl(s,...args));}

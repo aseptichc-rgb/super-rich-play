@@ -1,3 +1,4 @@
+import {transaction} from './health.js';
 import {L} from './i18n.js';
 import {marketFactor,economyCycle} from './economy.js';
 import {STOCKS,ADDED_STOCKS,IPO_POOL,stockInfo} from './stocks.js';
@@ -29,12 +30,12 @@ export function stockProfile(s,id){
  if(f.boom&&s.month>f.at)return{...k,type:'growth',annualRate:.19,risk:.12,beta:1.4};
  return{...k,annualRate:f.boom?.5:s.month>=f.at?-.6:-.3};
 }
-export function trade(s,id,qty){if(!ensureMarket(s)?.listed.includes(id)||!Number.isInteger(qty)||!qty)return{ok:false,msg:L('Check the quantity.')};if(qty>0&&s.market.shorts?.[id])return{ok:false,msg:L('Cover the short position first.')};const value=s.prices[id]*qty,fee=Math.abs(value)*FEE;if(qty>0&&s.money<value+fee)return{ok:false,msg:L('Not enough cash to buy.')};if(s.holdings[id]+qty<0)return{ok:false,msg:L('Not enough shares.')};recordTrade(s,id,qty,value,fee);s.money-=value+fee;s.holdings[id]+=qty;return{ok:true,msg:L`${qty>0?L('Buy','stock'):L('Sell')} complete · 0.5% fee`};}
+function tradeImpl(s,id,qty){if(!ensureMarket(s)?.listed.includes(id)||!Number.isInteger(qty)||!qty)return{ok:false,msg:L('Check the quantity.')};if(qty>0&&s.market.shorts?.[id])return{ok:false,msg:L('Cover the short position first.')};const value=s.prices[id]*qty,fee=Math.abs(value)*FEE;if(qty>0&&s.money<value+fee)return{ok:false,msg:L('Not enough cash to buy.')};if(s.holdings[id]+qty<0)return{ok:false,msg:L('Not enough shares.')};recordTrade(s,id,qty,value,fee);s.money-=value+fee;s.holdings[id]+=qty;return{ok:true,msg:L`${qty>0?L('Buy','stock'):L('Sell')} complete · 0.5% fee`};}
 export const marketCap=(s,id)=>s.prices[id]*stockInfo(id).shares;
 export function indexWeights(s){const m=ensureMarket(s),total=m.listed.reduce((n,id)=>n+marketCap(s,id),0);return m.listed.map(id=>({id,cap:marketCap(s,id),weight:marketCap(s,id)/total})).sort((a,b)=>b.cap-a.cap);}
 export function indexOrder(s,amount){const orders=indexWeights(s).filter(w=>!s.market.shorts?.[w.id]).map(w=>({id:w.id,qty:Math.floor(amount*w.weight/(1+FEE)/s.prices[w.id])})).filter(o=>o.qty>0);return{orders,cost:orders.reduce((n,o)=>n+s.prices[o.id]*o.qty*(1+FEE),0)};}
 // Index fund: one order spread across every listed company in proportion to market cap.
-export function investIndex(s,amount){
+function investIndexImpl(s,amount){
  if(!Number.isFinite(amount)||amount<1000)return{ok:false,msg:L('Enter at least ₲1,000 for the index basket.')};
  const {orders,cost}=indexOrder(s,amount);
  if(!orders.length)return{ok:false,msg:L('The amount is too small to buy even one weighted share.')};
@@ -44,7 +45,7 @@ export function investIndex(s,amount){
  return{ok:true,msg:L`Index basket bought · ${orders.length} companies weighted by market cap`,orders,cost};
 }
 // Buying by share count: one index share costs the index level in ₲ plus the 0.5% fee, still bought as the basket.
-export function investIndexUnits(s,units){if(!Number.isInteger(units)||units<1)return{ok:false,msg:L('Check the quantity.')};return investIndex(s,units*ensureMarket(s).index*(1+FEE));}
+function investIndexUnitsImpl(s,units){if(!Number.isInteger(units)||units<1)return{ok:false,msg:L('Check the quantity.')};return investIndex(s,units*ensureMarket(s).index*(1+FEE));}
 export const maxIndexUnits=s=>Math.max(0,Math.floor(s.money/(ensureMarket(s).index*(1+FEE))));
 // A decision event's one-day plunge cuts every price at once. The index moves with its basket, and the latest
 // chart point shows the new level instead of waiting for month end.
@@ -111,3 +112,9 @@ export function validMarket(s){
  if(!validBroker(s))return false;
  return true;
 }
+
+export function trade(s,...args){return transaction(s,()=>tradeImpl(s,...args));}
+
+export function investIndexUnits(s,...args){return transaction(s,()=>investIndexUnitsImpl(s,...args));}
+
+export function investIndex(s,...args){return transaction(s,()=>investIndexImpl(s,...args));}
