@@ -467,10 +467,11 @@ export function createRenderer(canvas,getState,getAnalysis,onTile,onHover){
   endHit();world=0;
  }
  // A building-sized mediwork AI billboard stands on two poles in the river off the west bank, in rows the boulevard bridge and road
- // growth never cross (new roads only claim land). Its face is a wall seen from the city side, so the logo is sheared with it.
+ // growth never cross (new roads only claim land). Keep it upstream and above the tall bridge arch so the whole face stays visible.
+ // Its face is a wall seen from the city side, so the logo is sheared with it.
  function billboard(s){
   world=mapOffset(s);
-  const xb=22.7,y0=5.3,y1=8.3,base=18,top=base+28,W=(y1-y0)*halfW,H=top-base,posts=[y0+.6,y1-.6];
+  const xb=22.7,y0=1.3,y1=4.3,base=66,top=base+28,W=(y1-y0)*halfW,H=top-base,posts=[y0+.6,y1-.6];
   ctx.globalAlpha=layer==='assets'?.22:1;
   for(const y of posts){poly([screen(xb-.3,y-.12),screen(xb-.06,y-.12),screen(xb-.06,y+.12),screen(xb-.3,y+.12)],'#9aa7a6','#c8d4d0');box(xb-.22,y-.05,.1,.1,base,'#5d686f','#48545b','#5d686f');}
   poly([screen(xb-.1,y0,top),screen(xb,y0,top),screen(xb,y1,top),screen(xb-.1,y1,top)],'#46524c');
@@ -502,7 +503,7 @@ export function createRenderer(canvas,getState,getAnalysis,onTile,onHover){
   }
   for(let sum=0;sum<SIZE*2;sum++)for(let x=0;x<SIZE;x++){const y=sum-x;if(y<0||y>=SIZE)continue;depth=sum;column=x;const i=y*SIZE+x,t=s.tiles[i],assetFocus=layer==='assets'&&s.tiles[t.buildingAnchor??i].owner!=='player';
    if(sum===27+2*mapOffset(s)&&x===5+mapOffset(s))estate(s);
-   if(!groundView&&sum===30+2*mapOffset(s)&&x===22+mapOffset(s))billboard(s);
+   if(!groundView&&sum===26+2*mapOffset(s)&&x===22+mapOffset(s))billboard(s);
    const rootTile=s.tiles[t.buildingAnchor??i],rootPos=coords(t.buildingAnchor??i);if(!(t.type==='road'&&t.terrain==='water')&&!inScene(rootPos.x,rootPos.y,rootTile))continue;
    ctx.globalAlpha=assetFocus?.22:1;
    if(t.type==='road'&&t.terrain==='water')bridge(x,y,s);

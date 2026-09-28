@@ -2,6 +2,7 @@
 // Placeholders {0}, {1}, ... stand for the template's ${...} values in English order.
 // "context::Text" keys hold a second wording for L('Text','context').
 export default {
+"Normal price {0} · {1}% off · Save {2}":"정상 가격 {0} · {1}% 할인 · {2} 절약",
 "The owner refuses to sell this month. Try again next month or choose another lot.":"소유자가 이번 달에는 팔지 않겠다고 합니다. 다음 달에 다시 문의하거나 다른 부지를 찾아보세요.",
 "Market reference {0} · Owner asking {1} (+{2}%)":"기준 시세 {0} · 소유자 호가 {1} (+{2}%)",
 "Owner terms are fixed this month and may change next month.":"매도 조건은 이번 달 동안 유지되며 다음 달에 바뀔 수 있습니다.",

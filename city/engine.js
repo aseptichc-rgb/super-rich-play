@@ -271,7 +271,8 @@ export function parcelQuote(s,i){
  hash=Math.imul(hash^(hash>>>16),2246822507)>>>0;hash=(hash^(hash>>>13))>>>0;
  const privateOwner=!!t.owner&&s.mode!=='sandbox',willing=!privateOwner||hash%10>=3;
  const premium=privateOwner?(rival?2:1.15)+(Math.floor(hash/10)%8)*(rival?.4:.25):rival?1.5:1;
- return{type,construction,level:t.level,land,market,total:Math.round(market*premium),premium,willing,rival};
+ const total=Math.round(market*premium),normalTotal=marketFactor(s)<1?parcelQuote({...s,economy:undefined},i).total:total;
+ return{type,construction,level:t.level,land,market,total,normalTotal,premium,willing,rival};
 }
 function buyParcelImpl(s,i){
  i=buildingAnchor(s,i);

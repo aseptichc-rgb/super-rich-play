@@ -1,4 +1,5 @@
 import {signatureGrowthPreview} from './signature-growth-ui.js';
+import {purchaseDiscount} from './economy.js';
 import {L} from './i18n.js';
 import {signatureInvestment,signatureBuilding,TYPES,MOUNTAIN_VIEW,buildingName,assetValue,assetSaleReport,developmentQuote,canBuild,assetLandValue,buildingArea,buildingAnnualGrowth,footprintCells,parcelQuote,buildingAnchor,coords,amenityPower,amenityBonus,billboardQuote,OFF_ROAD,BOULEVARD,TRAFFIC,trafficFactor} from './engine.js';
 import {demolitionButton} from './asset-sale.js';
@@ -6,8 +7,9 @@ import {propertyPartyPanel} from './reputation.js';
 import {propertyArt} from './property-art.js';
 const money=n=>'₲'+Math.round(n).toLocaleString('en-US');
 export function parcelOfferDetails(q){
- if(q.premium===1)return '';
- return '<div class="help">'+L`Market reference ${money(q.market)} · Owner asking ${money(q.total)} (+${Math.round((q.premium-1)*100)}%)`+'<br>'+(!q.willing?L('The owner refuses to sell this month. Try again next month or choose another lot.'):L('Owner terms are fixed this month and may change next month.'))+'</div>';
+ const discount=purchaseDiscount(q.normalTotal,q.total);
+ if(q.premium===1)return discount;
+ return discount+'<div class="help">'+L`Market reference ${money(q.market)} · Owner asking ${money(q.total)} (+${Math.round((q.premium-1)*100)}%)`+'<br>'+(!q.willing?L('The owner refuses to sell this month. Try again next month or choose another lot.'):L('Owner terms are fixed this month and may change next month.'))+'</div>';
 }
 // Foot traffic multiplies land price, and rent for homes and offices; 50 is an ordinary street.
 const times=n=>'×'+n.toFixed(2);
