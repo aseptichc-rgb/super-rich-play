@@ -1,5 +1,6 @@
+import {transaction} from './health.js';
 import {L} from './i18n.js';
-import {marketPrice} from './economy.js';
+import {marketPrice,purchaseDiscount} from './economy.js';
 import {awardAssetFame} from './reputation.js';
 import {reputationSummary} from './empire.js';
 import {mansionDesign,MANSION_STYLES} from './mansion.js';
@@ -33,7 +34,7 @@ export function artQuote(s,id){
  return null;
 }
 
-export function buyArtwork(s,id){
+function buyArtworkImpl(s,id){
  const error=artQuote(s,id);if(error)return{ok:false,msg:error};
  const d=ARTWORKS[id],paid=total(s,d);
  s.artCollection??={owned:[]};s.money-=paid;
@@ -45,6 +46,16 @@ export function buyArtwork(s,id){
 
 // item.grown counts curated months (rich life); without the counter, appreciation follows elapsed time. Crash pricing applies on top.
 function itemValue(s,item){const months=item.grown??Math.max(0,s.month-item.boughtMonth);return marketPrice(s,item.price)*Math.pow(1+ARTWORKS[item.id].annualRate,months/12);}
+export function artSaleValue(s,id){const item=artState(s).owned.find(item=>item.id===id);return item?Math.round(itemValue(s,item)):0;}
+function sellArtworkImpl(s,id){
+ const owned=artState(s).owned,index=owned.findIndex(item=>item.id===id);
+ if(index<0)return{ok:false,msg:L('You do not own this artwork.')};
+ const value=artSaleValue(s,id),d=ARTWORKS[id];
+ s.money+=value;owned.splice(index,1);
+ const msg=L`${d.name} sold · ${money(value)} received`;
+ s.log.unshift(msg);s.log=s.log.slice(0,25);
+ return{ok:true,msg,value};
+}
 export function artPortfolio(s){
  const owned=artState(s).owned;
  const value=Math.round(owned.reduce((sum,item)=>sum+itemValue(s,item),0));
@@ -77,6 +88,9 @@ export function artViewDialog(s,id){
  const item=owned[i],d=ARTWORKS[id],h=hall(s),value=itemValue(s,item),paid=item.paid??item.price,change=paid?(value/paid-1)*100:0;
  const row=(label,amount,cls='')=>`<div><small>${label}</small><b class="${cls}">${amount}</b></div>`;
  const nav=owned.length>1?`<button data-art-view="${owned[(i-1+owned.length)%owned.length].id}">${L('← Previous work')}</button><button data-art-view="${owned[(i+1)%owned.length].id}">${L('Next work →')}</button>`:'';
- return L`<div class="art-room theme-${h.theme}"><div class="room-wall"><span class="room-light"></span><button class="room-painting" data-art-zoom aria-pressed="false" title="Zoom to full size"><span class="gilt">${image(id,d)}</span><span class="plaque"><b>${d.name}</b>${d.artist} · ${d.year}</span></button></div><div class="room-floor"></div></div><div class="art-view-body"><div class="art-view-copy"><span class="eyebrow">${h.name} · MY COLLECTION · ${i+1} / ${owned.length}</span><h2>${d.name}</h2><p class="art-view-artist">${d.artist} · <em>${d.original}</em> · ${d.year}</p><p>${d.description}</p><p class="help">Tap the painting to zoom to full size and scroll across the brushwork.</p></div><div class="art-view-stats">${row(L('Won'),L`Year ${Math.floor(item.boughtMonth/12)+1} · Month ${item.boughtMonth%12+1}`)}${row(L('Hammer price'),money(paid))}${row(L('Current appraisal'),money(value))}${row(L('Change'),`${change>=0?'+':''}${change.toFixed(1)}%`,change>=0?'positive':'negative')}</div></div><div class="art-view-nav">${nav}<button data-action="art" class="primary">Back to Collection</button></div>`;
+ return L`<div class="art-room theme-${h.theme}"><div class="room-wall"><span class="room-light"></span><button class="room-painting" data-art-zoom aria-pressed="false" title="Zoom to full size"><span class="gilt">${image(id,d)}</span><span class="plaque"><b>${d.name}</b>${d.artist} · ${d.year}</span></button></div><div class="room-floor"></div></div><div class="art-view-body"><div class="art-view-copy"><span class="eyebrow">${h.name} · MY COLLECTION · ${i+1} / ${owned.length}</span><h2>${d.name}</h2><p class="art-view-artist">${d.artist} · <em>${d.original}</em> · ${d.year}</p><p>${d.description}</p><p class="help">Tap the painting to zoom to full size and scroll across the brushwork.</p></div><div class="art-view-stats">${row(L('Won'),L`Year ${Math.floor(item.boughtMonth/12)+1} · Month ${item.boughtMonth%12+1}`)}${row(L('Hammer price'),money(paid))}${row(L('Current appraisal'),money(value))}${row(L('Change'),`${change>=0?'+':''}${change.toFixed(1)}%`,change>=0?'positive':'negative')}</div></div><div class="art-view-nav">${nav}<button data-action="art" class="primary">Back to Collection</button></div>`+`<div class="art-view-nav"><button data-art-sell="${id}">${L`Sell artwork · ${money(artSaleValue(s,id))}`}</button></div>`;
 }
-export function artDialog(s){const p=artPortfolio(s);return L`<span class="eyebrow">PRIVATE MASTERPIECE SALE · GAME ONLY</span><h2>World Masterpiece Collection</h2><p>Win the great masters' signature works with game funds and complete your private gallery.</p>${gallery(s)}<div class="art-summary"><div><small>COLLECTION</small><b>${p.owned.length} / ${Object.keys(ARTWORKS).length}</b></div><div><small>APPRAISED VALUE</small><b>${money(p.value)}</b></div><div><small>MONTHLY INSURANCE · STORAGE</small><b>${money(artMaintenance(s))}</b></div><div><small>CASH ON HAND</small><b>${money(s.money)}</b></div></div><div class="art-grid">${Object.entries(ARTWORKS).map(([id,d])=>{const owned=p.owned.some(item=>item.id===id),reason=artQuote(s,id);return L`<article class="art-lot ${owned?'owned':''}">${preview(id,d,owned)}<div class="art-copy"><small>${d.rarity} · ${d.year}</small><h3>${d.name}</h3><p>${d.artist}<br><em>${d.original}</em></p><span>${d.description}</span><strong>${money(marketPrice(s,d.price))}</strong><small>Buyer's premium 5% · Total ${money(total(s,d))}${ART_FAME[id]?L` · Reputation ${ART_FAME[id]}+`:''}</small><button data-art-buy="${id}" ${reason?'disabled':''}>${owned?L('✦ Owned'):reason||L('Win at Auction')}</button></div></article>`;}).join('')}</div><p class="help">All artworks and transactions are fictional listings in the game world. The previews use public-domain reproductions of the original paintings. Artworks appreciate 2.5–4.5% a year on normal market value, their appraisal shifts with the economic discount rate, and they count toward net worth. In Super Rich Life, appraisals rise only in months where you allocate 8+ hours to collection curation. 0.08% of the current appraisal is charged monthly for insurance, storage and upkeep.</p>`;}
+export function artDialog(s){const p=artPortfolio(s);return L`<span class="eyebrow">PRIVATE MASTERPIECE SALE · GAME ONLY</span><h2>World Masterpiece Collection</h2><p>Win the great masters' signature works with game funds and complete your private gallery.</p>${gallery(s)}<div class="art-summary"><div><small>COLLECTION</small><b>${p.owned.length} / ${Object.keys(ARTWORKS).length}</b></div><div><small>APPRAISED VALUE</small><b>${money(p.value)}</b></div><div><small>MONTHLY INSURANCE · STORAGE</small><b>${money(artMaintenance(s))}</b></div><div><small>CASH ON HAND</small><b>${money(s.money)}</b></div></div><div class="art-grid">${Object.entries(ARTWORKS).map(([id,d])=>{const owned=p.owned.some(item=>item.id===id),reason=artQuote(s,id);return L`<article class="art-lot ${owned?'owned':''}">${preview(id,d,owned)}<div class="art-copy"><small>${d.rarity} · ${d.year}</small><h3>${d.name}</h3><p>${d.artist}<br><em>${d.original}</em></p><span>${d.description}</span><strong>${money(marketPrice(s,d.price))+(!owned?purchaseDiscount(d.price,marketPrice(s,d.price)):'')}</strong><small>Buyer's premium 5% · Total ${money(total(s,d))}${ART_FAME[id]?L` · Reputation ${ART_FAME[id]}+`:''}</small><button data-art-buy="${id}" ${reason?'disabled':''}>${owned?L('✦ Owned'):reason||L('Win at Auction')}</button></div></article>`;}).join('')}</div><p class="help">All artworks and transactions are fictional listings in the game world. The previews use public-domain reproductions of the original paintings. Artworks appreciate 2.5–4.5% a year on normal market value, their appraisal shifts with the economic discount rate, and they count toward net worth. In Super Rich Life, appraisals rise only in months where you allocate 8+ hours to collection curation. 0.08% of the current appraisal is charged monthly for insurance, storage and upkeep.</p>`;}
+
+export function buyArtwork(s,...args){return transaction(s,()=>buyArtworkImpl(s,...args));}
+export function sellArtwork(s,...args){return transaction(s,()=>sellArtworkImpl(s,...args));}

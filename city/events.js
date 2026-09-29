@@ -1,3 +1,4 @@
+import {checkHealth} from './health.js';
 // Decision events for the rich life. Stakes scale with net worth; some choices pay off months later.
 import {L} from './i18n.js';
 import {hashRoll} from './rng.js';
@@ -71,7 +72,7 @@ export function applyRichChoice(s,o){
  const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
  if(s.mode!=='sandbox')s.money-=o.cost||0;
  if(o.money)s.money+=o.money;
- s.stress=clamp(s.stress+(o.stress||0),0,100);s.skill=clamp(s.skill+(o.skill||0),0,100);
+ s.stress=clamp(s.stress+(o.stress||0),0,100);if(s.concept!=='rich-life')s.skill=clamp(s.skill+(o.skill||0),0,100);checkHealth(s);
  if(o.fame)s.prestige=Math.max(0,(s.prestige||0)+o.fame);
  if(o.memories){s.lifestyle??={spent:0,memories:0,last:{}};s.lifestyle.memories+=o.memories;}
  if(o.prices)shockPrices(s,o.prices);

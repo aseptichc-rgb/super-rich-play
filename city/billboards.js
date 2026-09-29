@@ -1,17 +1,32 @@
-// Billboard creatives shown on the map. Every billboard carries the mediwork AI logo, which replaced the placeholder brands.
-// To add an advertiser, add an entry with `logo:'city/assets/billboards/<file>.png'`. The logo is fitted inside the panel
-// on the entry's background color; the name is drawn only while there is no logo.
+// Fictional advertisers for building billboards. The river display is drawn separately in render.js.
+// Logos are fitted inside the panel; the name is used when images are unavailable.
 export const BILLBOARD_ADS=[
- {name:'mediwork AI',color:'#ffffff',ink:'#111111',logo:'city/assets/billboards/mediwork-ai.png'}
+ {name:'NOVA',color:'#152d65',ink:'#f9dd60',logo:'city/assets/billboards/nova-energy.svg'},
+ {name:'ORBIT',color:'#502b7c',ink:'#fff3fb',logo:'city/assets/billboards/orbit-mobile.svg'},
+ {name:'MORI',color:'#164e40',ink:'#f4edcd',logo:'city/assets/billboards/mori-market.svg'},
+ {name:'BLOOM',color:'#8d3548',ink:'#fff1db',logo:'city/assets/billboards/bloom-coffee.svg'},
+ {name:'AERO',color:'#dd6339',ink:'#fff8e7',logo:'city/assets/billboards/aero-delivery.svg'},
+ {name:'LUMA',color:'#f2d77d',ink:'#263e51',logo:'city/assets/billboards/luma-living.svg'}
 ];
 // Each building keeps one advertiser, picked by its tile index, so saves need no ad data.
 export const billboardAd=i=>BILLBOARD_ADS[i%BILLBOARD_ADS.length];
+// Deterministic formats need no save migration. Keep the format independent of the advertiser.
+export function billboardLayout(i,t){
+ const f=t.footprint||{width:1,height:1},size=Math.min(1.35,.85+.1*(f.width+f.height-2));
+ const kind=['roadside','rooftop','pylon'][(i+Math.floor(i/3))%3];
+ const [width,height,posts]=kind==='rooftop'?[40,18,5]:kind==='pylon'?[64,28,26]:[30,15,10];
+ return{kind,width:width*size,height:height*size,posts:posts*size};
+}
 const images=new Map();
-// p is the ground point under the panel's center. Returns false while a logo is still loading.
-export function drawBillboard(ctx,ad,p,zoom){
- const w=30*zoom,h=15*zoom,x=p.x-w/2,y=p.y-10*zoom-h,frame=1.5*zoom;
+// p is the support base (ground or rooftop). Returns false while a logo is still loading.
+export function drawBillboard(ctx,ad,p,zoom,layout={width:30,height:15,posts:10}){
+ const w=layout.width*zoom,h=layout.height*zoom,posts=layout.posts*zoom,x=p.x-w/2,y=p.y-posts-h,frame=1.5*zoom;
  ctx.save();
- ctx.fillStyle='#4a5358';for(const dx of[.22,.78])ctx.fillRect(x+w*dx-zoom,y+h,2*zoom,10*zoom);
+ ctx.fillStyle='#4a5358';for(const dx of[.22,.78])ctx.fillRect(x+w*dx-zoom,y+h,2*zoom,posts);
+ if(layout.kind==='pylon'){
+  ctx.fillStyle='#86908d';for(const dx of[.22,.78])ctx.fillRect(x+w*dx-4*zoom,p.y-2*zoom,8*zoom,3*zoom);
+  ctx.fillStyle='#65716f';ctx.fillRect(x+w*.16,y+h+posts*.45,w*.68,2*zoom);
+ }
  ctx.fillStyle='#2b3236';ctx.fillRect(x-frame,y-frame,w+frame*2,h+frame*2);
  ctx.fillStyle=ad.color;ctx.fillRect(x,y,w,h);
  let ready=true;

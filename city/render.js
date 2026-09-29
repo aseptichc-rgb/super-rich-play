@@ -1,6 +1,8 @@
+import {ultraSites,ultraHitId} from './ultra-map.js';
+import {ULTRA_ITEMS} from './ultra.js';
 import {L} from './i18n.js';
 import {drawLandmark} from './landmarks.js';
-import {billboardAd,drawBillboard} from './billboards.js';
+import {billboardAd,billboardLayout,drawBillboard} from './billboards.js';
 import {drawBuildingArt,buildingArtPending} from './building-art.js';
 import {drawSceneryArt,sceneryPending} from './scenery-art.js';
 import {landmarkAnchor,landmarkBuildError} from './landmark-construction.js';
@@ -40,7 +42,13 @@ export function createRenderer(canvas,getState,getAnalysis,onTile,onHover){
  let under=-1,faded=new Set(),fadeKey='';
  const imageMasks=new WeakMap(),imageTops=new Map();
  // The map is drawn into an offscreen canvas and reused until the state, camera or layer changes; a margin lets small pans reuse it.
- const MARGIN=200,cacheCanvas=offscreen(),cacheCtx=cacheCanvas.getContext('2d'),stamp=offscreen();let cache=null,shift={x:0,y:0};
+ const MARGIN=200,cacheCanvas=offscreen(),cacheCtx=cacheCanvas.getContext('2d');let cache=null,shift={x:0,y:0},visualAnalysis=null,visualState=null,visualKey='',hitGrid=new Map(),dynamicTiles=[];
+ // Screen-space buckets preserve painter order while limiting overlap checks to nearby shapes.
+ const HIT_CELL=128;
+ const overlaps=(a,b)=>a[0]<b[2]&&a[2]>b[0]&&a[1]<b[3]&&a[3]>b[1];
+ function nearby(boxes){const found=new Set();for(const b of boxes)for(let y=Math.floor(b[1]/HIT_CELL);y<=Math.floor(b[3]/HIT_CELL);y++)for(let x=Math.floor(b[0]/HIT_CELL);x<=Math.floor(b[2]/HIT_CELL);x++)for(const n of hitGrid.get(x+','+y)||[])if(overlaps(b,hits[n].box))found.add(n);return [...found].sort((a,b)=>a-b).map(n=>hits[n]);}
+ // Conservative bounds include tall landmarks, combined lots, labels and procedural fallbacks.
+ function inScene(x,y,t={}){const f=t.footprint||{width:1,height:1},p=screen(x+f.width/2,y+f.height/2),pad=56*(f.width+f.height)*zoom+80,top=320*Math.sqrt(f.width*f.height)*zoom;return p.x+pad>=0&&p.x-pad<=w+2*MARGIN&&p.y+pad>=0&&p.y-top<=h+2*MARGIN;}
  function offscreen(){return typeof document==='undefined'?{width:0,height:0,getContext:()=>ctx}:document.createElement('canvas');}
  const halfW=28,halfH=14;
  function resize(){const r=canvas.getBoundingClientRect();w=r.width;h=r.height;dpr=Math.min(2,Math.max(window.devicePixelRatio||1,1.5));canvas.width=w*dpr;canvas.height=h*dpr;}
@@ -49,7 +57,7 @@ export function createRenderer(canvas,getState,getAnalysis,onTile,onHover){
  function screen(x,y,z=0){x+=world;y+=world;if(drawingFootprint){const f=drawingFootprint;x=f.x+(x-f.x)*f.width;y=f.y+(y-f.y)*f.height;z*=1+(f.width*f.height-1)*.04;}const o=origin();return{x:o.x+(x-y)*halfW*zoom,y:o.y+(x+y)*halfH*zoom-z*zoom};}
  function pick(x,y){
   ctx.save();ctx.setTransform(1,0,0,1,0,0);
-  let hit=-1;for(let n=hits.length-1;n>=0&&!groundView;n--)if((hits[n].i>=0||hits[n].i===MANSION_HIT)&&!faded.has(hits[n].i)&&ctx.isPointInPath(hits[n].path,x-shift.x,y-shift.y)&&imageHit(hits[n],x-shift.x,y-shift.y)){hit=hits[n].i;break;}
+  let hit=-1;for(let n=hits.length-1;n>=0&&!groundView;n--)if((hits[n].i>=0||hits[n].i===MANSION_HIT||ultraHitId(hits[n].i))&&!faded.has(hits[n].i)&&ctx.isPointInPath(hits[n].path,x-shift.x,y-shift.y)&&imageHit(hits[n],x-shift.x,y-shift.y)){hit=hits[n].i;break;}
   ctx.restore();if(hit!==-1)return hit;
   return groundTile(x,y);}
  function groundTile(x,y){
@@ -389,7 +397,7 @@ export function createRenderer(canvas,getState,getAnalysis,onTile,onHover){
  function ground(s,a){
   const water=ctx.createLinearGradient(MARGIN,MARGIN,w+MARGIN,h+MARGIN);water.addColorStop(0,'#80aaa5');water.addColorStop(.4,'#438b95');water.addColorStop(1,'#205971');
   for(let y=0;y<SIZE;y++)for(let x=0;x<SIZE;x++){
-   depth=-1;column=x;const i=y*SIZE+x,t=s.tiles[i],road=(xx,yy)=>xx>=0&&yy>=0&&xx<SIZE&&yy<SIZE&&s.tiles[yy*SIZE+xx].type==='road';
+   depth=-1;column=x;const i=y*SIZE+x,t=s.tiles[i];const bounds=tileBox(x,y,3,40*zoom);if(!overlaps(bounds,[0,0,w+2*MARGIN,h+2*MARGIN]))continue;const road=(xx,yy)=>xx>=0&&yy>=0&&xx<SIZE&&yy<SIZE&&s.tiles[yy*SIZE+xx].type==='road';
    ctx.globalAlpha=layer==='assets'&&t.owner!=='player'?.3:1;
    const tone=(Math.sin(x*.72+y*.37)+1)*2;
    const surface=t.terrain==='water'?water:t.terrain==='mountain'?`hsl(95,13%,${50+tone}%)`:`hsl(85,22%,${64+tone}%)`;tile(x,y,surface,surface);
@@ -427,7 +435,7 @@ export function createRenderer(canvas,getState,getAnalysis,onTile,onHover){
   }
   ctx.globalAlpha=1;
   // Draw ground shadows before architecture, so they cannot cover facades.
-  for(let i=0;!groundView&&i<s.tiles.length;i++){const t=s.tiles[i];if(!t.type||['road','plot','park'].includes(t.type))continue;const{x,y}=coords(i),z=Math.min(105,badgeHeight(t.type,t.level)*.7),p=screen(x+.15,y+.2),q=screen(x+.85,y+.85),dx=z*.42*zoom;
+  for(let i=0;!groundView&&i<s.tiles.length;i++){const t=s.tiles[i];if(!t.type||['road','plot','park'].includes(t.type))continue;const{x,y}=coords(i);if(!inScene(x,y,t))continue;const z=Math.min(105,badgeHeight(t.type,t.level)*.7),p=screen(x+.15,y+.2),q=screen(x+.85,y+.85),dx=z*.42*zoom;
    poly([p,screen(x+.85,y+.15),{x:q.x+dx,y:q.y+dx*.28},{x:p.x+dx,y:p.y+dx*.28},q],'#203c4220');
   }
  }
@@ -461,10 +469,11 @@ export function createRenderer(canvas,getState,getAnalysis,onTile,onHover){
   endHit();world=0;
  }
  // A building-sized mediwork AI billboard stands on two poles in the river off the west bank, in rows the boulevard bridge and road
- // growth never cross (new roads only claim land). Its face is a wall seen from the city side, so the logo is sheared with it.
+ // growth never cross (new roads only claim land). Keep it upstream and above the tall bridge arch so the whole face stays visible.
+ // Its face is a wall seen from the city side, so the logo is sheared with it.
  function billboard(s){
   world=mapOffset(s);
-  const xb=22.7,y0=5.3,y1=8.3,base=18,top=base+28,W=(y1-y0)*halfW,H=top-base,posts=[y0+.6,y1-.6];
+  const xb=22.7,y0=1.3,y1=4.3,base=66,top=base+28,W=(y1-y0)*halfW,H=top-base,posts=[y0+.6,y1-.6];
   ctx.globalAlpha=layer==='assets'?.22:1;
   for(const y of posts){poly([screen(xb-.3,y-.12),screen(xb-.06,y-.12),screen(xb-.06,y+.12),screen(xb-.3,y+.12)],'#9aa7a6','#c8d4d0');box(xb-.22,y-.05,.1,.1,base,'#5d686f','#48545b','#5d686f');}
   poly([screen(xb-.1,y0,top),screen(xb,y0,top),screen(xb,y1,top),screen(xb-.1,y1,top)],'#46524c');
@@ -478,12 +487,39 @@ export function createRenderer(canvas,getState,getAnalysis,onTile,onHover){
   ctx.font=`400 ${20*4.63*m/ctx.measureText('mediwork AI').width}px ${family}`;ctx.textAlign='left';ctx.fillStyle='#111111';ctx.fillText('mediwork AI',left+1.36*m,cy+.384*m);
   ctx.restore();ctx.globalAlpha=1;world=0;
  }
+ function ultraDistrict(s){
+  const sites=ultraSites(s);if(!sites.length)return;
+  const size=Math.sqrt(s.tiles.length);
+  // A continuous paved extension of the city, separate from tradable parcels.
+  for(let x=size;x<size+21;x++)for(let y=size-18;y<size+1;y++)tile(x,y,(x===size+2||x===size+8||x===size+14||y===size-12||y===size-6)?'#b8b9ac':'#d7ddc7','#c5ceb8');
+  for(const site of sites){
+   const {x,y,id,hit,complete,remaining}=site;depth=x+y+8;column=x+4;
+   startHit(hit);
+   poly([screen(x,y),screen(x+4,y),screen(x+4,y+4),screen(x,y+4)],id==='superyacht'?'#72b6c2':'#ece5d4','#c3ac75');
+   if(!groundView){
+    if(!complete){
+     box(x+.4,y+.4,3.2,3.2,7,'#d6c7a6');
+     for(let n=0;n<4;n++)box(x+.5+n*.8,y+.6,.14,2.8,22,'#d9b565');
+     line(screen(x+.6,y+.6),screen(x+.6,y+.6,92),'#c89945',4);
+     line(screen(x+.6,y+.6,92),screen(x+3.4,y+.6,92),'#c89945',3);
+     line(screen(x+3,y+.6,92),screen(x+3,y+.6,32),'#6f776a',1);
+    }else if(!sceneryPlot(site.image,x,y,4,4)){
+     box(x+.6,y+.6,2.8,2.8,38,'#e5dfc8','#568a80','#abc3b5');
+     const p=screen(x+2,y+2,55);ctx.font=`${30*zoom}px sans-serif`;ctx.textAlign='center';ctx.fillText(ULTRA_ITEMS[id].icon,p.x,p.y);
+    }
+   }
+   endHit();
+   const p=screen(x+4,y+4.25);ctx.textAlign='center';ctx.font=`bold ${Math.max(10,11*zoom)}px sans-serif`;ctx.fillStyle='#244d43';
+   ctx.fillText(ULTRA_ITEMS[id].name,p.x,p.y);
+   ctx.font=`${Math.max(9,10*zoom)}px sans-serif`;ctx.fillText(complete?L('Completed'):L`${remaining} game months to complete`,p.x,p.y+15*zoom);
+  }
+ }
  function scene(s,a){
   const cw=w+2*MARGIN,ch=h+2*MARGIN;
   if(cacheCanvas.width!==Math.floor(cw*dpr)||cacheCanvas.height!==Math.floor(ch*dpr)){cacheCanvas.width=cw*dpr;cacheCanvas.height=ch*dpr;}
   ctx=cacheCtx;panX+=MARGIN;panY+=MARGIN;hits=[];dynamics=[];pendingImages=false;imageTops.clear();
   try{
-  ctx.setTransform(dpr,0,0,dpr,0,0);ctx.lineJoin='round';ctx.lineCap='round';
+  ctx.setTransform(dpr,0,0,dpr,0,0);ctx.globalAlpha=1;ctx.lineJoin='round';ctx.lineCap='round';
   // The sky is part of the picture, so the cache is opaque and frames are plain copies of it.
   const sky=ctx.createLinearGradient(MARGIN,MARGIN,w+MARGIN,h+MARGIN);sky.addColorStop(0,'#f4f0e3');sky.addColorStop(.5,'#dbe5df');sky.addColorStop(1,'#b2c9cd');ctx.fillStyle=sky;ctx.fillRect(0,0,cw,ch);
   // Island edge gives the map its model-like depth.
@@ -496,8 +532,9 @@ export function createRenderer(canvas,getState,getAnalysis,onTile,onHover){
   }
   for(let sum=0;sum<SIZE*2;sum++)for(let x=0;x<SIZE;x++){const y=sum-x;if(y<0||y>=SIZE)continue;depth=sum;column=x;const i=y*SIZE+x,t=s.tiles[i],assetFocus=layer==='assets'&&s.tiles[t.buildingAnchor??i].owner!=='player';
    if(sum===27+2*mapOffset(s)&&x===5+mapOffset(s))estate(s);
-   if(!groundView&&sum===30+2*mapOffset(s)&&x===22+mapOffset(s))billboard(s);
-   if(assetFocus)ctx.globalAlpha=.22;
+   if(!groundView&&sum===26+2*mapOffset(s)&&x===22+mapOffset(s))billboard(s);
+   const rootTile=s.tiles[t.buildingAnchor??i],rootPos=coords(t.buildingAnchor??i);if(!(t.type==='road'&&t.terrain==='water')&&!inScene(rootPos.x,rootPos.y,rootTile))continue;
+   ctx.globalAlpha=assetFocus?.22:1;
    if(t.type==='road'&&t.terrain==='water')bridge(x,y,s);
    if(groundView){
     const asset=s.tiles[t.buildingAnchor??i];
@@ -512,9 +549,15 @@ export function createRenderer(canvas,getState,getAnalysis,onTile,onHover){
     if((!asset.footprint||last===i)&&t.type!=='road'){
      if(faded.has(root))ctx.globalAlpha*=.3;
      const picture=building(p.x,p.y,asset);startHit(-1);
-     // The billboard stands at the front corner of the lot, larger on bigger lots.
-     if(asset.billboard){const f=asset.footprint||{width:1,height:1};if(!drawBillboard(ctx,billboardAd(root),screen(p.x+f.width-.12,p.y+f.height-.12),zoom*Math.min(1.4,.8+.15*(f.width+f.height-2))))pendingImages=true;}
-     if(asset.owner==='player'){const center=picture?{x:picture.x+picture.width/2,y:picture.y-7*zoom}:screen(p.x+(asset.footprint?.width||1)/2,p.y+(asset.footprint?.height||1)/2,badgeHeight(asset.type,asset.level));circle(center,5,'#f3d68c');}
+     // Mix small roadside panels, short rooftop supports and large dedicated advertising structures.
+     let adTop=null;
+     if(asset.billboard){
+      const f=asset.footprint||{width:1,height:1},layout=billboardLayout(root,asset),roof=layout.kind==='rooftop';
+      const base=roof?(picture?{x:picture.x+picture.width*.5,y:picture.y+picture.height*.12}:screen(p.x+f.width/2,p.y+f.height/2,(buildingHeight(asset.type,asset.level)+8)*buildingScale(asset.type,asset.level)*(1+(f.width*f.height-1)*.04))):screen(p.x+f.width-(layout.kind==='pylon'?.35:.12),p.y+f.height-(layout.kind==='pylon'?.12:.35));
+      if(!drawBillboard(ctx,billboardAd(root),base,zoom,layout))pendingImages=true;
+      if(roof){adTop={x:base.x,y:base.y-(layout.height+layout.posts+10)*zoom};imageTops.set(root,adTop);}
+     }
+     if(asset.owner==='player'){const center=adTop||(picture?{x:picture.x+picture.width/2,y:picture.y-7*zoom}:screen(p.x+(asset.footprint?.width||1)/2,p.y+(asset.footprint?.height||1)/2,badgeHeight(asset.type,asset.level)));circle(center,5,'#f3d68c');}
      if(asset.owner==='rival'){const center=picture?{x:picture.x+picture.width/2,y:picture.y-7*zoom}:screen(p.x+.5,p.y+.5,badgeHeight(asset.type,asset.level)+8);circle(center,7,'#a83d37');ctx.fillStyle='#fff3e6';ctx.font=`bold ${9*zoom}px sans-serif`;ctx.textAlign='center';ctx.fillText('⚑',center.x,center.y+3*zoom);}
      endHit();
     }
@@ -528,9 +571,13 @@ export function createRenderer(canvas,getState,getAnalysis,onTile,onHover){
    else if(t.type&&t.type!=='road'&&!a.active[i]){const p=screen(x+.5,y+.5,52);circle(p,6,'#dcb166');ctx.fillStyle='#544532';ctx.font=`${9*zoom}px sans-serif`;ctx.textAlign='center';ctx.fillText('↯',p.x,p.y+3*zoom);}
    endHit();
   }
+  ultraDistrict(s);
   recordingHit=null;
   }finally{panX-=MARGIN;panY-=MARGIN;ctx=mainCtx;}
-  cache={a,zoom,w,h,dpr,layer,groundView,panX,panY,fade:fadeKey,at:performance.now()};
+  hitGrid=new Map();
+  for(let n=0;n<hits.length;n++){const b=hits[n].box;if(!b.every(Number.isFinite)||!overlaps(b,[0,0,cw,ch]))continue;for(let y=Math.floor(b[1]/HIT_CELL);y<=Math.floor(b[3]/HIT_CELL);y++)for(let x=Math.floor(b[0]/HIT_CELL);x<=Math.floor(b[2]/HIT_CELL);x++){const key=x+','+y;if(!hitGrid.has(key))hitGrid.set(key,[]);hitGrid.get(key).push(n);}}
+  const grouped=new Map();for(const d of dynamics){const key=d.depth+','+d.col;if(!grouped.has(key))grouped.set(key,{depth:d.depth,col:d.col,items:[]});grouped.get(key).items.push(d);}dynamicTiles=[...grouped.values()];
+  cache={a,visualKey,zoom,w,h,dpr,layer,groundView,panX,panY,fade:fadeKey,at:performance.now()};
  }
  // Uses the cached hit shapes: a building fades when it is drawn later than the focus and its outline overlaps the focus volume.
  function occluders(s){
@@ -543,38 +590,43 @@ export function createRenderer(canvas,getState,getAnalysis,onTile,onHover){
    const f=built?t.footprint||{width:1,height:1}:placing?landmarkPlacement?.footprint||buildFootprint:{width:1,height:1};
    const z=built?badgeHeight(t.type,t.level):30,col=x+f.width-1,d=col+y+f.height-1;
    const box=[screen(x,y+f.height).x-sx,screen(x,y,z).y-sy,screen(x+f.width,y).x-sx,screen(x+f.width,y+f.height).y-sy];
-   for(const o of hits)if(o.i>=0&&o.i!==root&&(o.depth>d||o.depth===d&&o.col>col)&&o.box[0]<box[2]&&o.box[2]>box[0]&&o.box[1]<box[3]&&o.box[3]>box[1])set.add(o.i);
+   for(const o of nearby([box]))if(o.i>=0&&o.i!==root&&(o.depth>d||o.depth===d&&o.col>col)&&o.box[0]<box[2]&&o.box[2]>box[0]&&o.box[1]<box[3]&&o.box[3]>box[1])set.add(o.i);
   }
   return set;
  }
  function composite(s,a){
   const now=performance.now();
-  if(!cache||cache.a!==a||cache.zoom!==zoom||cache.w!==w||cache.h!==h||cache.dpr!==dpr||cache.layer!==layer||cache.groundView!==groundView||cache.fade!==fadeKey||Math.abs(panX-cache.panX)>MARGIN||Math.abs(panY-cache.panY)>MARGIN||(pendingImages&&now-cache.at>400))scene(s,a);
+  // Financial refreshes do not alter the background. Overlay maps still depend on the complete analysis.
+  if(visualAnalysis!==a||visualState!==s){visualAnalysis=a;visualState=s;visualKey=JSON.stringify([mapOffset(s),s.tiles.map(t=>[t.terrain,t.type,t.level,t.owner,t.buildingAnchor,t.footprint,t.landmark,t.billboard,t.tree,t.damage,t.boulevard]),s.flex?.owned,s.flex?.mansion,s.ultra?.items,s.ultra? s.month:null,[...a.connected],a.active]);}
+  if(!cache||cache.visualKey!==visualKey||(layer!=='normal'&&layer!=='assets'&&cache.a!==a)||cache.zoom!==zoom||cache.w!==w||cache.h!==h||cache.dpr!==dpr||cache.layer!==layer||cache.groundView!==groundView||cache.fade!==fadeKey||Math.abs(panX-cache.panX)>MARGIN||Math.abs(panY-cache.panY)>MARGIN||(pendingImages&&now-cache.at>400))scene(s,a);
   shift={x:Math.round((panX-cache.panX-MARGIN)*dpr)/dpr,y:Math.round((panY-cache.panY-MARGIN)*dpr)/dpr};
   ctx.drawImage(cacheCanvas,shift.x,shift.y,cacheCanvas.width/dpr,cacheCanvas.height/dpr);
  }
  // Sprites are drawn in depth order; a cached building in front of a sprite is stamped back over it through its own hit shape.
  function sprites(time){
-  const byDepth=[];for(const d of dynamics)(byDepth[d.depth+1]??=[]).push(d);
-  const toMain=b=>[b[0]+shift.x,b[1]+shift.y,b[2]+shift.x,b[3]+shift.y],overlap=(k,b)=>k[0]<b[2]&&k[2]>b[0]&&k[1]<b[3]&&k[3]>b[1];
-  for(let sum=-1;sum<SIZE*2-1;sum++){
-   const ds=byDepth[sum+1]||[],band=[];
-   for(let x=0;x<SIZE;x++){
-    const y=sum-x,here=[];
-    if(y>=0&&y<SIZE&&life.drawTile(y*SIZE+x,time)){const c=screen(x+.5,y+.5);here.push([c.x-48*zoom,c.y-46*zoom,c.x+48*zoom,c.y+18*zoom]);}
-    for(const d of ds){if(d.col!==x)continue;const tf=d.transform;if(tf){const p=screen(tf.x,tf.y);ctx.save();ctx.translate(p.x,p.y);ctx.scale(tf.width,tf.scale);ctx.translate(-p.x,-p.y);d.draw(time);ctx.restore();}else d.draw(time);here.push(toMain(d.box));}
-    if(!here.length)continue;
-    for(const o of hits)if(o.depth===sum&&o.col>x&&here.some(k=>overlap(k,toMain(o.box))))cover(o);
-    band.push(...here);
-   }
-   if(band.length)for(const o of hits)if(o.depth>sum&&band.some(k=>overlap(k,toMain(o.box))))cover(o);
+  const toCache=b=>[b[0]-shift.x,b[1]-shift.y,b[2]-shift.x,b[3]-shift.y],view=[-shift.x,-shift.y,w-shift.x,h-shift.y];
+  const jobs=new Map(dynamicTiles.map(d=>[d.depth+','+d.col,{...d}]));
+  for(const i of life.occupiedTiles()){const{x,y}=coords(i),key=(x+y)+','+x;if(!jobs.has(key))jobs.set(key,{depth:x+y,col:x,items:[]});jobs.get(key).actor=i;}
+  const ordered=[...jobs.values()].sort((a,b)=>a.depth-b.depth||a.col-b.col);
+  let band=[],sum=null;
+  const coverBand=()=>{for(const o of nearby(band))if(o.depth>sum)cover(o);};
+  for(const job of ordered){
+   if(sum!==job.depth){coverBand();band=[];sum=job.depth;}
+   const here=[];
+   if(job.actor!==undefined){const{x,y}=coords(job.actor),c=screen(x+.5,y+.5),b=toCache([c.x-48*zoom,c.y-46*zoom,c.x+48*zoom,c.y+18*zoom]);if(overlaps(b,view)&&life.drawTile(job.actor,time))here.push(b);}
+   for(const d of job.items){if(!overlaps(d.box,view))continue;const tf=d.transform;if(tf){const p=screen(tf.x,tf.y);ctx.save();ctx.translate(p.x,p.y);ctx.scale(tf.width,tf.scale);ctx.translate(-p.x,-p.y);d.draw(time);ctx.restore();}else d.draw(time);here.push(d.box);}
+   for(const o of nearby(here))if(o.depth===sum&&o.col>job.col)cover(o);
+   band.push(...here);
   }
+  coverBand();
  }
- function cover(o){const X0=Math.floor(o.box[0]*dpr),Y0=Math.floor(o.box[1]*dpr),sw=Math.ceil(o.box[2]*dpr)-X0,sh=Math.ceil(o.box[3]*dpr)-Y0;ctx.save();ctx.globalAlpha=o.alpha;
-  if(o.image){// A building picture covers only where it is opaque.
-   stamp.width=sw;stamp.height=sh;const c=stamp.getContext('2d');c.drawImage(cacheCanvas,X0,Y0,sw,sh,0,0,sw,sh);c.globalCompositeOperation='destination-in';c.save();const ix=o.box[0]*dpr-X0,iy=o.box[1]*dpr-Y0,iw=(o.box[2]-o.box[0])*dpr,ih=(o.box[3]-o.box[1])*dpr;c.translate(o.mirror?ix+iw:ix,iy);if(o.mirror)c.scale(-1,1);c.drawImage(o.image,0,0,iw,ih);c.restore();ctx.setTransform(1,0,0,1,shift.x*dpr,shift.y*dpr);ctx.drawImage(stamp,X0,Y0);}
-  else{ctx.setTransform(dpr,0,0,dpr,shift.x*dpr,shift.y*dpr);ctx.clip(o.path);ctx.setTransform(1,0,0,1,shift.x*dpr,shift.y*dpr);ctx.drawImage(cacheCanvas,X0,Y0,sw,sh,X0,Y0,sw,sh);}
+ function cover(o){const X0=Math.floor(o.box[0]*dpr),Y0=Math.floor(o.box[1]*dpr),sw=Math.ceil(o.box[2]*dpr)-X0,sh=Math.ceil(o.box[3]*dpr)-Y0;if(sw<=0||sh<=0)return;ctx.save();ctx.globalAlpha=o.alpha;
+  if(o.image){// Build the masked patch once per scene, then reuse it for every passing sprite.
+   if(!o.stamp){const patch=offscreen();patch.width=sw;patch.height=sh;const c=patch.getContext('2d');c.drawImage(cacheCanvas,X0,Y0,sw,sh,0,0,sw,sh);c.globalCompositeOperation='destination-in';c.save();const ix=o.box[0]*dpr-X0,iy=o.box[1]*dpr-Y0,iw=(o.box[2]-o.box[0])*dpr,ih=(o.box[3]-o.box[1])*dpr;c.translate(o.mirror?ix+iw:ix,iy);if(o.mirror)c.scale(-1,1);c.drawImage(o.image,0,0,iw,ih);c.restore();o.stamp=patch;}
+   ctx.setTransform(1,0,0,1,shift.x*dpr,shift.y*dpr);ctx.drawImage(o.stamp,X0,Y0);
+  }else{ctx.setTransform(dpr,0,0,dpr,shift.x*dpr,shift.y*dpr);ctx.clip(o.path);ctx.setTransform(1,0,0,1,shift.x*dpr,shift.y*dpr);ctx.drawImage(cacheCanvas,X0,Y0,sw,sh,X0,Y0,sw,sh);}
   ctx.restore();}
+
  function render(time,phase=0){
   life.update(time);
   ctx.setTransform(dpr,0,0,dpr,0,0);ctx.lineJoin='round';ctx.lineCap='round';
@@ -604,10 +656,10 @@ export function createRenderer(canvas,getState,getAnalysis,onTile,onHover){
  const cursorFor=v=>v==='inspect'||v==='pan'?'default':'crosshair';
  canvas.addEventListener('pointerdown',e=>{if(e.button!==0&&e.button!==1&&e.button!==2)return;const p=point(e);down={...p,panX,panY,button:e.button,moved:false};canvas.setPointerCapture(e.pointerId);});
  canvas.addEventListener('pointermove',e=>{const p=point(e);under=groundView?-1:groundTile(p.x,p.y);hover=pick(p.x,p.y);onHover(hover);if(!down)return;if(Math.hypot(p.x-down.x,p.y-down.y)>6){down.moved=true;canvas.style.cursor='grabbing';}if(down.moved){panX=down.panX+p.x-down.x;panY=down.panY+p.y-down.y;}});
- canvas.addEventListener('pointerup',e=>{if(down&&down.button===0&&!down.moved){const p=point(e),i=pick(p.x,p.y);if(i>=0||i===MANSION_HIT)onTile(i);}down=null;canvas.style.cursor=cursorFor(tool);});
+ canvas.addEventListener('pointerup',e=>{if(down&&down.button===0&&!down.moved){const p=point(e),i=pick(p.x,p.y);if(i>=0||i===MANSION_HIT||ultraHitId(i))onTile(i);}down=null;canvas.style.cursor=cursorFor(tool);});
  canvas.addEventListener('pointercancel',()=>{down=null;canvas.style.cursor=cursorFor(tool);});canvas.addEventListener('pointerleave',()=>{hover=-1;under=-1;onHover(-1);});canvas.addEventListener('contextmenu',e=>e.preventDefault());
  canvas.tabIndex=0;
- canvas.addEventListener('keydown',e=>{if(!['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Enter'].includes(e.key))return;e.preventDefault();if(hover<0)hover=(9+mapOffset(getState()))*(SIZE+1);if(e.key==='Enter'){onTile(hover);return;}let{x,y}=coords(hover);if(e.key==='ArrowUp')y--;if(e.key==='ArrowDown')y++;if(e.key==='ArrowLeft')x--;if(e.key==='ArrowRight')x++;hover=Math.max(0,Math.min(SIZE-1,y))*SIZE+Math.max(0,Math.min(SIZE-1,x));onHover(hover);});
+ canvas.addEventListener('keydown',e=>{if(!['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Enter'].includes(e.key))return;e.preventDefault();if(e.key==='Enter'&&ultraHitId(hover)){onTile(hover);return;}if(hover<0)hover=(9+mapOffset(getState()))*(SIZE+1);if(e.key==='Enter'){onTile(hover);return;}let{x,y}=coords(hover);if(e.key==='ArrowUp')y--;if(e.key==='ArrowDown')y++;if(e.key==='ArrowLeft')x--;if(e.key==='ArrowRight')x++;hover=Math.max(0,Math.min(SIZE-1,y))*SIZE+Math.max(0,Math.min(SIZE-1,x));onHover(hover);});
  canvas.addEventListener('wheel',e=>{e.preventDefault();zoomTo(zoom*(e.deltaY>0?.92:1.08),point(e));},{passive:false});
- return{render,focus(i){const{x,y}=coords(i);zoom=w<650?1.1:1.5;panX=-(x-y)*halfW*zoom;panY=260*zoom-(x+y+1)*halfH*zoom;},burst:life.burst,visit:life.visit,setLandmarkPlacement(design,footprint){landmarkPlacement=design?{design,footprint:{...footprint}}:null;selected=-1;canvas.style.cursor=design?'crosshair':cursorFor(tool);},setTool(v,footprint={width:1,height:1}){landmarkPlacement=null;tool=v;buildFootprint={...footprint};canvas.style.cursor=cursorFor(v);},setLayer(v){layer=v;},setGroundView(v){groundView=!!v;hover=-1;onHover(-1);},select(i){selected=i;},zoom(delta){zoomTo(zoom+delta);},home(){zoom=w<650?.64:Math.min(1,w/1120);panX=0;panY=(w<650?-55:-100)-mapOffset(getState())*2*halfH*zoom;},position:screen};
+ return{render,focusUltra(id){resize();const site=ultraSites(getState()).find(v=>v.id===id);if(!site)return;groundView=false;hover=-1;selected=-1;zoom=w<650?.8:1.1;panX=-(site.x-site.y)*halfW*zoom;panY=260*zoom-(site.x+site.y+4)*halfH*zoom+50*zoom;},focus(i){const{x,y}=coords(i);zoom=w<650?1.1:1.5;panX=-(x-y)*halfW*zoom;panY=260*zoom-(x+y+1)*halfH*zoom;},burst:life.burst,visit:life.visit,setLandmarkPlacement(design,footprint){landmarkPlacement=design?{design,footprint:{...footprint}}:null;selected=-1;canvas.style.cursor=design?'crosshair':cursorFor(tool);},setTool(v,footprint={width:1,height:1}){landmarkPlacement=null;tool=v;buildFootprint={...footprint};canvas.style.cursor=cursorFor(v);},setLayer(v){layer=v;},setGroundView(v){groundView=!!v;hover=-1;onHover(-1);},select(i){selected=i;},zoom(delta){zoomTo(zoom+delta);},home(){zoom=w<650?.64:Math.min(1,w/1120);panX=0;panY=(w<650?-55:-100)-mapOffset(getState())*2*halfH*zoom;},position:screen};
 }

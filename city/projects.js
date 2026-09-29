@@ -1,3 +1,4 @@
+import {transaction} from './health.js';
 // Creative income outside property and retail. Quotes are fixed at project start.
 import {L} from './i18n.js';
 import {reputationSummary} from './empire.js';
@@ -12,10 +13,10 @@ export const PATHS={
  bounty:{name:L('Problem-Solving Challenge'),icon:'⚡',tag:L('Find a request → Solve → Reward'),cost:0,hours:30,sale:520,royalty:0,desc:L('Solve problems like data cleanup, translation and idea contests for a completion fee.')},
 };
 export function projectQuote(s,type,style='balanced'){
- const p=PATHS[type];if(!p)return null;const factor=style==='quick'?.7:style==='craft'?1.4:1,yieldFactor=style==='quick'?.65:style==='craft'?1.35:1,skill=1+s.skill*.012;
+ const p=PATHS[type];if(!p)return null;const factor=style==='quick'?.7:style==='craft'?1.4:1,yieldFactor=style==='quick'?.65:style==='craft'?1.35:1,skill=s.concept==='rich-life'?1.84:1+s.skill*.012;
  return{hours:Math.round(p.hours*factor),cost:p.cost,sale:Math.round(p.sale*skill*yieldFactor),royalty:Math.round(p.royalty*skill*yieldFactor)};
 }
-export function startProject(s,type,style,name){
+function startProjectImpl(s,type,style,name){
  if(!Object.hasOwn(PATHS,type)||!['quick','balanced','craft'].includes(style))return{ok:false,msg:L('Choose what to make and how to make it.')};
  s.projects||=[];if(s.projects.filter(p=>p.status==='working').length>=3)return{ok:false,msg:L('You can run up to 3 projects at once. Finish existing work first.')};
  if(s.projects.filter(p=>p.status!=='archived').length>=8)return{ok:false,msg:L('You already hold 8 projects. Archive finished ones to start a new one.')};
@@ -33,3 +34,5 @@ export function validProjects(s){
  if(s.projects===undefined)return true;if(!Array.isArray(s.projects)||s.projects.length>1000||!Number.isInteger(s.projectSerial)||s.projectSerial<0)return false;
  const ids=new Set();return s.projects.every(p=>{if(!p||ids.has(p.id)||!Number.isInteger(p.id)||p.id<1||p.id>s.projectSerial||!Object.hasOwn(PATHS,p.type)||!['quick','balanced','craft'].includes(p.style)||typeof p.name!=='string'||p.name.length>30||!['working','earning','complete','archived'].includes(p.status))return false;ids.add(p.id);return ['hours','cost','sale','royalty','progress','monthsLeft'].every(k=>Number.isFinite(p[k])&&p[k]>=0)&&p.hours>0&&p.progress<=p.hours&&p.monthsLeft<=24;});
 }
+
+export function startProject(s,...args){return transaction(s,()=>startProjectImpl(s,...args));}

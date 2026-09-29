@@ -1,3 +1,4 @@
+import {healthReason} from './health.js';
 import {L} from './i18n.js';
 // Public activities share the existing owner fame balance.
 export const DONATION_AMOUNTS=[1000,10000,100000,1000000];
@@ -16,7 +17,7 @@ export function awardAssetFame(s,key,cost,label,minimum=0){
  if(points<=previous)return 0;
  ensure(s).assets[key]=points;gainFame(s,points-previous,label);return points-previous;
 }
-export function donate(s,amount){
+export function donate(s,amount){const blocked=healthReason(s);if(blocked)return{ok:false,msg:blocked};
  if(!Number.isSafeInteger(amount)||amount<1000)return{ok:false,msg:L('Enter a whole-number donation of ₲1,000 or more.')};
  if(s.money<amount)return{ok:false,msg:L('Not enough cash to donate.')};
  const total=(s.reputation?.donated||0)+amount;
@@ -24,11 +25,11 @@ export function donate(s,amount){
  const r=ensure(s),gain=Math.floor(total/1000)-Math.floor(r.donated/1000);
  s.money-=amount;r.donated=total;return gainFame(s,gain,L`Community donation ${money(amount)}`);
 }
-export function mediaInterview(s){
+export function mediaInterview(s){const blocked=healthReason(s);if(blocked)return{ok:false,msg:blocked};
  if(s.reputation?.lastInterview===s.month)return{ok:false,msg:L('You already did an interview this month.')};
  ensure(s).lastInterview=s.month;return gainFame(s,INTERVIEW_FAME,L('Press interview · My story of investing and giving'));
 }
-export function hostPropertyParty(s,i){
+export function hostPropertyParty(s,i){const blocked=healthReason(s);if(blocked)return{ok:false,msg:blocked};
  const t=Number.isInteger(i)&&s.tiles[i],party=t&&Object.hasOwn(PROPERTY_PARTIES,t.type)&&PROPERTY_PARTIES[t.type];
  if(!party||t.owner!=='player'||t.tenure!=='buy')return{ok:false,msg:L('Parties can only be hosted at a golf club or resort you own.')};
  if(s.reputation?.lastParties?.[t.type]===s.month)return{ok:false,msg:L('You already hosted a party at this type of venue this month.')};

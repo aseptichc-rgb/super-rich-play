@@ -24,7 +24,7 @@ export function resolveOrder(s,choice){
  const order=ordersFor(s)[run.round];if(!order)return {ok:false,msg:L('All commissions are finished.')};
  const craft=choice==='craft',stock=order.stock-(craft?1:0),energy=order.energy+(craft?1:0);
  if(choice!=='skip'){
-  if(craft&&s.skill<15)return {ok:false,msg:L('Custom crafting needs expertise 15.')};
+  if(craft&&s.concept!=='rich-life'&&s.skill<15)return {ok:false,msg:L('Custom crafting needs expertise 15.')};
   if(run.stock<stock||run.energy<energy)return {ok:false,msg:L('Not enough resources. Pick the next commission.')};
   const pay=order.pay+(craft?25:0);run.stock-=stock;run.energy-=energy;run.earned+=pay;run.served++;run.results.push({name:order.name,pay});
  }else run.results.push({name:order.name,pay:0});

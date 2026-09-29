@@ -1,3 +1,4 @@
+import {transaction} from './health.js';
 import {L} from './i18n.js';
 import {awardAssetFame} from './reputation.js';
 export const MANSION_SIZES={1:{name:L('Compact'),area:120},2:{name:L('Grand'),area:200},3:{name:L('Estate'),area:320},4:{name:L('Palace'),area:800},5:{name:L('Private Kingdom'),area:2000}};
@@ -21,7 +22,7 @@ export function mansionQuote(s,d,wealth){
  const error=!owned&&s.mode!=='sandbox'&&Math.max(s.highestWealth,wealth)<100000?L('Reach a peak net worth of ₲100,000 to build'):owned&&same(old,d)?L('Same design as your current mansion.'):s.money<cost?L('Not enough cash to build.'):null;
  return{cost,error,owned};
 }
-export function buildMansion(s,d,wealth){const q=mansionQuote(s,d,wealth);if(q.error)return{ok:false,msg:q.error};s.flex??={owned:[],lastParty:-1};if(!q.owned)s.flex.owned.push('penthouse');s.flex.mansion={...DEFAULT_MANSION,...d};s.money-=q.cost;s.highestWealth=Math.max(s.highestWealth,wealth);s.log.unshift(L`🏛 Mansion ${q.owned?L('remodel'):L('build')} complete · ${MANSION_SIZES[d.size].name} · ${d.floors} floors · ${d.rooms} rooms · ₲${q.cost.toLocaleString('en-US')}`);s.log=s.log.slice(0,25);awardAssetFame(s,'mansion',designValue(d),L('Mansion completed'));return{ok:true,msg:L('Your mansion is complete! The design now shows on the map.')};}
+function buildMansionImpl(s,d,wealth){const q=mansionQuote(s,d,wealth);if(q.error)return{ok:false,msg:q.error};s.flex??={owned:[],lastParty:-1};if(!q.owned)s.flex.owned.push('penthouse');s.flex.mansion={...DEFAULT_MANSION,...d};s.money-=q.cost;s.highestWealth=Math.max(s.highestWealth,wealth);s.log.unshift(L`🏛 Mansion ${q.owned?L('remodel'):L('build')} complete · ${MANSION_SIZES[d.size].name} · ${d.floors} floors · ${d.rooms} rooms · ₲${q.cost.toLocaleString('en-US')}`);s.log=s.log.slice(0,25);awardAssetFame(s,'mansion',designValue(d),L('Mansion completed'));return{ok:true,msg:L('Your mansion is complete! The design now shows on the map.')};}
 export function mansionArt(d){const [width,height]=mansionArtSize(d);return L`<figure class="mansion-art mansion-model"><img src="./${mansionArtURL(d)}" width="${width}" height="${height}" loading="lazy" alt="${MANSION_STYLES[d.style]}, ${MANSION_SIZES[d.size].name}, ${d.floors} floors, ${d.rooms} rooms${d.pool?L(', pool'):''}${d.garden?L(', garden'):''}"><figcaption>${mansionArea(d)*d.floors}㎡ · ${d.floors} floors · ${d.rooms} rooms</figcaption></figure>`;}
 export function floorPlan(d){const counts=Array.from({length:d.floors},(_,i)=>Math.floor(d.rooms/d.floors)+(i<d.rooms%d.floors?1:0));return L`<div class="mansion-plans">${counts.map((count,i)=>L`<section><b>Floor ${i+1} · ${count} rooms</b><div class="mansion-rooms">${Array.from({length:count},(_,n)=>`<span>${i===0&&n===0?L('Living room'):i===0&&n===1?L('Kitchen'):n===0?L('Bedroom'):n===1?L('Study','room'):L('Multipurpose room')}</span>`).join('')||L('<span>Open lounge</span>')}</div></section>`).join('')}</div><p class="help">A concept floor plan splitting the rooms by floor. Rooms include the living room and kitchen; hallways, stairs and bathrooms are separate shared space.</p>`;}
 const MANSION_MOODS={
@@ -54,7 +55,7 @@ export const MANSION_HIT=-2;
 export const MANSION_RESALE_RATE=.7;
 const ownsMansion=s=>!!s.flex?.owned.includes('penthouse');
 export function mansionSaleValue(s){return ownsMansion(s)?marketPrice(s,Math.round(designValue(mansionDesign(s))*MANSION_RESALE_RATE)):0;}
-export function sellMansion(s){
+function sellMansionImpl(s){
  if(!ownsMansion(s))return{ok:false,msg:L('You do not own a mansion to sell.')};
  const value=mansionSaleValue(s);
  s.flex.owned=s.flex.owned.filter(id=>id!=='penthouse');delete s.flex.mansion;s.money+=value;
@@ -73,3 +74,7 @@ export function mansionOwnerDialog(s,confirm=false){
 import {mansionSitePreview} from './mansion-preview.js';
 import {mansionArtURL,mansionArtSize} from './mansion-art.js';
 import {marketPrice} from './economy.js';
+
+export function buildMansion(s,...args){return transaction(s,()=>buildMansionImpl(s,...args));}
+
+export function sellMansion(s,...args){return transaction(s,()=>sellMansionImpl(s,...args));}
