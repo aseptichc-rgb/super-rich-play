@@ -17,12 +17,14 @@ export function awardAssetFame(s,key,cost,label,minimum=0){
  if(points<=previous)return 0;
  ensure(s).assets[key]=points;gainFame(s,points-previous,label);return points-previous;
 }
+function donationFame(total){return Math.floor(total<=100000?total/1000:100*(2*Math.sqrt(total/100000)-1));}
+function donationGain(donated,amount){return donationFame(donated+amount)-donationFame(donated);}
 export function donate(s,amount){const blocked=healthReason(s);if(blocked)return{ok:false,msg:blocked};
  if(!Number.isSafeInteger(amount)||amount<1000)return{ok:false,msg:L('Enter a whole-number donation of ₲1,000 or more.')};
  if(s.money<amount)return{ok:false,msg:L('Not enough cash to donate.')};
  const total=(s.reputation?.donated||0)+amount;
  if(!Number.isSafeInteger(total))return{ok:false,msg:L('Cumulative donation limit exceeded.')};
- const r=ensure(s),gain=Math.floor(total/1000)-Math.floor(r.donated/1000);
+ const r=ensure(s),gain=donationGain(r.donated,amount);
  s.money-=amount;r.donated=total;return gainFame(s,gain,L`Community donation ${money(amount)}`);
 }
 export function mediaInterview(s){const blocked=healthReason(s);if(blocked)return{ok:false,msg:blocked};
@@ -51,5 +53,5 @@ export function validReputation(s){
 }
 export function publicActivitiesPanel(s){
  const r=s.reputation,done=r?.lastInterview===s.month;
- return L`<section class="owner-reputation public-activities"><h3>Giving & Public Life</h3><p>Total donated <b>${money(r?.donated||0)}</b> · Cash on hand ${money(Math.round(s.money))}</p><p>Donations fund community education and healthcare. Every cumulative ₲1,000 earns 1 reputation point, and the amount donated reduces your cash and net worth.</p><div class="button-row">${DONATION_AMOUNTS.map(n=>L`<button data-donate="${n}" ${s.money<n?'disabled':''}>Donate ${money(n)} · +${n/1000} pts</button>`).join('')}</div><label class="field-label" for="donation-amount">Custom donation amount (₲)<input id="donation-amount" type="number" min="1000" step="1" value="1000"></label><button data-action="donate-custom" class="primary full">Donate Entered Amount</button><h3>Press Interview</h3><p>Share your story of investing and giving. Free, once a month · Reputation +${INTERVIEW_FAME}</p><button data-action="media-interview" class="full" ${done?'disabled':''}>${done?L('Interview done this month'):L('Give a Press Interview')}</button></section><p class="help">Big-ticket property, mansion, vehicle, yacht and art purchases: ${[...ASSET_FAME].reverse().map(t=>L`${money(t.cost)} or more: +${t.fame} pts`).join(' / ')}. Small business acquisitions earn at least +10 pts. The same asset only counts reputation gained above its previous best, and stock trades do not qualify. Existing collections are not credited retroactively.</p>`;
+ return L`<section class="owner-reputation public-activities"><h3>Giving & Public Life</h3><p>Total donated <b>${money(r?.donated||0)}</b> · Cash on hand ${money(Math.round(s.money))}</p><p>Donations fund community education and healthcare. Up to ₲100,000 in total donations, every ₲1,000 earns 1 reputation point; beyond that, additional reputation gradually decreases. Splitting donations gives the same total reputation. Donations reduce your cash and net worth.</p><div class="button-row">${DONATION_AMOUNTS.map(n=>L`<button data-donate="${n}" ${s.money<n?'disabled':''}>Donate ${money(n)} · +${donationGain(r?.donated||0,n)} pts</button>`).join('')}</div><label class="field-label" for="donation-amount">Custom donation amount (₲)<input id="donation-amount" type="number" min="1000" step="1" value="1000"></label><button data-action="donate-custom" class="primary full">Donate Entered Amount</button><h3>Press Interview</h3><p>Share your story of investing and giving. Free, once a month · Reputation +${INTERVIEW_FAME}</p><button data-action="media-interview" class="full" ${done?'disabled':''}>${done?L('Interview done this month'):L('Give a Press Interview')}</button></section><p class="help">Big-ticket property, mansion, vehicle, yacht and art purchases: ${[...ASSET_FAME].reverse().map(t=>L`${money(t.cost)} or more: +${t.fame} pts`).join(' / ')}. Small business acquisitions earn at least +10 pts. The same asset only counts reputation gained above its previous best, and stock trades do not qualify. Existing collections are not credited retroactively.</p>`;
 }
