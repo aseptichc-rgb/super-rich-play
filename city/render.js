@@ -496,7 +496,11 @@ export function createRenderer(canvas,getState,getAnalysis,onTile,onHover){
    startHit(hit);
    poly([screen(x,y),screen(x+3,y),screen(x+3,y+3),screen(x,y+3)],id==='moon'?'#b7b9ba':'#d7ddc7','#c5ceb8');
    if(!groundView){
-    if(!complete){
+    if(!complete&&id==='moon'){
+     const alpha=ctx.globalAlpha;ctx.globalAlpha=alpha*.65;
+     if(!sceneryPlot(site.image,x,y,3,3))box(x+.4,y+.4,2.2,2.2,20,'#afd5df','#607e98','#8babbf');
+     ctx.globalAlpha=alpha;
+    }else if(!complete){
      box(x+.25,y+.25,2.5,2.5,7,'#d6c7a6');
      for(let n=0;n<4;n++)box(x+.35+n*.65,y+.4,.12,2.2,22,'#d9b565');
      line(screen(x+.4,y+.4),screen(x+.4,y+.4,92),'#c89945',4);
@@ -508,9 +512,17 @@ export function createRenderer(canvas,getState,getAnalysis,onTile,onHover){
     }
    }
    endHit();
-   const p=screen(x+3,y+3.2);ctx.textAlign='center';ctx.font=`bold ${Math.max(10,11*zoom)}px sans-serif`;ctx.fillStyle='#244d43';
+   const p=screen(x+3,y+3.2);
+   if(id==='moon'&&!complete){ctx.fillStyle='#edf3edeb';ctx.fillRect(p.x-85*zoom,p.y-13*zoom,170*zoom,63*zoom);}
+   ctx.textAlign='center';ctx.font=`bold ${Math.max(10,11*zoom)}px sans-serif`;ctx.fillStyle='#244d43';
    ctx.fillText(ULTRA_ITEMS[id].name,p.x,p.y);
    ctx.font=`${Math.max(9,10*zoom)}px sans-serif`;ctx.fillText(complete?L('Completed'):L`${remaining} game months to complete`,p.x,p.y+15*zoom);
+   if(id==='moon'&&!complete){
+    const progress=Math.max(0,Math.min(1,1-remaining/ULTRA_ITEMS.moon.months)),width=110*zoom;
+    ctx.fillStyle='#344b60';ctx.fillRect(p.x-width/2,p.y+23*zoom,width,5*zoom);
+    ctx.fillStyle='#a2deed';ctx.fillRect(p.x-width/2,p.y+23*zoom,width*progress,5*zoom);
+    ctx.fillStyle='#244d43';ctx.fillText(L`Under construction · ${Math.floor(progress*100)}%`,p.x,p.y+43*zoom);
+   }
  }
  function moonSurface(s){
   if(s.concept!=='rich-life')return;

@@ -2,6 +2,7 @@
 // Placeholders {0}, {1}, ... stand for the template's ${...} values in English order.
 // "context::Text" keys hold a second wording for L('Text','context').
 export default {
+"Under construction · {0}%":"건설 중 · {0}%",
 "Sell {0} first.":"{0}부터 매각하세요.",
 "Infrastructure and collections count toward net worth · All club holdings can be sold for half their purchase price":"기반 시설·컬렉션은 순자산에 포함 · 모든 클럽 보유 항목을 구입가의 절반에 매각 가능",
 "Infrastructure and collections retain their purchase value, including construction in progress. Research, foundation and satellite funding are expenses. All holdings and project rights can be sold for half their price. Sell dependent activities first. Sold items cannot be repurchased; future income and progress stop, while earned reputation remains.":"기반 시설과 컬렉션은 건설 중에도 구입가를 자산으로 유지합니다. 탐사·재단·위성 사업 착수금은 지출입니다. 모든 보유 항목과 프로젝트 권리는 구입가의 절반에 매각할 수 있습니다. 연결된 하위 활동을 먼저 매각하세요. 매각 후 재구매는 불가하며 향후 수익과 진행은 중단되고 이미 얻은 명성은 유지됩니다.",
