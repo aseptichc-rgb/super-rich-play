@@ -4,6 +4,7 @@ import {startupSummary,advanceStartups,validStartups,decideStartup,validStartupE
 import {L} from './i18n.js';
 import {marketFactor,marketPrice,incomeFactor} from './economy.js';
 import {ensureEconomy,advanceEconomy,validEconomy} from './economy.js';
+import {ensureLongShocks,advanceLongShocks,validLongShocks} from './long-shocks.js';
 import {validLandmarks} from './landmarks.js';
 import {awardAssetFame,validReputation} from './reputation.js';
 import {validJourney,journeyInventoryValue} from './journey.js';
@@ -86,8 +87,9 @@ const RETIRED_EVENTS=[
 export function migrateSave(s){return onMap(s,()=>migrateSaveAt(s));}
 function migrateSaveAt(s){
  if(s?.concept==='rich-life'&&s.plan){s.plan.create=0;s.plan.learn=0;}
+ if(s?.concept==='rich-life'&&Number.isFinite(s.signatureMultiplier))s.signatureMultiplier=Math.min(s.signatureMultiplier,SIGNATURE_GROWTH.maxMultiplier);
  if(s?.concept==='rich-life'&&s.log)checkHealth(s);
- if(s){ensureEconomy(s);ensureMarket(s);retireCompoundAccounts(s);s.growthStartMonth??=s.month;if(s.tiles?.length===SIZE*SIZE){installBoulevards(s);thinRoadSlabs(s);}repairVentureNames(s);}
+ if(s){ensureEconomy(s);ensureLongShocks(s);ensureMarket(s);retireCompoundAccounts(s);s.growthStartMonth??=s.month;if(s.tiles?.length===SIZE*SIZE){installBoulevards(s);thinRoadSlabs(s);}repairVentureNames(s);}
  if(s&&RETIRED_EVENTS.some(e=>JSON.stringify(e)===JSON.stringify(s.event)))s.event=null;
  if(s?.event?.id==='networking')s.event=null;
  if(Array.isArray(s?.eventLog))s.eventLog=s.eventLog.filter(id=>id!=='networking');
@@ -111,7 +113,7 @@ function createGameAt(mode,seed){
  for(const[x,y,l]of[[5,5,1],[5,6,2],[7,5,1],[8,6,1],[9,6,2],[4,8,1],[5,8,1],[7,8,1],[8,8,2],[12,5,2],[13,6,1],[15,6,2],[16,6,1],[12,12,2],[13,12,1],[16,12,2],[18,12,1],[7,17,1],[8,17,2],[12,17,1],[15,17,2],[16,17,1]])put(x,y,'home',l);
  put(9,10,'hall');put(10,8,'park');put(8,10,'shop',2);put(13,10,'shop',2);put(18,8,'factory');put(19,8,'factory');put(12,8,'school');put(16,14,'park');put(4,15,'park');put(10,17,'clinic');put(18,17,'tower');
  installBoulevards({tiles});
- return{economy:ensureEconomy({month:0,seed}),version:2,growthStartMonth:0,name:L('Riverside'),mode,seed,tiles,money:12000,debt:0,month:0,skill:10,stress:12,plan:{work:80,manage:40,learn:20,create:0},career:'flexible',costBasis:Object.fromEntries(STOCKS.map(k=>[k.id,0])),realizedGains:0,holdings:Object.fromEntries(STOCKS.map(k=>[k.id,0])),prices:Object.fromEntries(STOCKS.map(k=>[k.id,k.base])),market:createMarket(0),history:[],log:[L('You\'ve arrived in Riverside. Work to build seed money and pick a spot for your first shop.')],event:null,effect:null,highestWealth:12000,milestones:[],lastReport:null};
+ return{economy:ensureEconomy({month:0,seed}),longShocks:ensureLongShocks({month:0,seed}),version:2,growthStartMonth:0,name:L('Riverside'),mode,seed,tiles,money:12000,debt:0,month:0,skill:10,stress:12,plan:{work:80,manage:40,learn:20,create:0},career:'flexible',propertyTax:{accrued:0},costBasis:Object.fromEntries(STOCKS.map(k=>[k.id,0])),realizedGains:0,holdings:Object.fromEntries(STOCKS.map(k=>[k.id,0])),prices:Object.fromEntries(STOCKS.map(k=>[k.id,k.base])),market:createMarket(0),history:[],log:[L('You\'ve arrived in Riverside. Work to build seed money and pick a spot for your first shop.')],event:null,effect:null,highestWealth:12000,milestones:[],lastReport:null};
 }
 export const BOULEVARD={axis:11,land:1.5,rent:1.3};
 // Upgrade existing streets and vacant parcels; never displace saved buildings or owned land.
@@ -306,7 +308,7 @@ export function buildingAnchor(s,i){return s.tiles[i]?.buildingAnchor??i;}
 // Buildings with `tiers` change name with their level (a clinic grows into a hospital, then a general hospital).
 export function buildingName(t){const d=TYPES[t?.type];return d?.tiers?.[Math.max(1,Math.min(3,t.level||1))-1]??d?.name;}
 export function buildingArea(t){return (t.footprint?.width||1)*(t.footprint?.height||1);}
-export function buildingAnnualGrowth(t){return .20+(buildingArea(t)-1)*.02;}
+export function buildingAnnualGrowth(t){return .08+(buildingArea(t)-1)*.01;}
 export function assetLandValue(s,i){return footprintCells(i,s.tiles[i]?.footprint).reduce((sum,j)=>sum+landPrice(s,j),0);}
 // Owner's time: every managed building wants 12 hours of on-site management a month.
 // Neglect costs up to 15% of revenue, full attention adds 10%; stress above 65 erodes the effect.
@@ -338,7 +340,7 @@ export function crowdingReport(s,i,footprint=s.tiles[i]?.footprint){
 // Mountain view: a mountain within three tiles lifts the location score of resorts, hotels and golf courses.
 export const MOUNTAIN_VIEW={resort:.25,hotel:.1,golf:.1};
 // Signature buildings grow the managed-property portfolio after each paid month.
-export const SIGNATURE_GROWTH={capital:5000000,rate:.01,maxRate:.25,maxMultiplier:1000};
+export const SIGNATURE_GROWTH={capital:5000000,rate:.003,maxRate:.06,maxMultiplier:25};
 export const signatureBuilding=t=>t.type==='hq'||t.type==='monument'||!!t.landmark;
 export const signatureInvestment=t=>(t.constructionCost??(TYPES[t.type]?.cost||0)*(t.landmark?100:1))+(t.assetLedger?.upgrades||0);
 export function signatureGrowth(s){
@@ -358,7 +360,7 @@ export function developmentQuote(s,i,type,level=1,footprint=s.tiles[i]?.footprin
  // Location risk is deliberately curved: prime sites retain the old ceiling, while weak sites can fall below fixed upkeep.
  const synergy=synergyReport(view,i,type),crowding=crowdingReport(view,i,footprint),premium=d.managed?reputationSummary(s).premium:1,cycle=d.managed?cycleFactor(s):1,attention=d.managed?ownerAttention(view):null,boost=cycle*(1+synergy.bonus)*premium*(attention?attention.multiplier:1)*(d.managed?crowding.multiplier:1)*(d.managed&&s.concept==='rich-life'?(s.signatureMultiplier??1):1);
  // Everything except the level multiplier is rounded first, so an expansion always earns an exact multiple of level 1.
- let revenue=Math.round(incomeFactor(s)*d.base*(d.managed?(.08+1.62*Math.pow(score,1.5))*boost:1)*Math.pow(area,1.3)*(loc.access?1:OFF_ROAD.revenue)*(type==='office'?(loc.boulevard?BOULEVARD.rent:1)*trafficFactor(loc.footfall,TRAFFIC.rent):1))*level,cost=d.upkeep*level*area;
+ let revenue=Math.round(incomeFactor(s)*d.base*(d.managed?(.08+1.62*Math.pow(score,1.5))*boost*.75:1)*Math.pow(area,1.3)*(loc.access?1:OFF_ROAD.revenue)*(type==='office'?(loc.boulevard?BOULEVARD.rent:1)*trafficFactor(loc.footfall,TRAFFIC.rent):1))*level,cost=d.upkeep*level*area;
  if(!d.managed&&d.group&&type!=='plot'){
   const virtual={...s,tiles:s.tiles.map((t,j)=>cells.includes(j)?j===i?{terrain:'land',type,owner:'player',tenure:'buy',level,price:100,quality:1,staff:d.staff,marketing:false,footprint}: {terrain:'land',type:'extension',owner:null,level:1,buildingAnchor:i}:t)};
   const report=businessReport(virtual,i);revenue=report.revenue;cost=report.cost;
@@ -367,13 +369,24 @@ export function developmentQuote(s,i,type,level=1,footprint=s.tiles[i]?.footprin
  const demolition=footprint?[...new Set(cells.map(j=>buildingAnchor(s,j)))].reduce((sum,j)=>sum+(demolitionQuote(s,j)?.cost||0),0):0;
  return{loc,waterfront,mountain,score,factor,cells,area,label:score>=.8?L('Prime location'):score>=.55?L('Popular location'):L('Value location'),construction,land,demolition,total:construction+land+demolition,revenue,cost,profit:revenue-cost,synergy,crowding,premium,cycle,attention,boost};
 }
-// Game-only appreciation: annual 20%, with the legacy rate preserved before migration.
-export const BUILDING_GROWTH=Math.pow(1.20,1/12)-1;
-function buildingValue(s,t){const l=t.assetLedger;if(!l)return(t.constructionCost??TYPES[t.type]?.cost??0)*(.7+(t.level-1)*.5);const months=Math.max(0,s.month-l.valuationMonth),legacy=Math.min(months,Math.max(0,(s.growthStartMonth??s.month)-l.valuationMonth));return l.buildingValue*Math.pow(1.003,legacy)*Math.pow(1+buildingAnnualGrowth(t),(months-legacy)/12);}
-export function assetValue(s,i){const t=s.tiles[i];if(t?.owner!=='player')return 0;const market=Math.round((t.tenure==='buy'?assetLandValue(s,i):t.deposit||0)+buildingValue(s,t)*marketFactor(s));if(t.type!=='office')return market;const ledger=assetLedger(s,i);return Math.max(market,Math.round((ledger.initial+ledger.upgrades)*marketFactor(s)));}
+// Game-only appreciation: annual 8%, with the legacy rate preserved before migration.
+export const BUILDING_GROWTH=Math.pow(1.08,1/12)-1;
+function buildingValue(s,t){const l=t.assetLedger;if(!l)return(t.constructionCost??TYPES[t.type]?.cost??0)*(.7+(t.level-1)*.5);const months=Math.max(0,s.month-l.valuationMonth),legacy=Math.min(months,Math.max(0,(s.growthStartMonth??s.month)-l.valuationMonth));return l.buildingValue*Math.pow(1.003,legacy)*Math.pow(1+buildingAnnualGrowth(t),Math.min(240,months-legacy)/12);}
+export function assetValue(s,i){const t=s.tiles[i];if(t?.owner!=='player')return 0;const market=Math.round((t.tenure==='buy'?assetLandValue(s,i):t.deposit||0)+buildingValue(s,t)*marketFactor(s));return Math.round((t.type==='office'?Math.max(market,Math.round((assetLedger(s,i).initial+assetLedger(s,i).upgrades)*marketFactor(s))):market)*(t.shockFactor??1));}
 export function assetLedger(s,i){
  const t=s.tiles[i],construction=t.constructionCost??TYPES[t.type]?.cost??0;
  return t.assetLedger??{initial:construction+(t.tenure==='buy'?assetLandValue(s,i):t.deposit||0),upgrades:Array.from({length:t.level-1},(_,n)=>Math.round(construction*.8*(n+1))).reduce((a,b)=>a+b,0),operating:0,since:s.month,estimated:true,buildingValue:buildingValue(s,t),valuationMonth:s.month};
+}
+function destroyCityBuildings(s){
+ const excluded=new Set(['road','plot','extension','park','garden','citypark','plaza']);
+ const buildings=s.tiles.map((t,i)=>({t,i})).filter(({t})=>t.type&&!excluded.has(t.type));
+ const score=i=>{let x=(s.seed^Math.imul(s.month,0x9e3779b1)^Math.imul(i+1,0x85ebca6b))>>>0;x=Math.imul(x^(x>>>16),0x7feb352d);return(x^(x>>>15))>>>0;};
+ buildings.sort((a,b)=>score(a.i)-score(b.i));
+ for(const {t,i} of buildings.slice(0,Math.round(buildings.length/2))){
+  const cells=footprintCells(i,t.footprint);
+  for(const j of cells.length?cells:[i])s.tiles[j]={terrain:s.tiles[j].terrain,type:null,level:1,tree:false,owner:null};
+ }
+ return Math.round(buildings.length/2);
 }
 export function assetSaleReport(s,i){
  const t=s.tiles[i];if(t?.owner!=='player')return null;
@@ -400,7 +413,7 @@ function installBillboardImpl(s,i){
  return{ok:true,msg};
 }
 export function businessReport(s,i,context={}){
- if(TYPES[s.tiles[i].type]?.managed){const t=s.tiles[i],q=developmentQuote(s,i,t.type,t.level),billboard=t.billboard&&billboardEligible(t)?billboardIncome(q.revenue*(t.landmark?10:1),q.loc.footfall):0,revenue=q.revenue*(t.landmark?10:1)+billboard,cost=q.cost;return{billboard,revenue,cost,profit:revenue-cost,occupancy:Math.round(60+q.score*40),demand:Math.round(q.score*100),wages:0,lease:0,maintenance:cost,goods:0,marketing:0,loc:q.loc,manage:100,crowding:q.crowding};}
+ if(TYPES[s.tiles[i].type]?.managed){const t=s.tiles[i],q=developmentQuote(s,i,t.type,t.level),billboard=t.billboard&&billboardEligible(t)?billboardIncome(q.revenue*(t.landmark?3:1),q.loc.footfall):0,revenue=q.revenue*(t.landmark?3:1)+billboard,cost=q.cost;return{billboard,revenue,cost,profit:revenue-cost,occupancy:Math.round(60+q.score*40),demand:Math.round(q.score*100),wages:0,lease:0,maintenance:cost,goods:0,marketing:0,loc:q.loc,manage:100,crowding:q.crowding};}
  const t=s.tiles[i],d=TYPES[t.type],loc=location(s,i),rental=['rental','condo','housing'].includes(t.type),businessCount=context.businessCount??s.tiles.filter(t=>t.owner==='player'&&TYPES[t.type]?.group==='business').length;
  const manage=clamp(s.plan.manage/Math.max(1,businessCount*28),.3,1.2),health=1-Math.max(0,s.stress-65)*.009;
  const price=t.price||100,quality=t.quality||1,staff=t.staff??d.staff,level=t.level;
@@ -410,7 +423,7 @@ export function businessReport(s,i,context={}){
  let demand=clamp((loc.footfall/80)*(1-(price-100)*.009)*(1+(quality-1)*.2)/(1+loc.competition*.17),.1,1.55);
  if(['studio','workshop'].includes(t.type))demand=clamp((.7+(s.concept==='rich-life'?70:s.skill)*.009)*(1-(price-100)*.008)*(1+(quality-1)*.16)/(1+loc.competition*.12),.1,1.6);
  const staffing=clamp((staff+manage*.8)/Math.max(1,d.staff+level-1),.15,1.2);
- const area=buildingArea(t),revenue=incomeFactor(s)*(loc.access?1:OFF_ROAD.revenue)*(rental?(loc.boulevard?BOULEVARD.rent:1)*trafficFactor(loc.footfall,TRAFFIC.rent):1)*Math.pow(area,1.3)*d.base*(rental?occupancy*cycle:demand*staffing*manage*health*cycle)*(price/100)*(1+(level-1)*.65);
+ const area=buildingArea(t),revenue=incomeFactor(s)*(loc.access?1:OFF_ROAD.revenue)*(rental?(loc.boulevard?BOULEVARD.rent:1)*trafficFactor(loc.footfall,TRAFFIC.rent)*.75:1)*Math.pow(area,1.3)*d.base*(rental?occupancy*cycle:demand*staffing*manage*health*cycle)*(price/100)*(1+(level-1)*.65);
  const wages=staff*390*area,lease=t.tenure==='lease'?Math.round(landPrice(s,i)*.035):0,maintenance=d.upkeep*level*area;
  const marketing=t.marketing?150:0,boost=t.marketing&&!rental?revenue*.18:0;
  const sales=Math.round(revenue+boost),goods=rental?0:sales*(.29+quality*.07),cost=Math.round(goods+wages+lease+maintenance+marketing);
@@ -530,8 +543,18 @@ export function tick(s){
  }
  return analyze(s);
 }
+export const PROPERTY_TAX_RATE=.15;
+function settlePropertyTax(s,a){
+ const profit=a.owned.filter(({t})=>TYPES[t.type]?.group==='property').reduce((sum,{i})=>sum+(a.reports[i]?.profit||0),0);
+ s.propertyTax??={accrued:0};s.propertyTax.accrued+=profit;
+ if(s.month%6)return 0;
+ const paid=Math.round(Math.max(0,s.propertyTax.accrued)*PROPERTY_TAX_RATE);
+ s.propertyTax.accrued=0;s.money-=paid;
+ if(paid)s.log.unshift(L`Property income tax · ₲${paid.toLocaleString('en-US')} paid for the last six months`);
+ return paid;
+}
 function tickMonth(s){
- if(s.event||s.shift||lifeEnded(s))return analyze(s);ensureEconomy(s);const previousMarket=marketFactor(s),rich=s.concept==='rich-life',chapterBefore=rich?chapterOf(s).n:0,tilesBefore=rich?s.tiles.map(t=>({...t})):null;s.growthStartMonth??=s.month;const a=analyze(s);for(const {t,i} of a.owned){t.assetLedger??=assetLedger(s,i);t.assetLedger.operating+=a.reports[i]?.profit||0;}s.money+=a.net;advanceProjects(s);if(s.empire){s.empire.acquiredMonths??={};for(const id of s.empire.owned)s.empire.acquiredMonths[id]??=s.month;}settleCompound(s);if(rich)s.signatureMultiplier=signatureGrowth(s).next;s.month++;
+ if(s.event||s.shift||lifeEnded(s))return analyze(s);ensureEconomy(s);const previousMarket=marketFactor(s),rich=s.concept==='rich-life',chapterBefore=rich?chapterOf(s).n:0,tilesBefore=rich?s.tiles.map(t=>({...t})):null;s.growthStartMonth??=s.month;const a=analyze(s);for(const {t,i} of a.owned){t.assetLedger??=assetLedger(s,i);t.assetLedger.operating+=a.reports[i]?.profit||0;}s.money+=a.net;advanceProjects(s);if(s.empire){s.empire.acquiredMonths??={};for(const id of s.empire.owned)s.empire.acquiredMonths[id]??=s.month;}settleCompound(s);if(rich)s.signatureMultiplier=signatureGrowth(s).next;s.month++;const propertyTaxPaid=settlePropertyTax(s,a);
  const crashed=advanceEconomy(s);
  advanceNeighborhood(s);
  advanceVentures(s);advanceStartups(s);
@@ -539,7 +562,7 @@ function tickMonth(s){
  // Curation: artworks only appreciate in months the owner spends at least 8 hours with the collection.
  if(rich&&s.artCollection?.owned.length){const curated=(s.plan.curate||0)>=8;for(const item of s.artCollection.owned){item.grown??=Math.max(0,s.month-1-item.boughtMonth);if(curated)item.grown++;}if(curated)s.prestige=Math.max(0,(s.prestige||0)+2);}
  checkHealth(s);settleOwnerBenefits(s);settleUltra(s);
- ensureBasis(s);const broker=advanceStocks(s,crashed,previousMarket,a.investment.dividends);
+ ensureBasis(s);const broker=advanceStocks(s,crashed,previousMarket,a.investment.dividends),rareShock=advanceLongShocks(s,destroyCityBuildings);
  if(s.effect&&--s.effect.remaining<=0)s.effect=null;
  const pending=rich?resolvePending(s):[];
  if(rich)settlePrestige(s);
@@ -547,15 +570,15 @@ function tickMonth(s){
  const crisis=fireSale(s);if(rich)repayDebt(s);
  // Neighbor and rival development is reported only when it touches land prices or rent near the player's assets.
  const development=rich?developmentImpacts(s,tilesBefore).filter(e=>e.owner!=='player'&&(Math.abs(e.land)>=.001||e.rent)&&(e.assets||nearPlayer(s,e.tile))):[];
- s.lastReport={development,compoundIncome:compoundSummary(s).last,compoundReinvested:s.compound?.auto?compoundSummary(s).last:0,compoundShock:s.compound?.lastShock||null,dividends:a.investment.dividends,ownerIncome:a.empire.income,luxuryMaintenance:a.lifestyleCosts.maintenance,creative:a.creative.income,month:s.month,wage:a.wage,revenue:a.revenue,expense:a.expense,living:a.living,tuition:a.tuition,interest:a.interest,bonus:a.bonus,net:a.net,economy:economyReport(s).label,pending,rival:rivalEvents,fireSale:crisis?.items?.length?crisis.items:null,restructure:!!crisis?.restructure,broker};
+ s.lastReport={development,rareShock,compoundIncome:compoundSummary(s).last,compoundReinvested:s.compound?.auto?compoundSummary(s).last:0,compoundShock:s.compound?.lastShock||null,dividends:a.investment.dividends,ownerIncome:a.empire.income,luxuryMaintenance:a.lifestyleCosts.maintenance,creative:a.creative.income,month:s.month,wage:a.wage,revenue:a.revenue,expense:a.expense,living:a.living,tuition:a.tuition,interest:a.interest,bonus:a.bonus,propertyTaxPaid,net:a.net-propertyTaxPaid,economy:economyReport(s).label,pending,rival:rivalEvents,fireSale:crisis?.items?.length?crisis.items:null,restructure:!!crisis?.restructure,broker};
  const after=analyze(s);s.highestWealth=Math.max(s.highestWealth,after.wealth);
  for(const m of rich?RICH_GOALS:MILESTONES)if(after.wealth>=m.wealth&&!s.milestones.includes(m.wealth)){s.milestones.push(m.wealth);s.log.unshift(L`✦ ${m.name} reached! Net worth ₲${m.wealth.toLocaleString()}`);}
  if(rich){const chapter=chapterOf(s);if(chapter.n>chapterBefore){s.lastReport.chapterUp=chapter.n;s.log.unshift(L`✦ CHAPTER ${chapter.n} · ${chapter.name} begins! ${chapter.unlocks[0]} unlocked`);}
   if(!s.ending&&(s.month>=120||s.highestWealth>=300000000)){s.ending=endingReport(s,after);s.log.unshift(L`✦ Legacy ending · Grade ${s.ending.grade} · ${s.ending.score.toLocaleString('en-US')} pts`);}}
- s.history.push({prices:{...s.prices},month:s.month,wealth:Math.round(after.wealth),money:Math.round(s.money),net:a.net});s.history=s.history.slice(-36);
+ s.history.push({prices:{...s.prices},month:s.month,wealth:Math.round(after.wealth),money:Math.round(s.money),net:a.net-propertyTaxPaid});s.history=s.history.slice(-36);
  if(rich){if(!lifeEnded(s)&&!hospitalized(s))scheduleRichEvent(s,{wealth:after.wealth,fame:reputationSummary(s).fame})||rivalOffer(s,after.wealth);}
  else if(EVENTS.length&&s.month%6===0)s.event=EVENTS[(Math.floor(s.month/6)-1)%EVENTS.length];
- if(s.money<0)s.log.unshift(L('Short on cash: close loss-making businesses or work more hours to restore cash flow.'));else s.log.unshift(L`Month ${s.month} report · ${a.net>=0?'+':''}${Math.round(a.net).toLocaleString()}G · Net worth ${Math.round(after.wealth).toLocaleString()}G · Economy ${economyReport(s).label}`);
+ if(s.money<0)s.log.unshift(L('Short on cash: close loss-making businesses or work more hours to restore cash flow.'));else s.log.unshift(L`Month ${s.month} report · ${a.net-propertyTaxPaid>=0?'+':''}${Math.round(a.net-propertyTaxPaid).toLocaleString()}G · Net worth ${Math.round(after.wealth).toLocaleString()}G · Economy ${economyReport(s).label}`);
  s.log=s.log.slice(0,25);return after;
 }
 export function validSave(s){
@@ -564,10 +587,11 @@ export function validSave(s){
 }
 function validSaveAt(s){
  if(!validPlayTime(s))return false;
- if(!validHealth(s)||!validEconomy(s)||!validLandmarks(s))return false;
+ if(!validHealth(s)||!validEconomy(s)||!validLongShocks(s)||!validLandmarks(s))return false;
  if(s?.signatureMultiplier!==undefined&&(!Number.isFinite(s.signatureMultiplier)||s.signatureMultiplier<1||s.signatureMultiplier>SIGNATURE_GROWTH.maxMultiplier))return false;
+ if(s?.propertyTax!==undefined&&(!s.propertyTax||typeof s.propertyTax!=='object'||Array.isArray(s.propertyTax)||!Number.isFinite(s.propertyTax.accrued)||Math.abs(s.propertyTax.accrued)>1e15))return false;
  if(s?.growthStartMonth!==undefined&&(!Number.isInteger(s.growthStartMonth)||s.growthStartMonth<0||s.growthStartMonth>s.month))return false;
- if(Array.isArray(s?.tiles)&&!s.tiles.every(t=>t?.assetLedger===undefined||(t.assetLedger&&['initial','upgrades','buildingValue'].every(k=>Number.isFinite(t.assetLedger[k])&&t.assetLedger[k]>=0)&&Number.isFinite(t.assetLedger.operating)&&['since','valuationMonth'].every(k=>Number.isInteger(t.assetLedger[k])&&t.assetLedger[k]>=0&&t.assetLedger[k]<=s.month)&&typeof t.assetLedger.estimated==='boolean')))return false;
+ if(Array.isArray(s?.tiles)&&!s.tiles.every(t=>(t.shockFactor===undefined||(Number.isFinite(t.shockFactor)&&t.shockFactor>0&&t.shockFactor<=1))&&(t.assetLedger===undefined||(t.assetLedger&&['initial','upgrades','buildingValue'].every(k=>Number.isFinite(t.assetLedger[k])&&t.assetLedger[k]>=0)&&Number.isFinite(t.assetLedger.operating)&&['since','valuationMonth'].every(k=>Number.isInteger(t.assetLedger[k])&&t.assetLedger[k]>=0&&t.assetLedger[k]<=s.month)&&typeof t.assetLedger.estimated==='boolean'))))return false;
  if(!s||!validUltra(s)||!validReputation(s)||!validAcquisitions(s)||!validStartups(s)||!validCompound(s)||!validFlex(s)||!validArt(s)||!validRichLife(s)||!validVentures(s)||!validEmpire(s))return false;
  if(!s||!validShift(s)||!validProjects(s)||!validCareer(s)||!validInvestment(s)||!validRewards(s)||!validJourney(s)||s.version!==2||!['standard','sandbox'].includes(s.mode)||typeof s.name!=='string'||s.name.length>40)return false;
  if(!['money','month','debt','skill','stress','seed','highestWealth'].every(k=>Number.isFinite(s[k]))||!Number.isInteger(s.month)||s.month<0||s.debt<0||s.skill<0||s.skill>100||s.stress<0||s.stress>100)return false;

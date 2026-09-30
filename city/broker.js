@@ -30,6 +30,7 @@ export function repayMargin(s,amount){
 }
 function openShortImpl(s,id,qty){
  const m=ensureBroker(s);if(!m.listed.includes(id)||!Number.isInteger(qty)||qty<1)return{ok:false,msg:L('Check the quantity.')};
+ if(stockInfo(id,s).founder)return{ok:false,msg:L('Founder shares cannot be shorted.')};
  if(s.holdings[id]>0)return{ok:false,msg:L('Sell your shares before shorting this stock.')};
  const price=s.prices[id],proceeds=price*qty,extra=proceeds*(SHORT_COLLATERAL-1),fee=proceeds*FEE;
  if(s.money<extra+fee)return{ok:false,msg:L`Not enough cash · Shorting needs ₲${Math.round(extra+fee).toLocaleString('en-US')} as collateral and fee.`};
@@ -63,7 +64,7 @@ export function settleBroker(s,dividends=0){
  const m=ensureBroker(s),r={invested:0,skipped:[],reinvested:0,marginCall:null,shortCost:0,squeezes:[]};
  m.plans=m.plans.filter(p=>p.target==='index'||m.listed.includes(p.target));
  for(const p of m.plans){
-  const name=p.target==='index'?L('Index fund'):stockInfo(p.target).name;
+  const name=p.target==='index'?L('Index fund'):stockInfo(p.target,s).name;
   if(p.target==='index'){const before=s.money;if(investIndex(s,p.amount).ok)r.invested+=before-s.money;else r.skipped.push(name);continue;}
   const price=s.prices[p.target],qty=Math.floor(p.amount/(price*(1+FEE)));
   if(qty<1||s.money<price*qty*(1+FEE)){r.skipped.push(name);continue;}
@@ -78,16 +79,16 @@ export function settleBroker(s,dividends=0){
    if(marginEquity(s).ratio>=MARGIN_TARGET||m.margin<=0)break;
    const qty=s.holdings[id]||0;if(!qty)continue;
    const before=s.money;if(!trade(s,id,-qty).ok)continue;const got=s.money-before,pay=Math.min(got,m.margin);
-   s.money-=pay;m.margin-=pay;repaid+=pay;sold.push({name:stockInfo(id).name,qty,value:got});
+   s.money-=pay;m.margin-=pay;repaid+=pay;sold.push({name:stockInfo(id,s).name,qty,value:got});
   }
   if(m.margin<.005)m.margin=0;
   if(sold.length){r.marginCall={sold,repaid};s.log.unshift(L`⚠ Margin call · ${sold.map(x=>x.name).join(', ')} sold · ₲${fmt(repaid)} repaid`);}
  }
  for(const [id,p] of Object.entries(m.shorts)){
   if(!m.listed.includes(id)||!(p.qty>=1)||!(p.collateral>0)){delete m.shorts[id];continue;}
-  const price=s.prices[id],risky=m.distress[id]!==undefined||!!stockInfo(id).ipo,fee=price*p.qty*(risky?SHORT_FEE_RISKY:SHORT_FEE),owed=dividendPerShare(s,id)*p.qty;
+  const price=s.prices[id],risky=m.distress[id]!==undefined||!!stockInfo(id,s).ipo,fee=price*p.qty*(risky?SHORT_FEE_RISKY:SHORT_FEE),owed=dividendPerShare(s,id)*p.qty;
   s.money-=fee+owed;r.shortCost+=fee+owed;
-  if(shortLossRatio(s,id)>SHORT_STOP){const loss=(price-p.entry)*p.qty,name=stockInfo(id).name;closeShort(s,id);r.squeezes.push({name,loss});s.log.unshift(L`⚠ Short squeeze · ${name} covered · −₲${fmt(loss)}`);}
+  if(shortLossRatio(s,id)>SHORT_STOP){const loss=(price-p.entry)*p.qty,name=stockInfo(id,s).name;closeShort(s,id);r.squeezes.push({name,loss});s.log.unshift(L`⚠ Short squeeze · ${name} covered · −₲${fmt(loss)}`);}
  }
  if(r.shortCost>0)s.log.unshift(L`Short positions · ₲${fmt(r.shortCost)} borrow fees and dividends paid`);
  s.log=s.log.slice(0,25);return r;

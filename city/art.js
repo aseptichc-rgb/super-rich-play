@@ -45,7 +45,7 @@ function buyArtworkImpl(s,id){
 }
 
 // item.grown counts curated months (rich life); without the counter, appreciation follows elapsed time. Crash pricing applies on top.
-function itemValue(s,item){const months=item.grown??Math.max(0,s.month-item.boughtMonth);return marketPrice(s,item.price)*Math.pow(1+ARTWORKS[item.id].annualRate,months/12);}
+function itemValue(s,item){const months=item.grown??Math.max(0,s.month-item.boughtMonth);return marketPrice(s,item.price)*Math.pow(1+ARTWORKS[item.id].annualRate,Math.min(months,240)/12)*(item.lossFactor??1);}
 export function artSaleValue(s,id){const item=artState(s).owned.find(item=>item.id===id);return item?Math.round(itemValue(s,item)):0;}
 function sellArtworkImpl(s,id){
  const owned=artState(s).owned,index=owned.findIndex(item=>item.id===id);
@@ -68,7 +68,7 @@ export function validArt(s){
  const c=s.artCollection;if(c===undefined)return true;
  if(!c||!Array.isArray(c.owned)||c.owned.length>Object.keys(ARTWORKS).length)return false;
  const ids=new Set();
- return c.owned.every(item=>item&&Object.hasOwn(ARTWORKS,item.id)&&!ids.has(item.id)&&ids.add(item.id)&&item.price===ARTWORKS[item.id].price&&(item.paid===undefined||(Number.isFinite(item.paid)&&item.paid>=0&&item.paid<=item.price))&&Number.isInteger(item.boughtMonth)&&item.boughtMonth>=0&&item.boughtMonth<=s.month&&(item.grown===undefined||(Number.isInteger(item.grown)&&item.grown>=0&&item.grown<=s.month)));
+ return c.owned.every(item=>item&&Object.hasOwn(ARTWORKS,item.id)&&!ids.has(item.id)&&ids.add(item.id)&&item.price===ARTWORKS[item.id].price&&(item.paid===undefined||(Number.isFinite(item.paid)&&item.paid>=0&&item.paid<=item.price))&&Number.isInteger(item.boughtMonth)&&item.boughtMonth>=0&&item.boughtMonth<=s.month&&(item.grown===undefined||(Number.isInteger(item.grown)&&item.grown>=0&&item.grown<=s.month))&&(item.lossFactor===undefined||(Number.isFinite(item.lossFactor)&&item.lossFactor>0&&item.lossFactor<=1)));
 }
 
 // Owned works hang in the player's mansion, dressed in its architectural style; without a mansion they sit in a viewing room.

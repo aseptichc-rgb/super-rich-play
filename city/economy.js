@@ -12,7 +12,7 @@ export function purchaseDiscount(normal,current){
  const money=n=>'₲'+Math.round(n).toLocaleString('en-US'),percent=Number((saving/normal*100).toFixed(1));
  return `<small class="purchase-discount" style="display:block;margin:8px 0;font-size:13px;line-height:1.6;font-weight:400;color:#315f4f">${L`Normal price ${money(normal)} · ${percent}% off · Save ${money(saving)}`}</small>`;
 }
-export const incomeFactor=s=>marketFactor(s)<1?.7:1;
+export const incomeFactor=s=>(marketFactor(s)<1?.7:1)*(s.longShocks?.activeUntil>s.month?.6:1);
 export function advanceEconomy(s){const e=ensureEconomy(s);if(s.month<e.next)return false;e.count++;e.start=s.month;e.duration=12+Math.floor(roll(s.seed,e.count*3)*13);e.drop=(20+Math.floor(roll(s.seed,e.count*3+1)*31))/100;e.next=s.month+60+Math.floor(roll(s.seed,e.count*3+2)*61);s.log.unshift(L`Market crash · Asset prices down ${Math.round(e.drop*100)}%. A chance to buy the dip with cash.`);return true;}
 export function validEconomy(s){const e=s?.economy;if(e===undefined)return true;return !!(e&&Number.isFinite(e.drop)&&['next','count','start','duration'].every(k=>Number.isSafeInteger(e[k])&&e[k]>=0)&&e.next>s.month&&e.next<=s.month+120&&e.start<=s.month&&(e.count===0?e.drop===0&&e.duration===0:e.drop>=.2&&e.drop<=.5&&e.duration>=12&&e.duration<=24&&e.next-e.start>=60&&e.next-e.start<=120));}
 // Monthly business cycle. Multiplied by any temporary shock from a decision (s.effect.multiplier).

@@ -2,7 +2,7 @@ import {L} from './i18n.js';
 import {build,canBuild,developmentQuote,footprintCells,coords,SIZE} from './engine.js';
 import {validLandmark} from './landmarks.js';
 export function landmarkQuote(s,i,type,footprint){
- const q=developmentQuote(s,i,type,1,footprint),construction=q.construction*100,revenue=q.revenue*10;
+ const q=developmentQuote(s,i,type,1,footprint),construction=q.construction*100,revenue=q.revenue*3;
  const fame=Math.max(0,500+(q.cells.length-1)*100-(s.empire?.landmarkFame?.[i]||0));
  return {...q,fame,baseConstruction:q.construction,construction,total:construction+q.land+q.demolition,revenue,profit:revenue-q.cost};
 }

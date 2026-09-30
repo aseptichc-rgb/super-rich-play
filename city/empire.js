@@ -38,7 +38,7 @@ export function ensureEmpire(s){if(!s.empire)s.empire={owned:[]};return s.empire
 
 export function empireSummary(s){
  const owned=(s.empire?.owned||[]).filter(id=>Object.hasOwn(EMPIRE_ASSETS,id)),titleBenefit=reputationSummary(s).ownerIncomeMultiplier;
- return{owned,assets:Math.round(owned.reduce((sum,id)=>sum+marketPrice(s,EMPIRE_ASSETS[id].cost)*Math.pow(1.002,Math.max(0,s.month-(s.empire?.acquiredMonths?.[id]??s.month))),0)),income:owned.reduce((sum,id)=>sum+EMPIRE_ASSETS[id].income*incomeFactor(s)*titleBenefit,0)};
+ return{owned,assets:Math.round(owned.reduce((sum,id)=>sum+marketPrice(s,EMPIRE_ASSETS[id].cost)*Math.pow(1.002,Math.min(240,Math.max(0,s.month-(s.empire?.acquiredMonths?.[id]??s.month))))*(s.empire?.losses?.[id]??1),0)),income:owned.reduce((sum,id)=>sum+EMPIRE_ASSETS[id].income*incomeFactor(s)*titleBenefit,0)};
 }
 
 export function acquisitionReason(s,id,wealth){
@@ -62,6 +62,7 @@ export function validEmpire(s){
  if(e?.acquiredMonths!==undefined&&(!e.acquiredMonths||typeof e.acquiredMonths!=='object'||Array.isArray(e.acquiredMonths)||!Object.entries(e.acquiredMonths).every(([id,m])=>e.owned?.includes(id)&&Number.isInteger(m)&&m>=0&&m<=s.month)))return false;
  if(e?.earnedFame!==undefined&&(!Number.isSafeInteger(e.earnedFame)||e.earnedFame<0))return false;
  if(e?.lastActivities!==undefined&&(!e.lastActivities||typeof e.lastActivities!=='object'||Array.isArray(e.lastActivities)||!Object.entries(e.lastActivities).every(([id,month])=>Object.hasOwn(OWNER_PERKS,id)&&e.owned?.includes(id)&&Number.isInteger(month)&&month>=0&&month<=s.month)))return false;
+ if(e?.losses!==undefined&&(!e.losses||typeof e.losses!=='object'||Array.isArray(e.losses)||!Object.entries(e.losses).every(([id,f])=>e.owned?.includes(id)&&Number.isFinite(f)&&f>0&&f<=1)))return false;
  return!!(e&&Array.isArray(e.owned)&&e.owned.length<=Object.keys(EMPIRE_ASSETS).length&&new Set(e.owned).size===e.owned.length&&e.owned.every(id=>Object.hasOwn(EMPIRE_ASSETS,id)));
 }
 

@@ -133,3 +133,13 @@ button{font-size:.875rem}
 .map-tools #sidebar-restore{display:none;width:auto;height:auto;min-height:44px;gap:4px;padding:5px 3px}
 .map-tools #sidebar-restore span{font-size:10px;white-space:nowrap}
 .game.sidebar-collapsed #sidebar-restore{display:flex}
+
+.holdings-overview{overflow-x:auto;margin:16px 0 0;border:1px solid #c9dcbd;border-radius:10px;background:#fff}
+.holdings-overview table{width:100%;border-collapse:collapse;font-size:.875rem;font-variant-numeric:tabular-nums;white-space:nowrap}
+.holdings-overview caption{text-align:left;padding:12px;font-weight:700;color:#35653b}
+.holdings-overview th,.holdings-overview td{padding:10px 12px;text-align:right;border-top:1px solid #e3eadf}
+.holdings-overview thead{background:#f5f9ef;color:#52644e}
+.holdings-overview th:first-child{text-align:left;position:sticky;left:0;background:#f5f9ef}
+.holdings-overview tbody tr:nth-child(even){background:#fafcf7}
+.holdings-overview:focus-visible{outline:2px solid #35653b;outline-offset:2px}
+#dialog:has(.holdings-overview){max-width:960px}
