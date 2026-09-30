@@ -1,5 +1,6 @@
 // Public release settings. The GitHub Pages copy ("play" channel) hides features that need the private
 // server or other game modes, so first-time players see one game and one clear way to send feedback.
+import {LANDMARK_API_URL} from './landmark-config.js';
 import {L} from './i18n.js';
 import {reputationSummary} from './empire.js';
 import {chapterOf,SCENARIOS} from './legacy.js';
@@ -11,10 +12,10 @@ export const FEEDBACK_URL='';
 // behaves like the GitHub Pages copy there.
 export function releaseChannel(hostname=''){return /\.github\.io$|(^|\.)itch\.(zone|io)$|\.hwcdn\.net$/i.test(String(hostname))?'play':'full';}
 // The landmark studio ships three built-in designs, so it works everywhere. AI drafts and uploads need the
-// private design server and are switched off until that server is wired up again.
+// private design server; static public copies keep the example catalogue.
 // Google accounts synchronize progress; guest play remains available without signing in.
 export const ONLINE_SAVES=true;
-export function releaseFeatures(hostname='',cloud=false,online=ONLINE_SAVES){const play=releaseChannel(hostname)==='play';return{channel:play?'play':'full',landmarkStudio:true,aiLandmarks:false,legacyModes:!play,cloudSave:online&&!!cloud,accountLogin:online};}
+export function releaseFeatures(hostname='',cloud=false,online=ONLINE_SAVES,landmarkServer=LANDMARK_API_URL){const play=releaseChannel(hostname)==='play';return{channel:play?'play':'full',landmarkStudio:true,aiLandmarks:!play||!!landmarkServer,legacyModes:!play,cloudSave:online&&!!cloud,accountLogin:online};}
 export const FEEDBACK_QUESTIONS=[
  {id:'bored',label:L('Where did it get boring?'),placeholder:L('e.g. Nothing new to do after year 2')},
  {id:'stuck',label:L('Where were you stuck or confused?'),placeholder:L('e.g. I could not tell what the Owner Time sliders do')},

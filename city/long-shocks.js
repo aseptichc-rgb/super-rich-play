@@ -1,3 +1,4 @@
+import {universityProtection} from './university.js';
 import {L} from './i18n.js';
 import {shockPrices,delistStock} from './market.js';
 import {stockInfo} from './stocks.js';
@@ -14,15 +15,16 @@ export function advanceLongShocks(s,destroyBuildings){
  const kind=depression?'depression':['earthquake','meteor','war','alien'][Math.floor(roll(s.seed,q.disasters*7+3)*4)];
  if(depression){q.depressions++;q.nextDepression=s.month+interval(s,'depression',q.depressions);}
  if(disaster){if(depression)q.nextDisaster=s.month+1;else{q.disasters++;q.nextDisaster=s.month+interval(s,'disaster',q.disasters);}}
+ const protection=universityProtection(s),mitigate=factor=>1-(1-factor)*(1-protection);
  const severity=.85+roll(s.seed,s.month+83)*.3;
- const stockFactor=Math.max(.2,(kind==='depression'?.35:kind==='war'||kind==='alien'?.38:kind==='meteor'?.45:.7)*severity);
- const propertyFactor=Math.max(.2,(kind==='earthquake'?.35:kind==='meteor'?.45:kind==='depression'?.5:.7)*severity);
- const companyFactor=Math.max(.2,(kind==='depression'?.35:kind==='war'||kind==='alien'?.4:kind==='meteor'?.5:.7)*severity);
- const otherFactor=Math.max(.2,(kind==='depression'?.5:kind==='meteor'?.5:.7)*severity);
+ const stockFactor=mitigate(Math.max(.2,(kind==='depression'?.35:kind==='war'||kind==='alien'?.38:kind==='meteor'?.45:.7)*severity));
+ const propertyFactor=mitigate(Math.max(.2,(kind==='earthquake'?.35:kind==='meteor'?.45:kind==='depression'?.5:.7)*severity));
+ const companyFactor=mitigate(Math.max(.2,(kind==='depression'?.35:kind==='war'||kind==='alien'?.4:kind==='meteor'?.5:.7)*severity));
+ const otherFactor=mitigate(Math.max(.2,(kind==='depression'?.5:kind==='meteor'?.5:.7)*severity));
  const listed=[...s.market.listed].sort((a,b)=>(stockInfo(b,s)?.beta||0)-(stockInfo(a,s)?.beta||0));
  shockPrices(s,stockFactor,1);
- const delisted=(depression||kind==='war'||kind==='meteor'||kind==='alien'?listed.slice(0,Math.min(2,listed.length-1)):[]).map(id=>{const name=stockInfo(id,s).name;delistStock(s,id);return name;});
- const destroyed=depression?0:destroyBuildings(s);
+ const delisted=(depression||kind==='war'||kind==='meteor'||kind==='alien'?listed.slice(0,Math.min(2,listed.length-1)-Math.floor(Math.min(2,listed.length-1)*protection)):[]).map(id=>{const name=stockInfo(id,s).name;delistStock(s,id);return name;});
+ const destroyed=depression?0:destroyBuildings(s,protection);
  for(const t of s.tiles)if(t.owner==='player')t.shockFactor=(t.shockFactor??1)*propertyFactor;
  if(s.compound)for(const id of Object.keys(s.compound.balances))s.compound.balances[id]*=otherFactor;
  for(const p of s.acquisitions?.active||[])p.lossFactor=(p.lossFactor??1)*companyFactor;
@@ -36,5 +38,5 @@ export function advanceLongShocks(s,destroyBuildings){
  const name={depression:L('Great Depression'),earthquake:L('Earthquake'),meteor:L('Meteor strike'),war:L('War'),alien:L('Alien invasion')}[kind];
  s.log.unshift(L`⚠ ${name} · ${destroyed} city buildings destroyed; ${delisted.length} stocks delisted. Existing assets and founded companies suffered lasting damage.`);
  s.log=s.log.slice(0,25);
- return{kind,name,destroyed,delisted,stockLoss:Math.round((1-stockFactor)*100),propertyLoss:Math.round((1-propertyFactor)*100),companyLoss:Math.round((1-companyFactor)*100)};
+ return{kind,name,protection,destroyed,delisted,stockLoss:Math.round((1-stockFactor)*100),propertyLoss:Math.round((1-propertyFactor)*100),companyLoss:Math.round((1-companyFactor)*100)};
 }

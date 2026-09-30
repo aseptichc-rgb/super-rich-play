@@ -1,10 +1,13 @@
+import {landmarkAPI} from './landmark-api.js';
 import {L} from './i18n.js';
 // Built-in example images ship with the game; player designs live in private server storage.
 // Game saves contain only a small design reference either way.
 import {presetLandmark} from './landmark-presets.js';
-export const landmarkURL=id=>{const p=presetLandmark(id);return p?`city/landmarks/${p.file}`:`/api/landmarks/${id}/image`;};
+export const landmarkURL=id=>{const p=presetLandmark(id);return p?`city/landmarks/${p.file}`:landmarkAPI.imageURL(id);};
 export function validLandmark(d){return !!d&&/^[a-f0-9-]{36}$/.test(d.id)&&typeof d.name==='string'&&d.name.length>0&&d.name.length<=40&&['office','hotel'].includes(d.type);}
 export function validLandmarks(s){
+ const studio=s?.landmarkStudio;
+ if(studio!==undefined&&(!studio||!/^([a-f0-9-]{36})$/.test(studio.id)||!Array.isArray(studio.designs)||studio.designs.length>3||!studio.designs.every(validLandmark)||new Set(studio.designs.map(d=>d.id)).size!==studio.designs.length||studio.selected!==undefined&&!/^[a-f0-9-]{36}$/.test(studio.selected)))return false;
  const rewards=s?.empire?.landmarkFame;
  if(rewards!==undefined&&(!rewards||typeof rewards!=='object'||Array.isArray(rewards)||!Object.entries(rewards).every(([i,n])=>/^(0|[1-9]\d*)$/.test(i)&&Number(i)<(s?.tiles?.length||0)&&[500,600,700,800,1000,1300].includes(n))))return false;
  return !Array.isArray(s?.tiles)||s.tiles.every(t=>t?.landmark===undefined||(validLandmark(t.landmark)&&['player','npc','rival'].includes(t.owner)&&t.type===t.landmark.type));}
@@ -22,7 +25,10 @@ export function landmarkBounds(t,p,zoom,imageWidth,imageHeight){
 export function drawLandmark(ctx,t,p,zoom){
  if(!validLandmark(t.landmark))return false;
  let im=images.get(t.landmark.id);
- if(!im){im=new Image();im.src=landmarkURL(t.landmark.id);images.set(t.landmark.id,im);}
+ const src=landmarkURL(t.landmark.id);
+ if(src.startsWith('data:'))return false;
+ if(!im){im=new Image();images.set(t.landmark.id,im);}
+ if(im.landmarkSource!==src){im.src=src;im.landmarkSource=src;}
  if(!im.complete||!im.naturalWidth)return false;
  const b=landmarkBounds(t,p,zoom,im.naturalWidth,im.naturalHeight);
  ctx.save();ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';ctx.drawImage(im,b.x,b.y,b.width,b.height);ctx.restore();b.image=im;return b;

@@ -4,7 +4,7 @@ import {ULTRA_ITEMS} from './ultra.js';
 import {L} from './i18n.js';
 import {drawLandmark} from './landmarks.js';
 import {billboardAd,billboardLayout,drawBillboard} from './billboards.js';
-import {drawBuildingArt,buildingArtPending} from './building-art.js';
+import {drawBuildingArt,buildingArtPending,SKYSCRAPER_FLOOR_HEIGHT} from './building-art.js';
 import {drawSceneryArt,sceneryPending} from './scenery-art.js';
 import {landmarkAnchor,landmarkBuildError} from './landmark-construction.js';
 import {createWorldLife} from './world-life.js';
@@ -17,6 +17,7 @@ import {mansionArtURL,estateArtURL} from './mansion-art.js';
 import {SIZE,BOULEVARD,TYPES,coords,canBuild,footprintCells,buildingArea,mapOffset,buildingName} from './engine.js';
 // Expansion adds facade detail with only a small change to the architectural envelope.
 export function buildingHeight(type,level){const step=Math.max(0,Math.min(2,level-1)),shape=TYPES[type]?.shape||type;
+ if(type==='skyscraper')return SKYSCRAPER_FLOOR_HEIGHT*level;
  if(type==='hq')return 170+step*5;if(type==='office')return 134+step*4;if(type==='hotel')return 74+step*3;if(type==='monument')return 72+step*3;if(type==='condo')return 48+step*3;
  if(type==='resort')return 17;if(type==='golf')return 9;if(type==='themepark')return 30;if(type==='garden'||type==='citypark')return 0;
  return (shape==='home'||shape==='shop'?27:shape==='factory'?25:22)+step*2;
@@ -47,9 +48,9 @@ export function createRenderer(canvas,getState,getAnalysis,onTile,onHover){
  // Screen-space buckets preserve painter order while limiting overlap checks to nearby shapes.
  const HIT_CELL=128;
  const overlaps=(a,b)=>a[0]<b[2]&&a[2]>b[0]&&a[1]<b[3]&&a[3]>b[1];
- function nearby(boxes){const found=new Set();for(const b of boxes)for(let y=Math.floor(b[1]/HIT_CELL);y<=Math.floor(b[3]/HIT_CELL);y++)for(let x=Math.floor(b[0]/HIT_CELL);x<=Math.floor(b[2]/HIT_CELL);x++)for(const n of hitGrid.get(x+','+y)||[])if(overlaps(b,hits[n].box))found.add(n);return [...found].sort((a,b)=>a-b).map(n=>hits[n]);}
+ function nearby(boxes){const found=new Set();for(const b of boxes)for(let y=Math.max(0,Math.floor(b[1]/HIT_CELL));y<=Math.min(Math.ceil((h+2*MARGIN)/HIT_CELL),Math.floor(b[3]/HIT_CELL));y++)for(let x=Math.max(0,Math.floor(b[0]/HIT_CELL));x<=Math.min(Math.ceil((w+2*MARGIN)/HIT_CELL),Math.floor(b[2]/HIT_CELL));x++)for(const n of hitGrid.get(x+','+y)||[])if(overlaps(b,hits[n].box))found.add(n);return [...found].sort((a,b)=>a-b).map(n=>hits[n]);}
  // Conservative bounds include tall landmarks, combined lots, labels and procedural fallbacks.
- function inScene(x,y,t={}){const f=t.footprint||{width:1,height:1},p=screen(x+f.width/2,y+f.height/2),pad=56*(f.width+f.height)*zoom+80,top=320*Math.sqrt(f.width*f.height)*zoom;return p.x+pad>=0&&p.x-pad<=w+2*MARGIN&&p.y+pad>=0&&p.y-top<=h+2*MARGIN;}
+ function inScene(x,y,t={}){const f=t.footprint||{width:1,height:1},p=screen(x+f.width/2,y+f.height/2),pad=56*(f.width+f.height)*zoom+80,top=Math.max(320*Math.sqrt(f.width*f.height),t.type==='skyscraper'?buildingHeight(t.type,t.level)+200:0)*zoom;return p.x+pad>=0&&p.x-pad<=w+2*MARGIN&&p.y+pad>=0&&p.y-top<=h+2*MARGIN;}
  function offscreen(){return typeof document==='undefined'?{width:0,height:0,getContext:()=>ctx}:document.createElement('canvas');}
  const halfW=28,halfH=14;
  function resize(){const r=canvas.getBoundingClientRect();w=r.width;h=r.height;dpr=Math.min(2,Math.max(window.devicePixelRatio||1,1.5));canvas.width=w*dpr;canvas.height=h*dpr;}
@@ -73,7 +74,8 @@ export function createRenderer(canvas,getState,getAnalysis,onTile,onHover){
    catch{imageMasks.set(hit.image,null);}
   }
   const mask=imageMasks.get(hit.image);if(!mask)return true;
-  const b=hit.box,px=Math.floor((x-b[0])/(b[2]-b[0])*mask.width),py=Math.floor((y-b[1])/(b[3]-b[1])*mask.height);
+  const b=hit.box,px=Math.floor((x-b[0])/(b[2]-b[0])*mask.width),height=b[3]-b[1],dy=y-b[1],cap=hit.capHeight||0,body=height-(hit.baseHeight||0)-cap;
+ const py=Math.floor((hit.baseHeight?(dy<cap?dy/cap*.2:dy<cap+body?.2+(dy-cap)/body*.55:.75+(dy-cap-body)/hit.baseHeight*.25):dy/height)*mask.height);
   return px>=0&&py>=0&&px<mask.width&&py<mask.height&&mask.data[(py*mask.width+(hit.mirror?mask.width-1-px:px))*4+3]>24;
  }
  function poly(points,fill,stroke){
@@ -88,7 +90,7 @@ export function createRenderer(canvas,getState,getAnalysis,onTile,onHover){
  function endHit(){if(recordingHit&&recordingHit.box[0]===Infinity)hits.pop();recordingHit=null;}
  function scenery(id,p,width,options={},hitDepth=depth){
   const picture=drawSceneryArt(ctx,id,p,width,options),pending=sceneryPending(id);if(pending)pendingImages=true;
-  if(picture){const saved=recordingHit;if(!saved||saved.box[0]!==Infinity)startHit(saved?.i??-1);recordingHit.image=picture.image;recordingHit.mirror=picture.mirror;recordingHit.depth=hitDepth;recordingHit.path.rect(picture.x,picture.y,picture.width,picture.height);extend(recordingHit.box,picture.x,picture.y);extend(recordingHit.box,picture.x+picture.width,picture.y+picture.height);recordingHit=saved;}
+  if(picture){const saved=recordingHit;if(!saved||saved.box[0]!==Infinity)startHit(saved?.i??-1);recordingHit.image=picture.image;recordingHit.mirror=picture.mirror;recordingHit.baseHeight=picture.baseHeight;recordingHit.capHeight=picture.capHeight;recordingHit.depth=hitDepth;recordingHit.path.rect(picture.x,picture.y,picture.width,picture.height);extend(recordingHit.box,picture.x,picture.y);extend(recordingHit.box,picture.x+picture.width,picture.y+picture.height);recordingHit=saved;}
   // A loading sprite counts as drawn so callers skip their older procedural stand-in instead of flashing it.
   return picture||pending;
  }
@@ -151,7 +153,7 @@ export function createRenderer(canvas,getState,getAnalysis,onTile,onHover){
    poly([screen(x+.86,y+offset,zz),screen(x+.86,y+offset+.11,zz),screen(x+.86,y+offset+.11,zz-6),screen(x+.86,y+offset,zz-6)],side);
   }
  }
- function buildingScale(type,level){return TYPES[type]?.group&&!['garden','citypark','golf','resort','themepark'].includes(type)?[.9,.92,.94][Math.max(0,Math.min(2,level-1))]:1;}
+ function buildingScale(type,level){return TYPES[type]?.group&&!['garden','citypark','golf','resort','themepark','skyscraper'].includes(type)?[.9,.92,.94][Math.max(0,Math.min(2,level-1))]:1;}
  function badgeHeight(type,level){if(type==='plot')return 5;if(type==='golf')return 24;if(type==='themepark')return 44;if(type==='resort')return 35;return TYPES[type]?.group?(buildingHeight(type,level)+24)*buildingScale(type,level):(type==='tower'?140:75+level*10);}
  function building(x,y,t){
   drawingFootprint=t.footprint?{x,y,...t.footprint}:null;
@@ -160,7 +162,7 @@ export function createRenderer(canvas,getState,getAnalysis,onTile,onHover){
   if(t.landmark&&!landmark)pendingImages=true;
   const picture=landmark||(!t.landmark&&drawBuildingArt(ctx,t,screen(x+1,y+1),zoom));
   const artPending=!t.landmark&&buildingArtPending(t.type,t.level,t.footprint);if(artPending)pendingImages=true;
-  if(picture){recordingHit.image=picture.image;recordingHit.mirror=picture.mirror;recordingHit.path.rect(picture.x,picture.y,picture.width,picture.height);extend(recordingHit.box,picture.x,picture.y);extend(recordingHit.box,picture.x+picture.width,picture.y+picture.height);imageTops.set(y*SIZE+x,{x:picture.x+picture.width/2,y:picture.y-12*zoom});recordingHit=null;drawingFootprint=null;return picture;}
+  if(picture){recordingHit.image=picture.image;recordingHit.baseHeight=picture.baseHeight;recordingHit.capHeight=picture.capHeight;recordingHit.mirror=picture.mirror;recordingHit.path.rect(picture.x,picture.y,picture.width,picture.height);extend(recordingHit.box,picture.x,picture.y);extend(recordingHit.box,picture.x+picture.width,picture.y+picture.height);imageTops.set(y*SIZE+x,{x:picture.x+picture.width/2,y:picture.y-12*zoom});recordingHit=null;drawingFootprint=null;return picture;}
   // Leave the lot empty until the sprite loads rather than flashing the older procedural building.
   if(artPending){endHit();drawingFootprint=null;return;}
   const scale=buildingScale(t.type,t.level),p=screen(x+.5,y+.5),width=scale===1?1:[.90,.94,.98][Math.max(0,Math.min(2,t.level-1))];
@@ -291,6 +293,11 @@ export function createRenderer(canvas,getState,getAnalysis,onTile,onHover){
     line(screen(x+.16,y+.10,24),screen(x+.70,y+.10,24),'#eee8d1',1);
    }
    for(const [dx,dy]of [[.06,.32],[.93,.86],...(premium?[[.93,.48]]:[])])tree(x+dx,y+dy,.38);
+   return;
+  }
+  if(original==='skyscraper'){
+   const z=buildingHeight(original,t.level)/(1+(buildingArea(t)-1)*.04);
+   box(x+.1,y+.1,.8,.8,z,palette.roof,palette.side,palette.front);
    return;
   }
   if(original==='office'||original==='hq'){

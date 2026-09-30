@@ -1,5 +1,5 @@
 // Maximum sprite heights at map zoom 1. Buildings retain their generated aspect ratio.
-export const BUILDING_ART=Object.freeze({golf:48,hotel:120,resort:75,office:155,hq:205,monument:165,atelier:48,cafe:48,market:52,studio:65,workshop:65,rental:58,condo:100,garden:40,home:58,housing:80,hospital:130,themepark:90,shop:65,factory:75,park:42,hall:78,wind:115,water:90,school:75,clinic:80,fire:75,plaza:38,tower:145});
+export const BUILDING_ART=Object.freeze({university:100,skyscraper:205,golf:48,hotel:120,resort:75,office:155,hq:205,monument:165,atelier:48,cafe:48,market:52,studio:65,workshop:65,rental:58,condo:100,garden:40,home:58,housing:80,hospital:130,themepark:90,shop:65,factory:75,park:42,hall:78,wind:115,water:90,school:75,clinic:80,fire:75,plaza:38,tower:145});
 // Player-expandable buildings have richer `<type>-2.webp` / `<type>-3.webp` sprites for expansion tiers 2 and 3.
 export const TIERED_ART=Object.freeze(['golf','hotel','resort','office','hq','monument','atelier','cafe','market','studio','workshop','rental','condo','garden','park','hospital']);
 // The buildable Public Park reuses the neighborhood park sprite.
@@ -31,10 +31,16 @@ function entry(type,level=1,footprint){
 export const buildingArtPending=(type,level=1,footprint)=>entry(type,level,footprint)?.pending??false;
 // How steeply each sprite's ground edges rise (screen rise per run at its base corners), measured from the art; the map grid rises 0.5.
 // Steeper art is flattened to at most ART_SLOPE_CAP, then narrowed so its base stays on its own lot instead of spilling onto roads and neighbors.
-export const ART_SLOPE=Object.freeze({atelier:.55,'atelier-2':.56,'atelier-3':.56,cafe:.53,'cafe-2':.52,'cafe-3':.52,clinic:.56,condo:.59,'condo-2':.56,'condo-3':.55,factory:.6,fire:.57,garden:.72,'garden-2':.71,'garden-3':.69,golf:.61,'golf-2':.62,'golf-3':.63,hall:.58,home:.6,hospital:.5,'hospital-2':.5,'hospital-3':.5,hotel:.57,'hotel-2':.58,'hotel-3':.57,housing:.59,hq:.63,'hq-2':.61,'hq-3':.61,market:.54,'market-2':.54,'market-3':.55,monument:.54,'monument-2':.55,'monument-3':.56,office:.59,'office-2':.59,'office-3':.6,park:.65,'park-2':.69,'park-3':.73,plaza:.7,rental:.61,'rental-2':.63,'rental-3':.63,resort:.64,'resort-2':.84,'resort-3':.84,school:.61,shop:.57,studio:.58,'studio-2':.55,'studio-3':.57,themepark:.59,tower:.59,water:.58,workshop:.57,'workshop-2':.62,'workshop-3':.62});
+export const ART_SLOPE=Object.freeze({university:.58,atelier:.55,'atelier-2':.56,'atelier-3':.56,cafe:.53,'cafe-2':.52,'cafe-3':.52,clinic:.56,condo:.59,'condo-2':.56,'condo-3':.55,factory:.6,fire:.57,garden:.72,'garden-2':.71,'garden-3':.69,golf:.61,'golf-2':.62,'golf-3':.63,hall:.58,home:.6,hospital:.5,'hospital-2':.5,'hospital-3':.5,hotel:.57,'hotel-2':.58,'hotel-3':.57,housing:.59,hq:.63,'hq-2':.61,'hq-3':.61,market:.54,'market-2':.54,'market-3':.55,monument:.54,'monument-2':.55,'monument-3':.56,office:.59,'office-2':.59,'office-3':.6,park:.65,'park-2':.69,'park-3':.73,plaza:.7,rental:.61,'rental-2':.63,'rental-3':.63,resort:.64,'resort-2':.84,'resort-3':.84,school:.61,shop:.57,studio:.58,'studio-2':.55,'studio-3':.57,themepark:.59,tower:.59,water:.58,workshop:.57,'workshop-2':.62,'workshop-3':.62});
 export const ART_SLOPE_CAP=.64;
+export const SKYSCRAPER_FLOOR_HEIGHT=6;
 export function buildingArtBounds(t,p,zoom,imageWidth,imageHeight,depth=0){
  const width=t.footprint?.width||1,height=t.footprint?.height||1,side=Math.min(width,height);
+ if(t.type==='skyscraper'){
+  // Keep the ground/podium fixed; the entire tower, including its crown, follows the floor count.
+  const w=56*side*.98*zoom,baseHeight=imageHeight*.25*w/imageWidth,towerHeight=SKYSCRAPER_FLOOR_HEIGHT*t.level*zoom,capHeight=towerHeight*.2/.75,h=baseHeight+towerHeight;
+  return{x:p.x-w/2,y:p.y-h,width:w,height:h,baseHeight,capHeight};
+ }
  const tier=Math.max(1,Math.min(3,t.level||1)),growth=[.84,.92,1][tier-1],art=artTier(t.type,t.level);
  if(depth){
   // Long-lot art is a base three squares long and `depth` deep on the 2:1 grid (3×1 wide, 3×2 broad), scaled to fit the lot
@@ -62,6 +68,12 @@ export function drawBuildingArt(ctx,t,p,zoom){
  // Long-lot art runs toward the lower right; a lot deeper than it is wide shows the sprite mirrored.
  const mirror=!!item.depth&&(t.footprint?.height||1)>(t.footprint?.width||1);
  if(mirror){ctx.translate(bounds.x*2+bounds.width,0);ctx.scale(-1,1);}
- ctx.drawImage(image,bounds.x,bounds.y,bounds.width,bounds.height);ctx.restore();
+ if(t.type==='skyscraper'){
+  const top=image.naturalHeight*.2,cut=image.naturalHeight*.75,body=bounds.height-bounds.baseHeight-bounds.capHeight;
+  ctx.drawImage(image,0,0,image.naturalWidth,top,bounds.x,bounds.y,bounds.width,bounds.capHeight);
+  ctx.drawImage(image,0,top,image.naturalWidth,cut-top,bounds.x,bounds.y+bounds.capHeight,bounds.width,body);
+  ctx.drawImage(image,0,cut,image.naturalWidth,image.naturalHeight-cut,bounds.x,bounds.y+bounds.capHeight+body,bounds.width,bounds.baseHeight);
+ }else ctx.drawImage(image,bounds.x,bounds.y,bounds.width,bounds.height);
+ ctx.restore();
  return{...bounds,image,mirror};
 }

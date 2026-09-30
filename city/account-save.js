@@ -40,7 +40,7 @@ export const accountBackupKey=uid=>'super-rich-account-backup-v1:'+(uid||'guest'
 const INTERVAL=3000,RETRY=30000;
 // Keep account backups separate from the legacy save slot. Never import another account's game.
 export function createAccountSave({storage,clientFor,getState,replaceState,newState,hasLocal=false,canSave=()=>true,onChange=()=>{},timers={set:(fn,ms)=>setTimeout(fn,ms),clear:id=>clearTimeout(id)}}){
- let owner=storage.get(ACCOUNT_OWNER_KEY)||null,user=null,client=null,epoch=0,busy=false,applying=false,ready=false,timer=null,pending=null,status='guest',error='',revision=null,clean=false,local=hasLocal,initialized=false,lastJSON=JSON.stringify(getState());
+ let owner=storage.get(ACCOUNT_OWNER_KEY)||null,user=null,client=null,epoch=0,busy=false,applying=false,ready=false,timer=null,pending=null,status='guest',error='',uncertainJSON=null,revision=null,clean=false,local=hasLocal,initialized=false,lastJSON=JSON.stringify(getState());
  const snapshot=()=>({user,status,error,pending});
  const emit=(next,reason='')=>{status=next;error=reason;onChange(snapshot());};
  function read(uid){try{const r=JSON.parse(storage.get(accountBackupKey(uid)));return r&&remoteSave(r.save)?r:null;}catch{return null;}}
@@ -55,6 +55,9 @@ export function createAccountSave({storage,clientFor,getState,replaceState,newSt
   const r=await client.load();if(id!==epoch)return;busy=false;
   if(!r.ok){failure(r.error);return;}
   const row=r.row,current=JSON.stringify(getState());
+  // A timed-out write may already be committed. Recognize our own exact payload.
+  if(row&&uncertainJSON===JSON.stringify(row.save))revision=row.revision;
+  uncertainJSON=null;
   if(row&&JSON.stringify(row.save)!==current){
    if(!local||clean){revision=row.revision;clean=true;local=true;apply(row.save);remember();ready=true;emit('saved');return;}
    if(!revision||revision!==row.revision){pending=row;ready=false;emit('conflict');return;}
@@ -71,7 +74,7 @@ export function createAccountSave({storage,clientFor,getState,replaceState,newSt
   const id=epoch,save=structuredClone(getState()),json=JSON.stringify(save);
   busy=true;emit('syncing');
   const r=await client.push(save,revision);if(id!==epoch)return;busy=false;
-  if(!r.ok){if(r.error==='conflict'){ready=false;return connect();}failure(r.error);return;}
+  if(!r.ok){if(r.error==='conflict'){ready=false;return connect();}if(r.error==='network'){uncertainJSON=JSON.stringify(remoteSave(save));ready=false;}failure(r.error);return;}
   revision=r.row.revision;clean=JSON.stringify(getState())===json;remember();
   emit(clean?'saved':'pending');if(!clean)schedule();
  }
@@ -81,7 +84,7 @@ export function createAccountSave({storage,clientFor,getState,replaceState,newSt
    if(initialized&&next?.uid===user?.uid)return;
    initialized=true;
    if(user||local)remember();
-   epoch++;timers.clear(timer);busy=false;pending=null;ready=false;
+   epoch++;timers.clear(timer);busy=false;pending=null;ready=false;uncertainJSON=null;
    const previousOwner=owner;user=next;owner=next?.uid||null;client=next?clientFor(next):null;
    if(!canSave()){emit('invalid');return;}
    const backup=read(owner);
