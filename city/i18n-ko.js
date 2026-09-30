@@ -2,6 +2,9 @@
 // Placeholders {0}, {1}, ... stand for the template's ${...} values in English order.
 // "context::Text" keys hold a second wording for L('Text','context').
 export default {
+"Deep-Sea Exploration Submersible":"심해 탐사 잠수정",
+"Explore the ocean depths in your own scientific submersible.":"나만의 과학 탐사 잠수정을 타고 깊은 바닷속을 탐험하세요.",
+"Dive on a deep-sea expedition":"심해 탐사 떠나기",
 "Under construction · {0}%":"건설 중 · {0}%",
 "Sell {0} first.":"{0}부터 매각하세요.",
 "Infrastructure and collections count toward net worth · All club holdings can be sold for half their purchase price":"기반 시설·컬렉션은 순자산에 포함 · 모든 클럽 보유 항목을 구입가의 절반에 매각 가능",
