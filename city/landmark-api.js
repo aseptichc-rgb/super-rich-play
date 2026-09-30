@@ -21,6 +21,18 @@ export function createLandmarkAPI({baseURL='',fetch:request=(...args)=>globalThi
   if(base&&!response.ok){
    const data=await response.json().catch(()=>({}));
    const messages={
+    "The description or reference image was blocked by OpenAI safety checks. Change the description or remove the reference image and try again.":L("The description or reference image was blocked by OpenAI safety checks. Change the description or remove the reference image and try again."),
+    "Check the OpenAI key or image model permissions.":L("Check the OpenAI key or image model permissions."),
+    "Check your OpenAI usage limit or billing balance.":L("Check your OpenAI usage limit or billing balance."),
+    "The AI could not generate an image. Change the description or reference image and try again.":L("The AI could not generate an image. Change the description or reference image and try again."),
+    "Image generation timed out. Check the gallery, then try again.":L("Image generation timed out. Check the gallery, then try again."),
+    "Invalid generated image response.":L("Invalid generated image response."),
+    "Could not determine the generated image format.":L("Could not determine the generated image format."),
+    "Could not process the request. Try again shortly.":L("Could not process the request. Try again shortly."),
+    "Could not verify your Google account. Try again shortly.":L("Could not verify your Google account. Try again shortly."),
+    "This game address is not allowed.":L("This game address is not allowed."),
+    "The design gallery is being set up.":L("The design gallery is being set up."),
+    "The design gallery holds up to 100 designs.":L("The design gallery holds up to 100 designs."),
     'The daily AI limit for this game has been reached. Try again tomorrow.':L('The daily AI limit for this game has been reached. Try again tomorrow.'),
     'AI generation is temporarily paused.':L('AI generation is temporarily paused.'),
     'AI connection is not configured.':L('AI connection is not configured.'),
@@ -30,7 +42,7 @@ export function createLandmarkAPI({baseURL='',fetch:request=(...args)=>globalThi
     'A previous request is still processing. Try again shortly.':L('A previous request is still processing. Try again shortly.'),
     'Another request is already in progress.':L('A previous request is still processing. Try again shortly.')
    };
-   throw Object.assign(Error(response.status===401?L('Sign in with Google to use landmark designs.'):messages[data.error]||L('Could not complete the landmark request. Please try again.')),{status:response.status});
+   throw Object.assign(Error(response.status===401?L('Sign in with Google to use landmark designs.'):(Object.hasOwn(messages,data?.error)?messages[data.error]:null)||L('Could not complete the landmark request. Please try again.')),{status:response.status});
   }
   return response;
  }
