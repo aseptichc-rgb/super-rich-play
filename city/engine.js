@@ -31,7 +31,7 @@ import {empireSummary,validEmpire,settleOwnerBenefits} from './empire.js';
 import {acquisitionSummary,validAcquisitions} from './acquisitions.js';
 import {lifestyleCostReport} from './living-costs.js';
 import {lifeEnded} from './longevity.js';
-import {ultraValue,validUltra,settleUltra} from './ultra.js';
+import {ultraValue,ultraIncome,validUltra,settleUltra} from './ultra.js';
 // Personal wealth simulation. All money is fictional G; one tick is one month.
 export const SAVE_KEY='super-rich-life-v2';
 // The map is square. Building on its edge opens MAP_GROWTH tiles of land on every side, so the
@@ -52,6 +52,7 @@ const mapSize=s=>BASE_SIZE+2*mapOffset(s);
 export function useMap(s){SIZE=mapSize(s);return s;}
 function onMap(s,fn){const size=SIZE;SIZE=mapSize(s);try{return fn();}finally{SIZE=size;}}
 export const TYPES={
+ ultra:{name:L('Trillion Club'),color:'#c8bb88'},
  extension:{name:L('Combined building lot'),color:'#c8bb88'},
  golf:{name:L('Golf Course'),group:'property',icon:'⛳',cost:1000000,upkeep:18000,color:'#78aa58',shape:'golf',base:100000,staff:0,managed:true,desc:L('A golf course with a clubhouse and full course. Green-fee income depends on location · Runs automatically · Expands up to 3 tiers.')},
  citypark:{name:L('Public Park'),group:'property',icon:'🌳',cost:120000,upkeep:1500,color:'#83b17b',shape:'park',base:0,staff:0,desc:L('A park for residents. Earns no rent, but lifts foot traffic for buildings within 4 tiles and adds Reputation +2 monthly (up to 5 parks) · Expands up to 3 tiers.')},
@@ -181,6 +182,7 @@ function growMap(s,g,sides){
  if(s.empire?.landmarkFame)s.empire.landmarkFame=Object.fromEntries(Object.entries(s.empire.landmarkFame).map(([j,n])=>[move(Number(j)),n]));
  if(s.reputation?.assets)s.reputation.assets=Object.fromEntries(Object.entries(s.reputation.assets).map(([k,n])=>[/^parcel:\d+$/.test(k)?`parcel:${move(Number(k.slice(7)))}`:k,n]));
  if(Number.isInteger(s.journey?.workroom))s.journey.workroom=move(s.journey.workroom);
+ for(const [id,item]of Object.entries(s.ultra?.items||{}))if(id!=='moon'&&item.position){item.position.x+=g;item.position.y+=g;}
  for(const option of s.event?.options||[])if(Number.isInteger(option.tile))option.tile=move(option.tile);
  s.tiles=tiles;s.mapOffset=o;SIZE=next;
  const road=(x,y)=>{const t=tiles[index(x,y)];if(t.type)return;Object.assign(t,{type:'road',owner:'npc',level:1,tree:false});if(t.terrain==='water')t.bridge=true;};
@@ -245,7 +247,7 @@ export function advanceNeighborhood(s){
   s.log.unshift(L`Neighborhood growth · ${TYPES[type].name} completed at (${coords(i).x+1}, ${coords(i).y+1})`);
  }
  // Each six additional buildings supports one new connected road tile.
- const buildings=s.tiles.filter(t=>t.type&&!['road','plot','extension','garden','park','citypark'].includes(t.type)).length;
+ const buildings=s.tiles.filter(t=>t.type&&!['road','plot','extension','ultra','garden','park','citypark'].includes(t.type)).length;
  // Boulevard extensions and roads opened by map expansion don't raise the threshold.
  const roads=s.tiles.filter((t,i)=>{const x=coords(i).x-mapOffset(s),y=coords(i).y-mapOffset(s);return t.type==='road'&&x>=0&&y>=0&&x<BASE_SIZE&&y<BASE_SIZE&&!(t.boulevard&&(x<3||x>19||y<3||y>21));}).length;
  if(s.month%3===0&&buildings>=34+Math.max(0,roads-99)*6){
@@ -426,15 +428,16 @@ export function amenityBonus(s,i){
 export function analyze(s){return onMap(s,()=>analyzeAt(s));}
 function analyzeAt(s){
  const owned=s.tiles.map((t,i)=>({t,i})).filter(({t})=>t.owner==='player'),businessCount=owned.filter(({t})=>TYPES[t.type]?.group==='business').length;
- const reports={};let revenue=0,expense=0,assets=0;
+ const satelliteIncome=ultraIncome(s),reports={};let revenue=satelliteIncome,expense=0,assets=0;
  for(const{t,i}of owned){assets+=assetValue(s,i);if(t.type){const r=businessReport(s,i,{businessCount});reports[i]=r;revenue+=r.revenue;expense+=r.cost;}}
  const career=wageQuote(s),wage=career.wage,investment=investmentReport(s);
- const lifestyleCosts=lifestyleCostReport(s),living=lifestyleCosts.total,tuition=s.plan.learn*4,interest=Math.round(s.debt*.012+(s.market?.margin||0)*MARGIN_RATE),stocks=investment.market;
- const compound=compoundSummary(s),creative=projectReport(s),empire=empireSummary(s),bonus=s.effect?.bonus||0,net=wage+revenue-expense-living-tuition-interest+bonus+creative.income+investment.dividends+empire.income+(compound.auto?0:compound.income);
- const inventory=journeyInventoryValue(s),art=artPortfolio(s),wealth=ultraValue(s)+startupSummary(s).assets+acquisitionSummary(s).assets+s.money+assets+stocks+inventory+empire.assets+art.value+compoundSummary(s).assets-s.debt-(s.market?.margin||0)+(s.market?.shorts?shortValue(s):0),connected=new Set();s.tiles.forEach((t,i)=>{if(t.type==='road')connected.add(i);});
+ const stocks=investment.market,compound=compoundSummary(s),creative=projectReport(s),empire=empireSummary(s);
+ const inventory=journeyInventoryValue(s),art=artPortfolio(s),wealth=ultraValue(s)+startupSummary(s).assets+acquisitionSummary(s).assets+s.money+assets+stocks+inventory+empire.assets+art.value+compound.assets-s.debt-(s.market?.margin||0)+(s.market?.shorts?shortValue(s):0),connected=new Set();s.tiles.forEach((t,i)=>{if(t.type==='road')connected.add(i);});
+ const lifestyleCosts=lifestyleCostReport(s,wealth),living=lifestyleCosts.total,tuition=s.plan.learn*4,interest=Math.round(s.debt*.012+(s.market?.margin||0)*MARGIN_RATE);
+ const bonus=s.effect?.bonus||0,net=wage+revenue-expense-living-tuition-interest+bonus+creative.income+investment.dividends+empire.income+(compound.auto?0:compound.income);
  // Per-tile overlay data is only drawn in the data map views, so it is worked out on first use instead of every refresh.
  let details;
- return{inventory,art,lifestyleCosts,career,investment,creative,empire,economy:economyReport(s),compound,owned,reports,businessCount,revenue,expense,assets,wage,living,tuition,interest,stocks,bonus,net,wealth,passive:owned.filter(({t})=>TYPES[t.type]?.group==='property').reduce((n,{i})=>n+reports[i].profit,0)+empire.income,free:160-s.plan.work-s.plan.manage-s.plan.learn-(s.concept==='rich-life'?0:(s.plan.create||0))-(s.plan.inspect||0)-(s.plan.curate||0),attention:ownerAttention(s),connected,active:s.tiles.map(()=>true),get details(){return details??=onMap(s,()=>s.tiles.map((t,i)=>{const l=location(s,i);return{connected:l.access,pollution:100-l.footfall,value:Math.round(landPrice(s,i,buildingAnchor(s,i)===i?l.footfall:undefined)/80),education:l.residents>40,health:l.amenity>0,fire:t.owner==='player'};}));}};
+ return{satelliteIncome,inventory,art,lifestyleCosts,career,investment,creative,empire,economy:economyReport(s),compound,owned,reports,businessCount,revenue,expense,assets,wage,living,tuition,interest,stocks,bonus,net,wealth,passive:owned.filter(({t})=>TYPES[t.type]?.group==='property').reduce((n,{i})=>n+reports[i].profit,0)+empire.income+satelliteIncome,free:160-s.plan.work-s.plan.manage-s.plan.learn-(s.concept==='rich-life'?0:(s.plan.create||0))-(s.plan.inspect||0)-(s.plan.curate||0),attention:ownerAttention(s),connected,active:s.tiles.map(()=>true),get details(){return details??=onMap(s,()=>s.tiles.map((t,i)=>{const l=location(s,i);return{connected:l.access,pollution:100-l.footfall,value:Math.round(landPrice(s,i,buildingAnchor(s,i)===i?l.footfall:undefined)/80),education:l.residents>40,health:l.amenity>0,fire:t.owner==='player'};}));}};
 }
 export function canBuild(s,i,type,tenure='lease',footprint){
  if(footprint){

@@ -122,5 +122,14 @@ button{font-size:.875rem}
 .map-tools [data-action=toggle-menus]{width:auto;min-width:40px;height:auto;min-height:44px;gap:4px;padding:5px 3px;font-size:19px}
 .map-tools [data-action=toggle-menus] span{font-size:10px;white-space:nowrap}
 
-.game.menus-collapsed{grid-template-columns:minmax(0,1fr)}
-.game.menus-collapsed :is(.sidebar,.world-title,.world-top,.live-card,.build-dock,.layer-control,.month-progress,.world-hint,.tile-tip){display:none}
+.game.sidebar-collapsed{grid-template-columns:minmax(0,1fr)}
+.game.sidebar-collapsed>.sidebar{display:none}
+.game.menus-collapsed :is(.world-title,.world-top,.live-card,.build-dock,.layer-control,.month-progress,.world-hint,.tile-tip){display:none}
+
+/* Fit the map controls to their content even when both vertical offsets are set. */
+.world-wrap .layer-control{height:max-content}
+.side-heading{position:relative;padding-right:58px}
+.sidebar-collapse{position:absolute;right:16px;top:24px;width:32px;height:32px;padding:0;font-size:22px}
+.map-tools #sidebar-restore{display:none;width:auto;height:auto;min-height:44px;gap:4px;padding:5px 3px}
+.map-tools #sidebar-restore span{font-size:10px;white-space:nowrap}
+.game.sidebar-collapsed #sidebar-restore{display:flex}

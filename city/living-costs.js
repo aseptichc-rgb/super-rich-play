@@ -3,17 +3,18 @@ import {VEHICLES,ownedModels,vehicleMaintenance} from './luxury-models.js';
 import {artMaintenance} from './art.js';
 
 export const BASE_LIVING_COST=1100;
+export const MAX_BASE_LIVING_COST=1000000;
 
 function vehicleCost(s,kind){
  const ids=ownedModels(s,kind);
  return ids.reduce((sum,id)=>sum+vehicleMaintenance(VEHICLES[kind].find(model=>model.id===id),kind),0);
 }
 
-export function lifestyleCostReport(s){
+export function lifestyleCostReport(s,wealth=0){
  const mansion=s.flex?.owned.includes('penthouse')?mansionMaintenance(mansionDesign(s)):0;
  const sportscar=vehicleCost(s,'sportscar');
  const yacht=vehicleCost(s,'yacht');
  const art=artMaintenance(s);
- const maintenance=mansion+sportscar+yacht+art,base=BASE_LIVING_COST*(s.scenario==='windfall'?3:1);
+ const maintenance=mansion+sportscar+yacht+art,base=Math.min(MAX_BASE_LIVING_COST,Math.max(BASE_LIVING_COST,s.concept==='rich-life'?Math.round(Math.max(0,wealth)*.001):0)*(s.scenario==='windfall'?3:1));
  return{base,mansion,sportscar,yacht,art,maintenance,total:base+maintenance};
 }
