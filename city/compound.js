@@ -6,7 +6,7 @@ import {L} from './i18n.js';
 import {cycleFactor,marketFactor,marketPrice,incomeFactor,economyReport} from './economy.js';
 import {recordTrade} from './investment.js';
 export const COMPOUND_ASSETS = {
- stocks: {name:L('Dividend stocks'),icon:'↗',cost:100000,rate:.012,cycle:false,risk:L('Safe'),description:L('Fixed dividends regardless of the economy. Slow, but you never lose.')}
+ stocks: {name:L('Dividend stocks'),icon:'↗',cost:100000000,rate:.012,cycle:false,risk:L('Safe'),description:L('Fixed dividends regardless of the economy. Slow, but you never lose.')}
 };
 // Older saves may still hold these accounts. They close on load and their value moves into Office REIT shares.
 export const RETIRED_COMPOUND=['building','resort'],REIT_ID='officereit';

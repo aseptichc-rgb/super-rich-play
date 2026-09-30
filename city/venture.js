@@ -27,7 +27,7 @@ export function ventureCompany(id){
 }
 export function ventureOffering(s){const round=Math.floor(s.month/3);return{round,nextMonth:(round+1)*3,companies:Array.from({length:5},(_,slot)=>{const id=round===0?(slot===4?'moonshot':Object.keys(VENTURES)[slot]):`round-${round}-${slot}`;return{id,...ventureCompany(id)};})};}
 
-const AMOUNTS=[10000,50000,100000];
+export const VENTURE_AMOUNTS=[10000,50000,100000,10000000,50000000,100000000];
 const hashRoll=(seed,sequence,id)=>{
  let x=(Number(seed)||0)^Math.imul(sequence+1,0x9e3779b1);
  for(const c of id)x=Math.imul(x^c.charCodeAt(0),0x85ebca6b);
@@ -60,7 +60,7 @@ export function repairVentureNames(s){
 function investVentureImpl(s,id,amount){
  const d=ventureOffering(s).companies.find(c=>c.id===id),v=ensureVentures(s);
  if(!d)return{ok:false,msg:L('Choose a company to invest in.')};
- if(!AMOUNTS.includes(amount))return{ok:false,msg:L('Check the investment amount.')};
+ if(!VENTURE_AMOUNTS.includes(amount))return{ok:false,msg:L('Check the investment amount.')};
  if(v.active.length>=3)return{ok:false,msg:L('You can have at most 3 active venture investments.')};
  if(s.money<amount)return{ok:false,msg:L('Not enough cash to invest.')};
  const stressed=s.stress>65,diligent=s.concept==='rich-life'&&(s.plan.inspect||0)>=DILIGENCE_HOURS,salvage=s.concept==='rich-life'&&reputationSummary(s).salvage;
@@ -86,7 +86,7 @@ export function advanceVentures(s){
  return resolved;
 }
 
-const validItem=(item,settled=false)=>item&&typeof item.id==='string'&&!!ventureCompany(item.ventureId)&&item.name===ventureCompany(item.ventureId).name&&AMOUNTS.includes(item.amount)&&Number.isInteger(item.startedMonth)&&item.startedMonth>=0&&Number.isInteger(item.dueMonth)&&item.dueMonth===item.startedMonth+3&&Number.isFinite(item.roll)&&item.roll>=0&&item.roll<1&&(item.odds===undefined||VENTURE_ODDS.includes(item.odds))&&(item.salvage===undefined||item.salvage===true)&&(!settled||(Number.isInteger(item.resolvedMonth)&&item.resolvedMonth>=item.dueMonth&&typeof item.success==='boolean'&&item.success===(ventureMultiple(item.ventureId,item.roll,item.odds??1)>0)&&item.payout===venturePayout(item)));
+const validItem=(item,settled=false)=>item&&typeof item.id==='string'&&!!ventureCompany(item.ventureId)&&item.name===ventureCompany(item.ventureId).name&&VENTURE_AMOUNTS.includes(item.amount)&&Number.isInteger(item.startedMonth)&&item.startedMonth>=0&&Number.isInteger(item.dueMonth)&&item.dueMonth===item.startedMonth+3&&Number.isFinite(item.roll)&&item.roll>=0&&item.roll<1&&(item.odds===undefined||VENTURE_ODDS.includes(item.odds))&&(item.salvage===undefined||item.salvage===true)&&(!settled||(Number.isInteger(item.resolvedMonth)&&item.resolvedMonth>=item.dueMonth&&typeof item.success==='boolean'&&item.success===(ventureMultiple(item.ventureId,item.roll,item.odds??1)>0)&&item.payout===venturePayout(item)));
 export function validVentures(s){
  const v=s.ventures;if(v===undefined)return true;
  return !!(v&&Array.isArray(v.active)&&v.active.length<=3&&v.active.every(i=>validItem(i))&&Array.isArray(v.history)&&v.history.length<=12&&v.history.every(i=>validItem(i,true))&&Number.isInteger(v.sequence)&&v.sequence>=v.active.length+v.history.length&&Number.isInteger(v.lastInvestedMonth)&&v.lastInvestedMonth>=-1&&v.lastInvestedMonth<=s.month&&(!v.latest||Array.isArray(v.latest)&&v.latest.every(i=>validItem(i,true))));

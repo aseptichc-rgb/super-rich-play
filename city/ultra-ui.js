@@ -3,9 +3,9 @@ import {ULTRA_ITEMS,ultraReason,buyUltra,placeUltra} from './ultra.js';
 import {ultraPlacementError} from './ultra-placement.js';
 import {moonHitPosition} from './ultra-map.js';
 
-export function createUltraUI({getState,renderer,preparePlacement,openDialog,closeDialog,changed,toast}){
+export function createUltraUI({getState,renderer,preparePlacement,finishPlacement=()=>{},openDialog,closeDialog,changed,toast}){
  let pending=null;
- function cancel(){pending=null;renderer.setUltraPlacement(null);}
+ function cancel(){const placing=pending&&!ULTRA_ITEMS[pending.id].operation;pending=null;renderer.setUltraPlacement(null);if(placing)finishPlacement();}
  function begin(id){
   const s=getState();if(!Object.hasOwn(ULTRA_ITEMS,id))return;
   const existing=!!s.ultra?.items?.[id],reason=existing?null:ultraReason(s,id);if(reason)return toast(reason);
