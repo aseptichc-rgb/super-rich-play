@@ -115,7 +115,8 @@ if(devSession.enabled){
  $('.top-actions').prepend(button);
 }
 const journeyUI=createJourneyUI({getState:()=>state,openDialog,changed,toast,renderer,audio});
-const ultraUI=createUltraUI({getState:()=>state,renderer,preparePlacement:()=>{selectTool('inspect');speed=0;renderHUD();if(!$('.game').classList.contains('menus-collapsed'))$('[data-action="toggle-menus"]').click();$('#world').scrollIntoView({block:'center'});$('#world').focus({preventScroll:true});},openDialog,closeDialog,changed,toast});
+let ultraPlacementView=null;
+const ultraUI=createUltraUI({getState:()=>state,renderer,preparePlacement:()=>{selectTool('inspect');ultraPlacementView={speed,collapsed:$('.game').classList.contains('menus-collapsed')};speed=0;renderHUD();if(!ultraPlacementView.collapsed)$('[data-action="toggle-menus"]').click();$('#world').scrollIntoView({block:'center'});$('#world').focus({preventScroll:true});},finishPlacement:()=>{if(!ultraPlacementView)return;speed=ultraPlacementView.speed;if($('.game').classList.contains('menus-collapsed')!==ultraPlacementView.collapsed)$('[data-action="toggle-menus"]').click();ultraPlacementView=null;renderHUD();},openDialog,closeDialog,changed,toast});
 const landmarkUI=createLandmarkUI({getState:()=>state,openDialog,closeDialog,changed,toast,renderer,preparePlacement:()=>selectTool('inspect'),features:FEATURES});
 const cloudStorage={get:k=>{try{return localStorage.getItem(k);}catch{return null;}},set:(k,v)=>{try{v==null?localStorage.removeItem(k):localStorage.setItem(k,v);}catch{}}};
 let cloudUI=null,accountSync=null;
