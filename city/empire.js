@@ -3,6 +3,7 @@ import {transaction} from './health.js';
 import {L} from './i18n.js';
 import {marketPrice,incomeFactor} from './economy.js';
 import {publicActivitiesPanel} from './reputation.js';
+import {underConstruction} from './building-progress.js';
 export const EMPIRE_ASSETS={
  company:{name:L('Hanbit Global'),role:L('Major company chairman'),icon:'▦',sector:L('Industrial · Tech group'),unlock:20000000,cost:12000000,income:120000,description:L('A controlling stake in the conglomerate behind the city\'s manufacturing and tech subsidiaries.')},
  broadcaster:{name:L('Prime Broadcast Network'),role:L('Broadcaster owner'),icon:'▣',sector:L('News · Entertainment'),unlock:60000000,cost:35000000,income:300000,description:L('A media group with national channels and production studios.')},
@@ -25,8 +26,13 @@ export const REPUTATION_TIERS=[
  {min:5500,name:L('World Figure'),field:L('Culture'),relief:9,creative:1.15,ownerIncome:1.15,benefit:L('Creative +15% · Owner dividends +15%')},
  {min:7000,name:L('President'),field:L('Politics'),relief:10,creative:1.2,ownerIncome:1.2,benefit:L('Creative +20% · Dividends +20% · Stress −10')}
 ];
-// Fame = owner base + owner activities + public giving + lifestyle prestige (s.prestige: parties, collections, landmarks; fades 3% a month).
-export function reputationSummary(s){const owned=s.empire?.owned||[],fame=owned.reduce((n,id)=>n+(OWNER_PERKS[id]?.fame||0),0)+(s.empire?.earnedFame||0)+(s.prestige||0),tier=REPUTATION_TIERS.filter(t=>fame>=t.min).at(-1);return{fame,tier,next:REPUTATION_TIERS.find(t=>t.min>fame),earned:REPUTATION_TIERS.filter(t=>fame>=t.min),monthly:owned.reduce((n,id)=>n+(OWNER_PERKS[id]?.monthly||0),0),creativeMultiplier:(owned.includes('broadcaster')?1.25:1)*tier.creative,ownerIncomeMultiplier:tier.ownerIncome,stressRelief:(owned.includes('club')?5:0)+tier.relief,premium:1+Math.min(300,Math.max(0,fame-acquisitionFame(s)))/1500,salvage:fame>=100};}
+export const WORLD_SKYSCRAPER_FAME=100;
+export function tallestSkyscraperFloors(s){let floors=0;for(const t of s.tiles||[])if(t.owner==='player'&&t.type==='skyscraper'&&t.level>floors&&!underConstruction(s,t))floors=t.level;return floors;}
+// Server records are session data, never part of the player's save.
+export function setWorldSkyscraperFloors(s,floors){Object.defineProperty(s,'worldSkyscraperFloors',{value:floors,configurable:true,writable:true});}
+export function worldSkyscraperFame(s){if(s.worldSkyscraperFloors===undefined)return 0;const floors=tallestSkyscraperFloors(s);return floors>0&&floors>=s.worldSkyscraperFloors?WORLD_SKYSCRAPER_FAME:0;}
+// Fame = owner base + owner activities + public giving + lifestyle prestige + current world skyscraper title.
+export function reputationSummary(s){const owned=s.empire?.owned||[],fame=owned.reduce((n,id)=>n+(OWNER_PERKS[id]?.fame||0),0)+(s.empire?.earnedFame||0)+(s.prestige||0)+worldSkyscraperFame(s),tier=REPUTATION_TIERS.filter(t=>fame>=t.min).at(-1);return{fame,tier,next:REPUTATION_TIERS.find(t=>t.min>fame),earned:REPUTATION_TIERS.filter(t=>fame>=t.min),monthly:owned.reduce((n,id)=>n+(OWNER_PERKS[id]?.monthly||0),0),creativeMultiplier:(owned.includes('broadcaster')?1.25:1)*tier.creative,ownerIncomeMultiplier:tier.ownerIncome,stressRelief:(owned.includes('club')?5:0)+tier.relief,premium:1+Math.min(300,Math.max(0,fame-acquisitionFame(s)))/1500,salvage:fame>=100};}
 // Fame earned merely by buying assets or completing landmarks does not raise operating revenue; activity, giving and lifestyle fame do.
 function acquisitionFame(s){return Object.values(s.reputation?.assets||{}).reduce((n,v)=>n+v,0)+Object.values(s.empire?.landmarkFame||{}).reduce((n,v)=>n+v,0);}
 export function settleOwnerBenefits(s){const r=reputationSummary(s);if(!r.monthly&&!r.stressRelief)return;const e=ensureEmpire(s);e.earnedFame=(e.earnedFame||0)+r.monthly;s.stress=Math.max(0,s.stress-r.stressRelief);}

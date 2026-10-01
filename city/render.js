@@ -191,6 +191,19 @@ export function createRenderer(canvas,getState,getAnalysis,onTile,onHover){
  }
  function buildingBody(x,y,t){const original=t.type,type=TYPES[original].shape||original,c=TYPES[original].color,palette=buildingPalette(original,x,y);
   if(type==='road')return;
+  if(original==='marina'){
+   sceneryPlot('marina-pier',x-.25,y-.25,1.5,1.5);
+   return;
+  }
+  if(original==='garage'){
+   tile(x+.08,y+.08,'#b7c3a5','#f0daa7');
+   box(x+.14,y+.15,.72,.69,23,'#d9c49c','#71827d','#9d9280');
+   for(const offset of [.22,.53]){
+    poly([screen(x+offset,y+.84,2),screen(x+offset+.24,y+.84,2),screen(x+offset+.24,y+.84,17),screen(x+offset,y+.84,17)],'#394f56','#e9d6ab');
+    line(screen(x+offset+.02,y+.845,10),screen(x+offset+.22,y+.845,10),'#adbec0',1);
+   }
+   return;
+  }
   if(type==='golf'){
    // A golf course grows across the ground, not into an office tower.
    const oval=(xx,yy,rx,ry,color)=>poly(Array.from({length:24},(_,n)=>{const a=n*Math.PI/12;return screen(x+xx+Math.cos(a)*rx,y+yy+Math.sin(a)*ry);}),color);

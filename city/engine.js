@@ -56,6 +56,8 @@ const mapSize=s=>BASE_SIZE+2*mapOffset(s);
 export function useMap(s){SIZE=mapSize(s);return s;}
 function onMap(s,fn){const size=SIZE;SIZE=mapSize(s);try{return fn();}finally{SIZE=size;}}
 export const TYPES={
+ marina:{name:L('Yacht Marina'),group:'property',icon:'🛥',cost:120000,upkeep:0,color:'#77b7b8',shape:'park',base:0,staff:0,unique:true,desc:L('Build on land beside the river to display every yacht you own.')},
+ garage:{name:L('My Garage'),group:'property',icon:'🏎',cost:75000,upkeep:0,color:'#b3a486',shape:'shop',base:0,staff:0,unique:true,desc:L('Build a private garage to display every car you own.')},
  skyscraper:{name:L('Skyscraper'),group:'property',icon:'🌆',cost:150000,upkeep:1200,color:'#78aeb1',shape:'tower',base:9000,staff:0,managed:true,desc:L('A 3×3 skyscraper with no floor limit. Each floor costs 4% more than the one below. Rent, upkeep and visible height grow with the floor count.')},
  ultra:{name:L('Trillion Club'),color:'#c8bb88'},
  extension:{name:L('Combined building lot'),color:'#c8bb88'},
@@ -463,6 +465,13 @@ function analyzeAt(s){
  return{satelliteIncome,inventory,art,lifestyleCosts,career,investment,creative,empire,economy:economyReport(s),compound,owned,reports,businessCount,revenue,expense,assets,wage,living,tuition,interest,stocks,bonus,net,wealth,passive:owned.filter(({t})=>TYPES[t.type]?.group==='property').reduce((n,{i})=>n+reports[i].profit,0)+empire.income+satelliteIncome,free:160-s.plan.work-s.plan.manage-s.plan.learn-(s.concept==='rich-life'?0:(s.plan.create||0))-(s.plan.inspect||0)-(s.plan.curate||0),attention:ownerAttention(s),connected,active:s.tiles.map(()=>true),get details(){return details??=onMap(s,()=>s.tiles.map((t,i)=>{const l=location(s,i);return{connected:l.access,pollution:100-l.footfall,value:Math.round(landPrice(s,i,buildingAnchor(s,i)===i?l.footfall:undefined)/80),education:l.residents>40,health:l.amenity>0,fire:t.owner==='player'};}));}};
 }
 export function canBuild(s,i,type,tenure='lease',footprint,floors=1){
+ if(['marina','garage'].includes(type)){
+  if(footprint&&(footprint.width!==1||footprint.height!==1))return L('This display building uses one land tile.');
+  if(type==='marina'&&s.tiles[i]?.terrain==='land'){
+   const{x,y}=coords(i);
+   if(![[x-1,y],[x+1,y],[x,y-1],[x,y+1]].some(([a,b])=>a>=0&&b>=0&&a<SIZE&&b<SIZE&&s.tiles[index(a,b)].terrain==='water'))return L('Build the yacht marina on land directly beside the river.');
+  }
+ }
  if(type==='university'&&(footprint?.width!==3||footprint?.height!==3))return L('Universities require a 3×3 lot.');
  if(type==='skyscraper'&&(footprint?.width!==3||footprint?.height!==3))return L('Skyscrapers require a 3×3 lot.');
  if(!Number.isSafeInteger(floors)||floors<1||(type!=='skyscraper'&&floors!==1))return L('Enter a positive whole number of floors.');
@@ -641,6 +650,6 @@ export function sellAsset(s,...args){return transaction(s,()=>sellAssetImpl(s,..
 
 export function demolishAsset(s,...args){return transaction(s,()=>demolishAssetImpl(s,...args));}
 
-export function upgrade(s,...args){return transaction(s,()=>upgradeImpl(s,...args));}
+export function upgrade(s,...args){if(['marina','garage'].includes(s.tiles[args[0]]?.type))return{ok:false,msg:L('Display buildings cannot be expanded.')};return transaction(s,()=>upgradeImpl(s,...args));}
 
 export function installBillboard(s,...args){return transaction(s,()=>installBillboardImpl(s,...args));}
