@@ -21,6 +21,7 @@ export function createLandmarkAPI({baseURL='',fetch:request=(...args)=>globalThi
   if(base&&!response.ok){
    const data=await response.json().catch(()=>({}));
    const messages={
+    "This studio is out of date. Reload the game to create an AI building from your image.":L("This studio is out of date. Reload the game to create an AI building from your image."),
     "The description or reference image was blocked by OpenAI safety checks. Change the description or remove the reference image and try again.":L("The description or reference image was blocked by OpenAI safety checks. Change the description or remove the reference image and try again."),
     "Check the OpenAI key or image model permissions.":L("Check the OpenAI key or image model permissions."),
     "Check your OpenAI usage limit or billing balance.":L("Check your OpenAI usage limit or billing balance."),
