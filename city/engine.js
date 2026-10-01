@@ -1,3 +1,4 @@
+import {underConstruction,startConstruction,settleConstruction,validConstruction,constructionNotice} from './building-progress.js';
 import {advanceUniversityRisk,validUniversityRisk,nationalizeRiotAssets} from './university-riot.js';
 import {researchLevel,UNIVERSITY,validUniversity} from './university.js';
 import {checkHealth,hospitalized,settling,validHealth,transaction,healthReason} from './health.js';
@@ -289,7 +290,6 @@ function buyParcelImpl(s,i){
  if(!q.willing)return{ok:false,msg:L('The owner refuses to sell this month. Try again next month or choose another lot.')};
  if(s.mode!=='sandbox'&&s.money<q.total)return{ok:false,msg:L('Not enough cash to buy this lot.')};
  if(s.mode!=='sandbox')s.money-=q.total;
- if(q.type==='university'&&s.universityRisk)s.universityRisk.months=0;
  const wasRival=s.tiles[i].owner==='rival';
  Object.assign(s.tiles[i],{type:q.type,owner:'player',tenure:'buy',deposit:0,constructionCost:q.construction,level:q.level,tree:false,price:100,quality:1,staff:TYPES[q.type].staff,marketing:false,assetLedger:{initial:q.total,upgrades:0,operating:0,since:s.month,estimated:false,buildingValue:q.construction*(q.type==='skyscraper'?Math.pow(buildingArea(s.tiles[i]),.15):q.level)*.7,valuationMonth:s.month}});
  if(wasRival&&s.rival){s.rival.tiles=s.rival.tiles.filter(j=>j!==i);s.prestige=Math.max(0,(s.prestige||0)+15);}
@@ -303,7 +303,7 @@ export function amenityPower(t){return t?.type&&(['park','garden','citypark','ho
 // Foot traffic is not fixed: homes, parks and the attractions below within four tiles all feed it, so expanding a
 // resort or finishing a landmark lifts the neighbors. A building's own lot is skipped so it never inflates itself.
 export const ATTRACTION={resort:10,golf:8,hotel:6,office:4,hall:3,shop:2,cafe:2,market:2,hq:20,monument:30};
-export function location(s,i){let residents=0,competition=0,amenity=0,attraction=0;for(const j of around(i,4)){const t=s.tiles[j],d=dist(i,j);if(d<=4&&['home','rental','condo','housing'].includes(t.type))residents+=t.level*12;if(d<=4)amenity+=j!==i?amenityPower(t):t.type==='themepark'?18*t.level:0;if(d<=4&&j!==i&&t.type===s.tiles[i].type)competition++;if(d<=4&&j!==i&&t.buildingAnchor!==i&&ATTRACTION[t.type])attraction+=ATTRACTION[t.type]*(t.level||1)*(t.landmark?3:1);}attraction=Math.min(40,attraction);const access=hasRoadAccess(s,i,s.tiles[i].footprint);return{residents,competition,amenity:Math.min(36,amenity),attraction,access,boulevard:hasBoulevardAccess(s,i,s.tiles[i].footprint),footfall:Math.round(Math.max(20,35+residents*.32+amenity+attraction))};}
+export function location(s,i){let residents=0,competition=0,amenity=0,attraction=0;for(const j of around(i,4)){const t=s.tiles[j],d=dist(i,j);if(underConstruction(s,t))continue;if(d<=4&&['home','rental','condo','housing'].includes(t.type))residents+=t.level*12;if(d<=4)amenity+=j!==i?amenityPower(t):t.type==='themepark'?18*t.level:0;if(d<=4&&j!==i&&t.type===s.tiles[i].type)competition++;if(d<=4&&j!==i&&t.buildingAnchor!==i&&ATTRACTION[t.type])attraction+=ATTRACTION[t.type]*(t.level||1)*(t.landmark?3:1);}attraction=Math.min(40,attraction);const access=hasRoadAccess(s,i,s.tiles[i].footprint);return{residents,competition,amenity:Math.min(36,amenity),attraction,access,boulevard:hasBoulevardAccess(s,i,s.tiles[i].footprint),footfall:Math.round(Math.max(20,35+residents*.32+amenity+attraction))};}
 export function footprintCells(i,footprint={width:1,height:1}){
  const {width,height}=footprint||{},p=coords(i);
  if(!Number.isInteger(i)||i<0||i>=SIZE*SIZE||![width,height].every(n=>Number.isInteger(n)&&n>=1&&n<=3)||p.x+width>SIZE||p.y+height>SIZE)return [];
@@ -319,7 +319,7 @@ export function assetLandValue(s,i){return footprintCells(i,s.tiles[i]?.footprin
 // Neglect costs up to 15% of revenue, full attention adds 10%; stress above 65 erodes the effect.
 export const ATTENTION_HOURS=12;
 export function ownerAttention(s){
- const buildings=s.tiles.filter(t=>t.owner==='player'&&TYPES[t.type]?.managed).length,need=buildings*ATTENTION_HOURS,hours=s.plan.manage||0;
+ const buildings=s.tiles.filter(t=>t.owner==='player'&&TYPES[t.type]?.managed&&!underConstruction(s,t)).length,need=buildings*ATTENTION_HOURS,hours=s.plan.manage||0;
  const ratio=need?clamp(hours/need,0,1):1,health=1-Math.max(0,s.stress-65)*.005;
  return{buildings,need,hours,ratio,health,multiplier:(.85+.25*ratio)*health};
 }
@@ -327,7 +327,7 @@ export function ownerAttention(s){
 export function synergyReport(s,i,type){
  if(!TYPES[type]?.managed)return{partners:0,hq:false,monument:false,bonus:0};
  let partners=0,hq=false,monument=false;const tourism=['hotel','resort','golf','themepark'],cluster=tourism.includes(type);
- for(let j=0;j<s.tiles.length;j++){const t=s.tiles[j];if(t.owner!=='player'||j===i)continue;if(t.type==='hq')hq=true;else if(t.type==='monument')monument=true;else if(cluster&&tourism.includes(t.type)&&dist(i,j)<=2)partners++;}
+ for(let j=0;j<s.tiles.length;j++){const t=s.tiles[j];if(t.owner!=='player'||j===i||underConstruction(s,t))continue;if(t.type==='hq')hq=true;else if(t.type==='monument')monument=true;else if(cluster&&tourism.includes(t.type)&&dist(i,j)<=2)partners++;}
  partners=Math.min(3,partners);
  return{partners,hq,monument,bonus:partners*.08+(hq?.05:0)+(monument?.1:0)};
 }
@@ -349,7 +349,7 @@ export const SIGNATURE_GROWTH={capital:5000000,rate:.003,maxRate:.06,maxMultipli
 export const signatureBuilding=t=>t.type==='hq'||t.type==='monument'||!!t.landmark;
 export const signatureInvestment=t=>(t.constructionCost??(TYPES[t.type]?.cost||0)*(t.landmark?100:1))+(t.assetLedger?.upgrades||0);
 export function signatureGrowth(s){
- const invested=s.concept==='rich-life'?s.tiles.filter(t=>t.owner==='player'&&signatureBuilding(t)).reduce((sum,t)=>sum+signatureInvestment(t),0):0;
+ const invested=s.concept==='rich-life'?s.tiles.filter(t=>t.owner==='player'&&signatureBuilding(t)&&!underConstruction(s,t)).reduce((sum,t)=>sum+signatureInvestment(t),0):0;
  const rate=Math.min(SIGNATURE_GROWTH.maxRate,invested/SIGNATURE_GROWTH.capital*SIGNATURE_GROWTH.rate),multiplier=s.concept==='rich-life'?(s.signatureMultiplier??1):1;
  return{invested,rate,multiplier,next:Math.min(SIGNATURE_GROWTH.maxMultiplier,multiplier*(1+rate))};
 }
@@ -408,7 +408,7 @@ export const BILLBOARD={base:.06,traffic:.08,payback:12};
 export function billboardEligible(t){return t?.owner==='player'&&!!TYPES[t.type]?.base&&t.type!=='golf'&&(!!t.landmark||t.type==='hq'||(t.footprint?.width>=2&&t.footprint?.height>=2));}
 const billboardIncome=(revenue,footfall)=>Math.round(revenue*(BILLBOARD.base+BILLBOARD.traffic*Math.min(100,footfall)/100));
 export function billboardQuote(s,i){
- i=buildingAnchor(s,i);const t=s.tiles[i];if(!billboardEligible(t))return null;
+ i=buildingAnchor(s,i);const t=s.tiles[i];if(!billboardEligible(t)||underConstruction(s,t))return null;
  const r=businessReport(s,i),income=r.billboard||billboardIncome(r.revenue,r.loc.footfall);
  return{installed:!!t.billboard,income,cost:income*BILLBOARD.payback};
 }
@@ -422,6 +422,7 @@ function installBillboardImpl(s,i){
  return{ok:true,msg};
 }
 export function businessReport(s,i,context={}){
+ if(underConstruction(s,s.tiles[i]))return{billboard:0,revenue:0,cost:0,profit:0,occupancy:0,demand:0,wages:0,lease:0,maintenance:0,goods:0,marketing:0,loc:location(s,i),manage:0};
  if(TYPES[s.tiles[i].type]?.managed){const t=s.tiles[i],q=developmentQuote(s,i,t.type,t.level),billboard=t.billboard&&billboardEligible(t)?billboardIncome(q.revenue*(t.landmark?3:1),q.loc.footfall):0,revenue=q.revenue*(t.landmark?3:1)+billboard,cost=q.cost+(t.type==='university'?researchLevel(t)*UNIVERSITY.monthlyResearch:0);return{billboard,revenue,cost,profit:revenue-cost,occupancy:Math.round(60+q.score*40),demand:Math.round(q.score*100),wages:0,lease:0,maintenance:cost,goods:0,marketing:0,loc:q.loc,manage:100,crowding:q.crowding};}
  const t=s.tiles[i],d=TYPES[t.type],loc=location(s,i),rental=['rental','condo','housing'].includes(t.type),businessCount=context.businessCount??s.tiles.filter(t=>t.owner==='player'&&TYPES[t.type]?.group==='business').length;
  const manage=clamp(s.plan.manage/Math.max(1,businessCount*28),.3,1.2),health=1-Math.max(0,s.stress-65)*.009;
@@ -442,7 +443,7 @@ export function businessReport(s,i,context={}){
 // What amenities within 4 tiles add to an earning building: its report now minus the same report with their effect off.
 // Level 0 switches an amenity off while the building stays, so competition and tourism clusters are unchanged.
 export function amenityBonus(s,i){
- const near=s.tiles.flatMap((t,j)=>j!==i&&dist(i,j)<=4&&amenityPower(t)?[j]:[]);
+ const near=s.tiles.flatMap((t,j)=>j!==i&&dist(i,j)<=4&&!underConstruction(s,t)&&amenityPower(t)?[j]:[]);
  if(!near.length||!TYPES[s.tiles[i].type]?.base)return null;
  const off=new Set(near),now=businessReport(s,i),without=businessReport({...s,tiles:s.tiles.map((t,j)=>off.has(j)?{...t,level:0}:t)},i);
  return{sources:near.map(j=>s.tiles[j]),footfall:now.loc.footfall-without.loc.footfall,occupancy:now.occupancy-without.occupancy,revenue:now.revenue-without.revenue};
@@ -500,7 +501,6 @@ function buildImpl(s,i,type,tenure='lease',footprint,floors=1){
   s.tiles[i]={terrain:'land',type,owner:'player',tenure:'buy',deposit:0,constructionCost:q.construction,footprint:{...footprint},level:floors,...(type==='skyscraper'?{floorBaseCost:q.floorBaseCost}:{}),tree:false,price:100,quality:1,staff:TYPES[type].staff,marketing:false,
    assetLedger:{initial:q.total+ledgers.reduce((n,l)=>n+l.initial,0),upgrades:ledgers.reduce((n,l)=>n+l.upgrades,0),operating:ledgers.reduce((n,l)=>n+l.operating,0),since:Math.min(s.month,...ledgers.map(l=>l.since)),estimated:ledgers.some(l=>l.estimated),buildingValue:q.construction*.7*Math.pow(q.area,.15),valuationMonth:s.month}};
   
-  if(type==='university'&&s.universityRisk)s.universityRisk.months=0;
   connectBuildingRoad(s,i);
   s.log.unshift(L`${TYPES[type].name} built on ${q.area} tiles · ₲${q.total.toLocaleString()} invested`);s.log=s.log.slice(0,25);awardAssetFame(s,`parcel:${i}`,q.total,TYPES[type].name+L(' acquired'),type==='university'?100:0);return{ok:true,msg:L`${q.area}-tile ${TYPES[type].name} complete!`};
  }
@@ -522,7 +522,7 @@ function demolishAssetImpl(s,i){
  const msg=L`${q.name} demolished · ₲${q.cost.toLocaleString()} paid · Land retained`;s.log.unshift(msg);s.log=s.log.slice(0,25);
  return{ok:true,msg,cost:q.cost};
 }
-function upgradeImpl(s,i){i=buildingAnchor(s,i);const t=s.tiles[i];if(t?.type==='university')return{ok:false,msg:L('Use research funding to develop your university.')};if(t?.landmark)return{ok:false,msg:L('Landmarks keep their original design and cannot be expanded.')};if(t?.owner!=='player'||!t.type||t.type==='plot'||(t.type!=='skyscraper'&&t.level>=3))return{ok:false,msg:L('Can\'t expand any further.')};const construction=t.constructionCost??TYPES[t.type].cost,cost=upgradeCost(t);if(!Number.isSafeInteger(t.level+1)||!Number.isFinite(cost)||!Number.isFinite((t.assetLedger?.upgrades||0)+cost))return{ok:false,msg:L('This construction cost exceeds the numeric range.')};if(s.mode!=='sandbox'&&s.money<cost)return{ok:false,msg:L('Not enough cash to expand.')};t.assetLedger??=assetLedger(s,i);t.assetLedger.buildingValue=buildingValue(s,t)+(t.type==='skyscraper'?cost*.7:construction*.5)*Math.pow(buildingArea(t),.15);t.assetLedger.valuationMonth=s.month;t.assetLedger.upgrades+=cost;if(s.mode!=='sandbox')s.money-=cost;t.level++;if(t.type==='skyscraper')return{ok:true,msg:L`Skyscraper expanded to ${t.level} floors.`};if(TYPES[t.type].tiers){const msg=L`${TYPES[t.type].icon} Upgraded to ${buildingName(t)}`;s.log.unshift(msg);s.log=s.log.slice(0,25);return{ok:true,msg};}return{ok:true,msg:L('Expansion complete. Review staffing and hours too.')};}
+function upgradeImpl(s,i){i=buildingAnchor(s,i);const t=s.tiles[i];if(underConstruction(s,t))return{ok:false,msg:L('Wait until construction is complete.')};if(t?.type==='university')return{ok:false,msg:L('Use research funding to develop your university.')};if(t?.landmark)return{ok:false,msg:L('Landmarks keep their original design and cannot be expanded.')};if(t?.owner!=='player'||!t.type||t.type==='plot'||(t.type!=='skyscraper'&&t.level>=3))return{ok:false,msg:L('Can\'t expand any further.')};const construction=t.constructionCost??TYPES[t.type].cost,cost=upgradeCost(t);if(!Number.isSafeInteger(t.level+1)||!Number.isFinite(cost)||!Number.isFinite((t.assetLedger?.upgrades||0)+cost))return{ok:false,msg:L('This construction cost exceeds the numeric range.')};if(s.mode!=='sandbox'&&s.money<cost)return{ok:false,msg:L('Not enough cash to expand.')};t.assetLedger??=assetLedger(s,i);t.assetLedger.buildingValue=buildingValue(s,t)+(t.type==='skyscraper'?cost*.7:construction*.5)*Math.pow(buildingArea(t),.15);t.assetLedger.valuationMonth=s.month;t.assetLedger.upgrades+=cost;if(s.mode!=='sandbox')s.money-=cost;t.level++;if(t.type==='skyscraper')return{ok:true,msg:L`Skyscraper expanded to ${t.level} floors.`};if(TYPES[t.type].tiers){const msg=L`${TYPES[t.type].icon} Upgraded to ${buildingName(t)}`;s.log.unshift(msg);s.log=s.log.slice(0,25);return{ok:true,msg};}return{ok:true,msg:L('Expansion complete. Review staffing and hours too.')};}
 export function setPlan(s,key,value){if(s.concept==='rich-life'&&['create','learn'].includes(key))return false;if(!['work','manage','learn','create','inspect','curate'].includes(key)||!Number.isInteger(value)||value<0)return false;const other=Object.entries(s.plan).reduce((n,[k,v])=>n+(k===key||s.concept==='rich-life'&&k==='create'?0:v),0);s.plan[key]=clamp(value,0,160-other);return true;}
 // When no option fits the cash on hand, the pick still goes through: the shortfall plus a 10% late fee becomes debt.
 export const LATE_FEE=.1;
@@ -570,7 +570,7 @@ function settlePropertyTax(s,a){
  return paid;
 }
 function tickMonth(s){
- if(s.event||s.shift||lifeEnded(s))return analyze(s);ensureEconomy(s);const previousMarket=marketFactor(s),rich=s.concept==='rich-life',chapterBefore=rich?chapterOf(s).n:0,tilesBefore=rich?s.tiles.map(t=>({...t})):null;s.growthStartMonth??=s.month;const a=analyze(s);for(const {t,i} of a.owned){t.assetLedger??=assetLedger(s,i);t.assetLedger.operating+=a.reports[i]?.profit||0;}s.money+=a.net;advanceProjects(s);if(s.empire){s.empire.acquiredMonths??={};for(const id of s.empire.owned)s.empire.acquiredMonths[id]??=s.month;}settleCompound(s);if(rich)s.signatureMultiplier=signatureGrowth(s).next;s.month++;const propertyTaxPaid=settlePropertyTax(s,a);
+ if(s.event||s.shift||lifeEnded(s))return analyze(s);ensureEconomy(s);const previousMarket=marketFactor(s),rich=s.concept==='rich-life',chapterBefore=rich?chapterOf(s).n:0,tilesBefore=rich?s.tiles.map(t=>({...t})):null;s.growthStartMonth??=s.month;const a=analyze(s);for(const {t,i} of a.owned){t.assetLedger??=assetLedger(s,i);t.assetLedger.operating+=a.reports[i]?.profit||0;}s.money+=a.net;advanceProjects(s);if(s.empire){s.empire.acquiredMonths??={};for(const id of s.empire.owned)s.empire.acquiredMonths[id]??=s.month;}settleCompound(s);if(rich)s.signatureMultiplier=signatureGrowth(s).next;s.month++;settleConstruction(s);const propertyTaxPaid=settlePropertyTax(s,a);
  const crashed=advanceEconomy(s);
  advanceNeighborhood(s);
  advanceVentures(s);advanceStartups(s);
@@ -623,6 +623,7 @@ function validSaveAt(s){
   if(t.type==='extension'){const root=s.tiles[t.buildingAnchor];return Number.isInteger(t.buildingAnchor)&&t.buildingAnchor!==i&&t.terrain==='land'&&t.owner===null&&t.assetLedger===undefined&&t.footprint===undefined&&root?.footprint!==undefined&&['player','npc','rival'].includes(root.owner)&&footprintCells(t.buildingAnchor,root.footprint).includes(i);}
   return t.buildingAnchor===undefined;
  }))return false;
+ if(!validConstruction(s))return false;
  if(!s.tiles.every(t=>t.constructionCost===undefined||(Number.isFinite(t.constructionCost)&&t.constructionCost>=0)))return false; if(!s.tiles.every(t=>t.owner!=='player'||(TYPES[t.type]?.group&&['buy','lease'].includes(t.tenure)&&Number.isFinite(t.deposit)&&t.deposit>=0&&Number.isInteger(t.price)&&t.price>=60&&t.price<=160&&Number.isInteger(t.quality)&&t.quality>=1&&t.quality<=3&&Number.isInteger(t.staff)&&t.staff>=0&&t.staff<=8&&typeof t.marketing==='boolean')))return false;
  if(!Array.isArray(s.log)||s.log.length>25||!s.log.every(l=>typeof l==='string')||!Array.isArray(s.history)||s.history.length>36||!s.history.every(h=>['month','wealth','money','net'].every(k=>Number.isFinite(h[k]))))return false;
  if(!Array.isArray(s.milestones)||!s.milestones.every(v=>[...MILESTONES,...RICH_GOALS].some(m=>m.wealth===v)))return false;
@@ -634,7 +635,7 @@ function validSaveAt(s){
 
 export function buyParcel(s,...args){return transaction(s,()=>buyParcelImpl(s,...args));}
 
-export function build(s,...args){return transaction(s,()=>buildImpl(s,...args));}
+export function build(s,...args){return transaction(s,()=>{const result=buildImpl(s,...args);if(result.ok){const months=startConstruction(s,s.tiles[args[0]]);if(months){result.msg=constructionNotice(months);s.log[0]=TYPES[s.tiles[args[0]].type].name+' · '+result.msg;}}return result;});}
 
 export function sellAsset(s,...args){return transaction(s,()=>sellAssetImpl(s,...args));}
 

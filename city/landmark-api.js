@@ -21,6 +21,8 @@ export function createLandmarkAPI({baseURL='',fetch:request=(...args)=>globalThi
   if(base&&!response.ok){
    const data=await response.json().catch(()=>({}));
    const messages={
+    "This landmark has reached its daily limit of 3 AI requests. Try again after midnight in Korea.":L("This landmark has reached its daily limit of 3 AI requests. Try again after midnight in Korea."),
+
     "This studio is out of date. Reload the game to create an AI building from your image.":L("This studio is out of date. Reload the game to create an AI building from your image."),
     "The description or reference image was blocked by OpenAI safety checks. Change the description or remove the reference image and try again.":L("The description or reference image was blocked by OpenAI safety checks. Change the description or remove the reference image and try again."),
     "Check the OpenAI key or image model permissions.":L("Check the OpenAI key or image model permissions."),
@@ -43,7 +45,7 @@ export function createLandmarkAPI({baseURL='',fetch:request=(...args)=>globalThi
     'A previous request is still processing. Try again shortly.':L('A previous request is still processing. Try again shortly.'),
     'Another request is already in progress.':L('A previous request is still processing. Try again shortly.')
    };
-   throw Object.assign(Error(response.status===401?L('Sign in with Google to use landmark designs.'):(Object.hasOwn(messages,data?.error)?messages[data.error]:null)||L('Could not complete the landmark request. Please try again.')),{status:response.status});
+   throw Object.assign(Error(response.status===401?L('Sign in with Google to use landmark designs.'):(Object.hasOwn(messages,data?.error)?messages[data.error]:null)||L('Could not complete the landmark request. Please try again.')),{status:response.status,quota:data?.quota});
   }
   return response;
  }

@@ -2,8 +2,17 @@
 // Placeholders {0}, {1}, ... stand for the template's ${...} values in English order.
 // "context::Text" keys hold a second wording for L('Text','context').
 export default {
+"My nickname":"내 닉네임",
+"Your developer account is excluded from rankings.":"내 계정은 개발자 계정이므로 랭킹에 표시되지 않습니다.",
+"You have no published record. Sign in and sync a normal game to appear in rankings.":"아직 내 공개 기록이 없습니다. 로그인 후 일반 게임을 동기화하면 랭킹에 표시됩니다.",
+"Only synced ranking records are shown, not the total number of users.":"동기화된 랭킹 기록만 표시합니다. 표시된 인원은 전체 사용자 수가 아닙니다.",
 "Civil unrest":"사회 불안으로 인한 폭동",
 "Riot risk":"폭동 위험",
+"Sell Building":"건물 매각",
+"Construction: {0} game months · Revenue and building benefits begin after completion.":"건설 기간: 게임 시간 {0}개월 · 완공 후 매출과 건물 효과가 시작됩니다.",
+"Construction complete · {0} · Reputation +{1}":"건설 완료 · {0} · 명성 +{1}",
+"Building":"건물",
+"Wait until construction is complete.":"건설이 완료될 때까지 기다려 주세요.",
 "Next monthly riot chance: {0}% · {1} months above ₲1 trillion.":"다음 달 폭동 확률 {0}% · 순자산 1조 ₲ 초과 누적 {1}개월",
 "Above ₲1 trillion, base riot chance starts at 1% and rises by 1 percentage point each month, up to 100%. University research reduces this chance by 9% per level, up to 90%, without resetting accumulated risk. Only the best owned university applies. Falling to ₲1 trillion or less resets the risk. A riot still nationalizes 98% of assets.":"순자산 1조 ₲ 초과 시 기본 폭동 확률은 1%부터 매달 1%p씩 올라 최대 100%가 됩니다. 대학 연구는 누적 위험을 초기화하지 않고 발생 확률을 단계당 9%, 최대 90% 줄입니다. 보유 대학 중 최고 단계만 적용됩니다. 순자산이 1조 ₲ 이하가 되면 누적 위험이 초기화됩니다. 폭동 발생 시 자산의 98%가 국유화됩니다.",
 "Civil unrest nationalized 98% of your assets. The remaining 2% was converted to cash. Property, investments and collections were settled; future investment proceeds ended. Existing debts remain.":"사회 불안으로 인한 폭동으로 자산의 98%가 국유화되었습니다. 나머지 2%는 현금으로 남았습니다. 부동산·투자·컬렉션은 정리되고 향후 투자 수익은 중단됩니다. 기존 부채는 남습니다.",
@@ -385,10 +394,10 @@ export default {
 "Developer Test":"개발자 테스트",
 "Separate test save · Cloud sync off. Your normal game is preserved.":"별도 테스트 저장 · 클라우드 동기화 꺼짐. 일반 게임은 그대로 보존됩니다.",
 "Test cash balance":"테스트 게임 자금",
-"Enter a whole number from 0 to 1,000,000,000,000. Peak net worth can increase; lowering cash keeps previous unlocks.":"0~1,000,000,000,000 사이의 정수를 입력하세요. 최고 순자산도 함께 올라가며, 자금을 낮춰도 이미 해금한 항목은 유지됩니다.",
+"Enter a non-negative whole number. Peak net worth can increase; lowering cash keeps previous unlocks.":"0 이상의 정수를 입력하세요. 최고 순자산도 함께 올라가며, 자금을 낮춰도 이미 해금한 항목은 유지됩니다.",
 "Apply test balance":"테스트 자금 적용",
 "Return to normal game":"일반 게임으로 돌아가기",
-"Enter a whole number from 0 to 1,000,000,000,000.":"0~1,000,000,000,000 사이의 정수를 입력하세요.",
+"Enter a non-negative whole number within the safe integer range.":"정확하게 저장할 수 있는 0 이상의 정수를 입력하세요.",
 "Test cash balance applied.":"테스트 게임 자금을 변경했습니다.",
 // acquisitions.js
 "Little Market Commerce":"리틀마켓 커머스",
@@ -2424,4 +2433,9 @@ export default {
 "<p class=\"help\">Previously uploaded originals are not AI buildings. Upload the image again to convert it before construction. Existing buildings are unchanged.</p>":"<p class=\"help\">이전에 그대로 저장한 원본 이미지는 AI 건물이 아닙니다. 이미지를 다시 업로드해 AI로 변환한 뒤 건설해 주세요. 이미 건설한 건물은 유지됩니다.</p>",
 "Owned landmarks: {0} / {1}":"보유 랜드마크: {0} / {1}",
 "You can own up to 5 landmarks. Sell or demolish one before building another.":"랜드마크는 최대 5개까지 보유할 수 있습니다. 새로 건설하려면 기존 랜드마크를 매각하거나 철거해 주세요.",
+"<form id=\"landmark-form\"><label>Building name<input name=\"name\" maxlength=\"40\" required placeholder=\"e.g. Cloud Garden Tower\" value=\"{0}\"></label><label>Operation<select name=\"type\"><option value=\"office\" {1}>Office Building</option><option value=\"hotel\" {2}>Hotel</option></select></label><label>The building I want<textarea name=\"prompt\" maxlength=\"1600\" rows=\"4\" placeholder=\"e.g. A futuristic hotel with a spiral glass facade, rooftop forest and golden entrance\">{3}</textarea></label><label>Reference image · PNG/JPEG/WebP, up to 5MB<input name=\"image\" type=\"file\" accept=\"image/png,image/jpeg,image/webp\"></label>{4}<p class=\"help\">Both buttons use OpenAI and incur real API charges. Uploaded images are converted into game buildings. Each landmark allows 3 AI requests per day, resetting at midnight in Korea. Failed AI attempts count; requests rejected before reaching AI do not. The once-per-minute and 20-per-day account limits also apply. You must have the rights to any image you use.</p><p class=\"help\">AI requests for this landmark today: {5} / 3 · Resets at 00:00 KST</p><div class=\"button-row\"><button type=\"button\" data-landmark=\"generate\" class=\"primary\" {6}>{7}</button><button type=\"button\" data-landmark=\"upload\" {8}>Create Building From Uploaded Image</button></div></form>":"<form id=\"landmark-form\"><label>건물 이름<input name=\"name\" maxlength=\"40\" required placeholder=\"예: 구름 정원 타워\" value=\"{0}\"></label><label>운영 방식<select name=\"type\"><option value=\"office\" {1}>임대 빌딩</option><option value=\"hotel\" {2}>호텔</option></select></label><label>내가 원하는 건물<textarea name=\"prompt\" maxlength=\"1600\" rows=\"4\" placeholder=\"예: 나선형 유리 외벽, 옥상 숲, 금빛 입구가 있는 미래적인 호텔\">{3}</textarea></label><label>참고 이미지 · PNG/JPEG/WebP, 5MB 이하<input name=\"image\" type=\"file\" accept=\"image/png,image/jpeg,image/webp\"></label>{4}<p class=\"help\">두 버튼 모두 OpenAI를 사용하며 실제 API 요금이 발생합니다. 업로드 이미지는 게임용 건물로 변환합니다. 랜드마크마다 하루 AI 요청 3회까지이며 한국 시간 자정에 초기화됩니다. AI 호출 후 실패한 요청도 포함하지만 AI 호출 전에 거절된 요청은 포함하지 않습니다. 계정별 분당 1회·하루 20회 제한도 적용됩니다. 사용할 이미지의 권한을 확인해 주세요.</p><p class=\"help\">이 랜드마크의 오늘 AI 요청: {5} / 3 · 한국 시간 자정 초기화</p><div class=\"button-row\"><button type=\"button\" data-landmark=\"generate\" class=\"primary\" {6}>{7}</button><button type=\"button\" data-landmark=\"upload\" {8}>업로드 이미지로 AI 건물 만들기</button></div></form>",
+"This landmark has reached its daily limit of 3 AI requests. Try again after midnight in Korea.":"이 랜드마크의 오늘 AI 요청 한도인 3회에 도달했습니다. 한국 시간 자정 이후 다시 요청해 주세요.",
+"Both buttons use OpenAI and incur real API charges. Uploaded images are converted into game buildings. Each landmark allows 3 AI requests per day, resetting at midnight in Korea. Failed AI attempts count; requests rejected before reaching AI do not. The once-per-minute and 20-per-day account limits also apply. You must have the rights to any image you use.":"두 버튼 모두 OpenAI를 사용하며 실제 API 요금이 발생합니다. 업로드 이미지는 게임용 건물로 변환합니다. 랜드마크마다 하루 AI 요청 3회까지이며 한국 시간 자정에 초기화됩니다. AI 호출 후 실패한 요청도 포함하지만 AI 호출 전에 거절된 요청은 포함하지 않습니다. 계정별 분당 1회·하루 20회 제한도 적용됩니다. 사용할 이미지의 권한을 확인해 주세요.",
+"Creating a new design. This can take 1–2 minutes. Previous designs remain in your gallery.":"새로운 시안을 만들고 있습니다. 1~2분 정도 걸릴 수 있습니다. 이전 시안은 아래 보관함에 유지됩니다.",
+"<p class=\"help\">Once built, this landmark design cannot be changed. Generate and choose your final design before confirming construction.</p>":"<p class=\"help\">건설 후에는 이 랜드마크의 디자인을 변경할 수 없습니다. 건설을 확정하기 전에 시안을 생성하고 최종 디자인을 선택해 주세요.</p>",
 };

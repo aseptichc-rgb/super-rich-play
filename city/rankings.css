@@ -1,10 +1,15 @@
 .ranking-row{padding:16px;margin:12px 0;border:1px solid var(--line,#d8d5cf);border-radius:12px;background:var(--card,#fff)}
-.ranking-self{border:2px solid #96742f}
+.ranking-self{border:2px solid #96742f;background:#fff8e5}
 .ranking-name{display:flex;gap:12px;align-items:center;flex-wrap:wrap;overflow-wrap:anywhere}
-.ranking-name span{color:#705218;font-weight:700}
+.ranking-name span{color:#fff;background:#705218;border-radius:999px;padding:3px 10px;font-weight:700}
 .ranking-values{display:grid;grid-template-columns:2fr 1fr 1fr;gap:12px;margin-top:14px}
 .ranking-values span{font-size:12px;min-width:0}
 .ranking-values b{display:block;font-size:16px;overflow-wrap:anywhere;margin-top:4px}
 .ranking-row p{margin:12px 0 6px}.ranking-row small{color:#626262}
 button[data-ranking][aria-pressed=true]{background:#30291d;color:#fff}
 @media(max-width:480px){.ranking-values{grid-template-columns:1fr 1fr}.ranking-values span:first-child{grid-column:1/-1}.ranking-row{padding:12px}}
+
+.ranking-identity{padding:16px;border:2px solid #96742f;border-radius:12px;background:#fff8e5;color:#30291d;margin:16px 0;overflow-wrap:anywhere}
+.ranking-identity>span{display:block;font-size:13px;margin-bottom:6px}
+.ranking-identity>strong{display:block;font-size:18px}
+.ranking-identity p{margin:10px 0 0;font-size:14px}

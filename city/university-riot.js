@@ -1,3 +1,4 @@
+import {universityRiotProtection} from './university.js';
 import {L} from './i18n.js';
 import {hashRoll} from './rng.js';
 import {delistStock} from './market.js';
@@ -6,16 +7,17 @@ import {shortValue} from './broker.js';
 export const RIOT_WEALTH=1e12,RIOT_STEP=.01;
 export const ownsUniversity=s=>s.tiles.some(t=>t.owner==='player'&&t.type==='university');
 export function universityRisk(s,wealth){
- const exposed=s.concept==='rich-life'&&wealth>RIOT_WEALTH&&!ownsUniversity(s);
+ const exposed=s.concept==='rich-life'&&wealth>RIOT_WEALTH;
  const months=exposed?(s.universityRisk?.months||0):0;
- return{exposed,months,chance:exposed?Math.min(1,(months+1)*RIOT_STEP):0};
+ const reduction=universityRiotProtection(s);
+ return{exposed,months,reduction,chance:exposed?Math.min(1,(months+1)*RIOT_STEP)*(1-reduction):0};
 }
 export function advanceUniversityRisk(s,wealth){
  const risk=universityRisk(s,wealth);
  if(!risk.exposed){if(s.universityRisk)s.universityRisk.months=0;return null;}
  s.universityRisk={months:Math.min(100,risk.months+1)};
  if(hashRoll(s.seed,s.month,'university-riot')>=risk.chance)return null;
- return{kind:'riot',name:L('University neglect riot'),months:s.universityRisk.months,chance:risk.chance};
+ return{kind:'riot',name:L('Civil unrest'),months:s.universityRisk.months,chance:risk.chance};
 }
 export function validUniversityRisk(s){const r=s?.universityRisk;return r===undefined||!!r&&Number.isSafeInteger(r.months)&&r.months>=0&&r.months<=Math.min(100,s.month);}
 
@@ -39,11 +41,11 @@ export function nationalizeRiotAssets(s,wealth){
  if(s.journey){s.journey.deal=null;s.journey.workroom=null;}
  for(const p of s.projects||[]){p.status='archived';p.sale=0;p.royalty=0;p.monthsLeft=0;}
  s.pending=[];s.effect=null;s.event=null;s.shift=null;s.money=retained;s.universityRisk.months=0;
- const msg=L('A riot over university neglect nationalized 98% of your assets. The remaining 2% was converted to cash. Property, investments and collections were settled; future investment proceeds ended. Existing debts remain.');
+ const msg=L('Civil unrest nationalized 98% of your assets. The remaining 2% was converted to cash. Property, investments and collections were settled; future investment proceeds ended. Existing debts remain.');
  s.log.unshift(msg);s.log=s.log.slice(0,25);
 }
 export function universityRiskPanel(s,wealth){
  const r=universityRisk(s,wealth);if(!r.exposed)return '';
- return `<section class="owner-reputation" role="alert"><h3>⚠ ${L('University neglect risk')}</h3><p>${L`Next monthly riot chance: ${Math.round(r.chance*100)}% · ${r.months} months without a university.`}</p><p>${L('Above ₲1 trillion without an owned university, riot chance starts at 1% and rises by 1 percentage point each month, up to 100%. A riot nationalizes 98% of assets; the remaining 2% is converted to cash. Own a university, even at research level 0, or fall to ₲1 trillion or less to reset the risk.')}</p><button data-build="university">${L('Build a university')}</button></section>`;
+ return `<section class="owner-reputation" role="alert"><h3>⚠ ${L('Riot risk')}</h3><p>${L`Next monthly riot chance: ${Number((r.chance*100).toFixed(2))}% · ${r.months} months above ₲1 trillion.`}</p><p>${L('Above ₲1 trillion, base riot chance starts at 1% and rises by 1 percentage point each month, up to 100%. University research reduces this chance by 9% per level, up to 90%, without resetting accumulated risk. Only the best owned university applies. Falling to ₲1 trillion or less resets the risk. A riot still nationalizes 98% of assets.')}</p><button data-build="university">${L('Build a university')}</button></section>`;
 }
-export function universityRiotDialog(r){return `<span class="eyebrow">${L('WORLD CRISIS')}</span><h2>${L('University neglect riot')}</h2><p>${L('A riot over university neglect nationalized 98% of your assets. The remaining 2% was converted to cash. Property, investments and collections were settled; future investment proceeds ended. Existing debts remain.')}</p><p>${L`Riot occurred after ${r.months} months at a ${Math.round(r.chance*100)}% monthly chance.`}</p><button data-action="close" class="primary full">${L('View My City')}</button>`;}
+export function universityRiotDialog(r){return `<span class="eyebrow">${L('WORLD CRISIS')}</span><h2>${L('Civil unrest')}</h2><p>${L('Civil unrest nationalized 98% of your assets. The remaining 2% was converted to cash. Property, investments and collections were settled; future investment proceeds ended. Existing debts remain.')}</p><p>${L`Riot occurred after ${r.months} months at a ${Number((r.chance*100).toFixed(2))}% monthly chance.`}</p><button data-action="close" class="primary full">${L('View My City')}</button>`;}

@@ -13,7 +13,7 @@ export function sessionSave(storage,session){
 export function setTestMoney(state,input,enabled){
  if(!enabled||!/^\d+$/.test(String(input)))return false;
  const amount=Number(input);
- if(!Number.isSafeInteger(amount)||amount>1000000000000)return false;
+ if(!Number.isSafeInteger(amount))return false;
  state.money=amount;
  state.highestWealth=Math.max(state.highestWealth,analyze(state).wealth);
  return true;

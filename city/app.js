@@ -116,6 +116,14 @@ $('#app').innerHTML=L`
 <footer class="newsbar"><span class="news-tag">MY JOURNEY</span><span id="news"></span><button data-action="history">Growth Log ↗</button></footer><dialog id="dialog"></dialog><input type="file" id="import-file" accept="application/json,.json" hidden>`;
 // The switch shows the other language in its own script so a reader of either language can find it.
 $('.top-actions [data-action="feedback"]').insertAdjacentHTML('beforebegin',`<button data-action="shortcut" data-shortcut-button class="shortcut-button" title="${L('Add a shortcut to your desktop')}" ${shortcutAdded()?'hidden':''}>⤓<span> ${L('Add Shortcut')}</span></button><button data-action="language" data-lang="${lang==='ko'?'en':'ko'}" class="icon-button lang-button" aria-label="${L('Change language')}" title="${L('Change language')}">${lang==='ko'?'EN':'한'}</button>`);
+// Reserve the dock's actual height, including wrapped text and horizontal scrollbars.
+const officeCard=$('#live-card'),buildDock=$('#build-dock');
+const panelLayout=new ResizeObserver(()=>{
+ if(!officeCard.getClientRects().length||!buildDock.getClientRects().length)return;
+ const height=Math.max(0,buildDock.offsetTop-officeCard.offsetTop-12)+'px';
+ if(officeCard.style.maxHeight!==height)officeCard.style.maxHeight=height;
+});
+for(const element of [$('.world-wrap'),buildDock,officeCard])panelLayout.observe(element);
 const renderer=createRenderer($('#world'),()=>state,()=>analysis,interact,i=>{const tip=$('#tile-tip');if(moonHitPosition(i)){tip.hidden=false;tip.textContent=L('Moon · 3×3 build site');return;}if(state.tiles[i]?.ultraId){tip.hidden=false;tip.textContent=ULTRA_ITEMS[state.tiles[i].ultraId].name;return;}if(ultraHitId(i)){tip.hidden=false;tip.textContent=ULTRA_ITEMS[ultraHitId(i)].name;return;}if(i===MANSION_HIT){tip.hidden=false;tip.textContent=L('🏛 My mansion · Tap to manage or sell');return;}if(i<0){tip.hidden=true;return;}const t=state.tiles[i],{x,y}=coords(i);tip.hidden=false;tip.textContent=`${t.type?buildingName(t):t.terrain==='water'?L('Riverside River'):t.terrain==='mountain'?L('Mountain'):L('Empty lot')} · ${x+1}, ${y+1}${t.owner==='player'?L(' · My asset'):t.owner==='rival'?L(' · ⚑ Rival asset'):state.rival?.target===i?L(' · ⚑ Rival buying soon'):''}`;});renderer.home();
 if(devSession.enabled){
  const button=document.createElement('button');button.dataset.action='developer';button.textContent=L('Developer Test');
@@ -149,7 +157,7 @@ function developerAccessEnabled(){if(devSession.enabled)return true;const auth=a
 function developerPanel(){
  if(!developerAccessEnabled())return;
  speed=0;renderHUD();
- openDialog('developer',`<h2>${L('Developer Test')}</h2><p>${devSession.enabled?L('Separate test save · Cloud sync off. Your normal game is preserved.'):L('Developer account · Changes apply to your current game and are saved to your Google account.')}</p><label class="field-label" for="dev-money">${L('Test cash balance')}<input id="dev-money" type="number" min="0" max="1000000000000" step="1" value="${Math.round(state.money)}"></label><p class="help">${L('Enter a whole number from 0 to 1,000,000,000,000. Peak net worth can increase; lowering cash keeps previous unlocks.')}</p><div class="button-row">${[10000000,100000000,1000000000].map(n=>`<button data-dev-money="${n}">${money(n)}</button>`).join('')}</div><div class="button-row"><button class="primary" data-action="dev-apply">${L('Apply test balance')}</button>${devSession.enabled?`<button data-action="dev-exit">${L('Return to normal game')}</button>`:''}</div>`);
+ openDialog('developer',`<h2>${L('Developer Test')}</h2><p>${devSession.enabled?L('Separate test save · Cloud sync off. Your normal game is preserved.'):L('Developer account · Changes apply to your current game and are saved to your Google account.')}</p><label class="field-label" for="dev-money">${L('Test cash balance')}<input id="dev-money" type="number" min="0" step="1" value="${Math.round(state.money)}"></label><p class="help">${L('Enter a non-negative whole number. Peak net worth can increase; lowering cash keeps previous unlocks.')}</p><div class="button-row">${[10000000,100000000,1000000000].map(n=>`<button data-dev-money="${n}">${money(n)}</button>`).join('')}</div><div class="button-row"><button class="primary" data-action="dev-apply">${L('Apply test balance')}</button>${devSession.enabled?`<button data-action="dev-exit">${L('Return to normal game')}</button>`:''}</div>`);
 }
 function loadSave(candidate,preserveTime=false){state=fillMap(candidate);ensureBasis(state);saveBlocked=false;selected=-1;renderer.select(-1);speed=0;elapsed=0;closeDialog();selectTool('inspect');if(preserveTime){refresh();try{localStorage.setItem(SAVE_KEY,JSON.stringify(state));}catch{}}else changed();renderer.home();}
 function renderHUD(){
@@ -362,7 +370,7 @@ $('#app').addEventListener('click',e=>{
   if(b.dataset.devMoney){$('#dev-money').value=b.dataset.devMoney;return;}
   if(b.dataset.action==='dev-apply'){
    if(saveBlocked){toast(L('Could not read the save. Your existing save will not be overwritten.'));return;}
-   if(!setTestMoney(state,$('#dev-money').value,true)){toast(L('Enter a whole number from 0 to 1,000,000,000,000.'));return;}
+   if(!setTestMoney(state,$('#dev-money').value,true)){toast(L('Enter a non-negative whole number within the safe integer range.'));return;}
    changed();renderDock();closeDialog();toast(L('Test cash balance applied.'));return;
   }
   if(b.dataset.action==='dev-exit'){const url=new URL(window.location.href);url.searchParams.delete('dev');window.location.assign(url.href);return;}

@@ -1,3 +1,4 @@
+import {underConstruction} from './building-progress.js';
 // Chapters, prestige as a currency, philanthropy, the foundation and the legacy ending.
 import {L} from './i18n.js';
 import {reputationSummary} from './empire.js';
@@ -23,7 +24,7 @@ export function addPrestige(s,n){s.prestige=Math.max(0,Math.round(((s.prestige||
 // Lifestyle fame fades 3% a month; landmark buildings and resident amenities feed it every month.
 export function settlePrestige(s){
  if(s.prestige)s.prestige=Math.max(0,Math.round(s.prestige*(1-PRESTIGE_DECAY)*10)/10);
- const owned=s.tiles.filter(t=>t.owner==='player');
+ const owned=s.tiles.filter(t=>t.owner==='player'&&!underConstruction(s,t));
  const gain=(owned.some(t=>t.type==='hq')?10:0)+(owned.some(t=>t.type==='monument')?30:0)+Math.min(5,owned.filter(t=>t.type==='citypark').length)*2+(owned.some(t=>t.type==='themepark')?5:0)+owned.filter(t=>t.type==='hospital').map(t=>t.level).sort((a,b)=>b-a).slice(0,3).reduce((n,level)=>n+level*2,0);
  if(gain)addPrestige(s,gain);
 }
@@ -37,7 +38,7 @@ export function foundFoundation(s,wealth){
  return{ok:true,msg:L('Foundation established. Your name lives on in the city.')};
 }
 export function legacyScore(s,a){
- const peak=Math.max(s.highestWealth||0,a.wealth),owned=s.tiles.filter(t=>t.owner==='player'),fame=Math.round(reputationSummary(s).fame);
+ const peak=Math.max(s.highestWealth||0,a.wealth),owned=s.tiles.filter(t=>t.owner==='player'&&!underConstruction(s,t)),fame=Math.round(reputationSummary(s).fame);
  const beatRival=!!s.rival&&a.wealth>=s.rival.wealth;
  const parts=[
   {name:L('Peak net worth'),value:Math.min(3000,Math.round(peak/10000000*100)),note:L('100 pts per ₲10M · max 3,000')},

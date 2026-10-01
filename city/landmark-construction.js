@@ -1,3 +1,4 @@
+import {startConstruction,constructionNotice} from './building-progress.js';
 import {L} from './i18n.js';
 import {build,canBuild,developmentQuote,footprintCells,coords,SIZE} from './engine.js';
 import {validLandmark} from './landmarks.js';
@@ -34,8 +35,7 @@ export function buildLandmark(s,i,design,footprint){
  const t=s.tiles[i],extra=q.construction-q.baseConstruction;
  if(s.mode!=='sandbox')s.money-=extra;
  t.constructionCost=q.construction;t.assetLedger.initial+=extra;t.assetLedger.buildingValue*=100;t.landmark={...design};
- s.empire??={owned:[]};s.empire.landmarkFame??={};
- s.empire.landmarkFame[i]=(s.empire.landmarkFame[i]||0)+q.fame;s.empire.earnedFame=(s.empire.earnedFame||0)+q.fame;
- s.log=[L`${design.name} landmark built on ${footprint.width}×${footprint.height} tiles · ₲${q.total.toLocaleString()} invested · Completion reputation +${q.fame}`,...previousLog].slice(0,25);
- return {ok:true,fame:q.fame,msg:L`Landmark complete! Reputation +${q.fame.toLocaleString('en-US')}`};
+ startConstruction(s,t);t.construction.fame=q.fame;
+ s.log=[design.name+' · '+constructionNotice(t.construction.months),...previousLog].slice(0,25);
+ return {ok:true,fame:q.fame,msg:constructionNotice(t.construction.months)};
 }

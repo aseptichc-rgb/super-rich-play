@@ -7,7 +7,7 @@ export const landmarkURL=id=>{const p=presetLandmark(id);return p?`city/landmark
 export function validLandmark(d){return !!d&&/^[a-f0-9-]{36}$/.test(d.id)&&typeof d.name==='string'&&d.name.length>0&&d.name.length<=40&&['office','hotel'].includes(d.type);}
 export function validLandmarks(s){
  const studio=s?.landmarkStudio;
- if(studio!==undefined&&(!studio||!/^([a-f0-9-]{36})$/.test(studio.id)||!Array.isArray(studio.designs)||studio.designs.length>3||!studio.designs.every(validLandmark)||new Set(studio.designs.map(d=>d.id)).size!==studio.designs.length||studio.selected!==undefined&&!/^[a-f0-9-]{36}$/.test(studio.selected)))return false;
+ if(studio!==undefined&&(!studio||!/^([a-f0-9-]{36})$/.test(studio.id)||!Array.isArray(studio.designs)||studio.designs.length>100||!studio.designs.every(validLandmark)||new Set(studio.designs.map(d=>d.id)).size!==studio.designs.length||studio.selected!==undefined&&!/^[a-f0-9-]{36}$/.test(studio.selected)))return false;
  const rewards=s?.empire?.landmarkFame;
  if(rewards!==undefined&&(!rewards||typeof rewards!=='object'||Array.isArray(rewards)||!Object.entries(rewards).every(([i,n])=>/^(0|[1-9]\d*)$/.test(i)&&Number(i)<(s?.tiles?.length||0)&&[500,600,700,800,1000,1300].includes(n))))return false;
  return !Array.isArray(s?.tiles)||s.tiles.every(t=>t?.landmark===undefined||(validLandmark(t.landmark)&&['player','npc','rival'].includes(t.owner)&&t.type===t.landmark.type));}

@@ -1,3 +1,5 @@
+import {constructionProgress} from './building-progress.js';
+import {researchLevel} from './university.js';
 import {ultraSites,ultraHitId,moonHit,moonHitPosition} from './ultra-map.js';
 import {moonOrigin,MOON_SIZE,ultraPlacementError} from './ultra-placement.js';
 import {ULTRA_ITEMS} from './ultra.js';
@@ -109,7 +111,7 @@ export function createRenderer(canvas,getState,getAnalysis,onTile,onHover){
  }
  function line(a,b,color,width=1){ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.strokeStyle=color;ctx.lineWidth=width*zoom;ctx.stroke();}
  function circle(p,r,color){if(recordingHit){const pts=[];for(let n=0;n<12;n++)pts.push({x:p.x+Math.cos(n*Math.PI/6)*r*zoom,y:p.y+Math.sin(n*Math.PI/6)*r*zoom});record(pts);}ctx.beginPath();ctx.arc(p.x,p.y,r*zoom,0,Math.PI*2);ctx.fillStyle=color;ctx.fill();}
- function assetBadge(x,y,t){const p=imageTops.get(y*SIZE+x)||screen(x+.5,y+.5,badgeHeight(t.type,t.level)+16),label=`✦ ${t.landmark?.name||buildingName(t)}${t.type==='plot'?'':' · Lv.'+t.level}`;ctx.font=`bold ${Math.max(10,11*zoom)}px sans-serif`;ctx.textAlign='center';const width=ctx.measureText(label).width+14;if(recordingHit)record([{x:p.x-width/2,y:p.y-13*zoom},{x:p.x+width/2,y:p.y-13*zoom},{x:p.x+width/2,y:p.y+6*zoom},{x:p.x-width/2,y:p.y+6*zoom}]);ctx.fillStyle='#2f4d3eeb';ctx.fillRect(p.x-width/2,p.y-13*zoom,width,19*zoom);ctx.fillStyle='#ffe59a';ctx.fillText(label,p.x,p.y+1*zoom);}
+ function assetBadge(x,y,t){const p=imageTops.get(y*SIZE+x)||screen(x+.5,y+.5,badgeHeight(t.type,t.level)+16),label=t.type==='university'?'Lv.'+researchLevel(t):`✦ ${t.landmark?.name||buildingName(t)}${t.type==='plot'?'':' · Lv.'+t.level}`;ctx.font=`bold ${Math.max(10,11*zoom)}px sans-serif`;ctx.textAlign='center';const width=ctx.measureText(label).width+14;if(recordingHit)record([{x:p.x-width/2,y:p.y-13*zoom},{x:p.x+width/2,y:p.y-13*zoom},{x:p.x+width/2,y:p.y+6*zoom},{x:p.x-width/2,y:p.y+6*zoom}]);ctx.fillStyle='#2f4d3eeb';ctx.fillRect(p.x-width/2,p.y-13*zoom,width,19*zoom);ctx.fillStyle='#ffe59a';ctx.fillText(label,p.x,p.y+1*zoom);}
  // Mountain tiles share corner heights, so a range reads as one massif: corners rise with how deep the four tiles around them
  // sit inside the range, each tile peaks above its corners, and the tallest peaks carry snow.
  function mountain(s,x,y){
@@ -503,16 +505,10 @@ export function createRenderer(canvas,getState,getAnalysis,onTile,onHover){
    startHit(hit);
    poly([screen(x,y),screen(x+3,y),screen(x+3,y+3),screen(x,y+3)],id==='moon'?'#b7b9ba':'#d7ddc7','#c5ceb8');
    if(!groundView){
-    if(!complete&&id==='moon'){
-     const alpha=ctx.globalAlpha;ctx.globalAlpha=alpha*.65;
-     if(!sceneryPlot(site.image,x,y,3,3))box(x+.4,y+.4,2.2,2.2,20,'#afd5df','#607e98','#8babbf');
+    if(!complete){
+     const alpha=ctx.globalAlpha,progress=Math.max(0,Math.min(1,1-remaining/ULTRA_ITEMS[id].months));ctx.globalAlpha=alpha*(.2+.8*progress);
+     if(!sceneryPlot(site.image,x,y,3,3))box(x+.3,y+.3,2.4,2.4,38,'#e5dfc8','#568a80','#abc3b5');
      ctx.globalAlpha=alpha;
-    }else if(!complete){
-     box(x+.25,y+.25,2.5,2.5,7,'#d6c7a6');
-     for(let n=0;n<4;n++)box(x+.35+n*.65,y+.4,.12,2.2,22,'#d9b565');
-     line(screen(x+.4,y+.4),screen(x+.4,y+.4,92),'#c89945',4);
-     line(screen(x+.4,y+.4,92),screen(x+2.6,y+.4,92),'#c89945',3);
-     line(screen(x+2.4,y+.4,92),screen(x+2.4,y+.4,32),'#6f776a',1);
     }else if(!sceneryPlot(site.image,x,y,3,3)){
      box(x+.3,y+.3,2.4,2.4,38,'#e5dfc8','#568a80','#abc3b5');
      const p=screen(x+1.5,y+1.5,55);ctx.font=`${30*zoom}px sans-serif`;ctx.textAlign='center';ctx.fillText(ULTRA_ITEMS[id].icon,p.x,p.y);
@@ -520,12 +516,12 @@ export function createRenderer(canvas,getState,getAnalysis,onTile,onHover){
    }
    endHit();
    const p=screen(x+3,y+3.2);
-   if(id==='moon'&&!complete){ctx.fillStyle='#edf3edeb';ctx.fillRect(p.x-85*zoom,p.y-13*zoom,170*zoom,63*zoom);}
+   if(!complete){ctx.fillStyle='#edf3edeb';ctx.fillRect(p.x-85*zoom,p.y-13*zoom,170*zoom,63*zoom);}
    ctx.textAlign='center';ctx.font=`bold ${Math.max(10,11*zoom)}px sans-serif`;ctx.fillStyle='#244d43';
    ctx.fillText(ULTRA_ITEMS[id].name,p.x,p.y);
    ctx.font=`${Math.max(9,10*zoom)}px sans-serif`;ctx.fillText(complete?L('Completed'):L`${remaining} game months to complete`,p.x,p.y+15*zoom);
-   if(id==='moon'&&!complete){
-    const progress=Math.max(0,Math.min(1,1-remaining/ULTRA_ITEMS.moon.months)),width=110*zoom;
+   if(!complete){
+    const progress=Math.max(0,Math.min(1,1-remaining/ULTRA_ITEMS[id].months)),width=110*zoom;
     ctx.fillStyle='#344b60';ctx.fillRect(p.x-width/2,p.y+23*zoom,width,5*zoom);
     ctx.fillStyle='#a2deed';ctx.fillRect(p.x-width/2,p.y+23*zoom,width*progress,5*zoom);
     ctx.fillStyle='#244d43';ctx.fillText(L`Under construction · ${Math.floor(progress*100)}%`,p.x,p.y+43*zoom);
@@ -575,7 +571,9 @@ export function createRenderer(canvas,getState,getAnalysis,onTile,onHover){
     if(asset.owner==='rival')tile(x,y,'#b8505033','#c0574d');
     if((!asset.footprint||last===i)&&t.type!=='road'){
      if(faded.has(root))ctx.globalAlpha*=.3;
-     const picture=building(p.x,p.y,asset);startHit(-1);
+     const progress=constructionProgress(s,asset),alpha=ctx.globalAlpha;ctx.globalAlpha=alpha*(.2+.8*progress);
+     const picture=building(p.x,p.y,asset);ctx.globalAlpha=alpha;startHit(-1);
+     if(progress<1){const label=screen(p.x+(asset.footprint?.width||1),p.y+(asset.footprint?.height||1));ctx.fillStyle='#f4f6ebee';ctx.fillRect(label.x-70,label.y+3,140,30);ctx.fillStyle='#244d43';ctx.font='bold 11px sans-serif';ctx.textAlign='center';ctx.fillText(L`Under construction · ${Math.floor(progress*100)}%`,label.x,label.y+16);ctx.fillStyle='#32958b';ctx.fillRect(label.x-65,label.y+23,130*progress,4);}
      // Mix small roadside panels, short rooftop supports and large dedicated advertising structures.
      let adTop=null;
      if(asset.billboard){
@@ -624,7 +622,7 @@ export function createRenderer(canvas,getState,getAnalysis,onTile,onHover){
  function composite(s,a){
   const now=performance.now();
   // Financial refreshes do not alter the background. Overlay maps still depend on the complete analysis.
-  if(visualAnalysis!==a||visualState!==s){visualAnalysis=a;visualState=s;visualKey=JSON.stringify([mapOffset(s),s.tiles.map(t=>[t.terrain,t.type,t.level,t.owner,t.buildingAnchor,t.footprint,t.landmark,t.billboard,t.tree,t.damage,t.boulevard]),s.flex?.owned,s.flex?.mansion,s.ultra?.items,s.ultra? s.month:null,ultraPlacement,[...a.connected],a.active]);}
+  if(visualAnalysis!==a||visualState!==s){visualAnalysis=a;visualState=s;visualKey=JSON.stringify([mapOffset(s),s.tiles.map(t=>[t.terrain,t.type,t.level,t.owner,t.buildingAnchor,t.footprint,t.landmark,t.construction,t.billboard,t.tree,t.damage,t.boulevard]),s.flex?.owned,s.flex?.mansion,s.ultra?.items,s.month,ultraPlacement,[...a.connected],a.active]);}
   if(!cache||cache.visualKey!==visualKey||(layer!=='normal'&&layer!=='assets'&&cache.a!==a)||cache.zoom!==zoom||cache.w!==w||cache.h!==h||cache.dpr!==dpr||cache.layer!==layer||cache.groundView!==groundView||cache.fade!==fadeKey||Math.abs(panX-cache.panX)>MARGIN||Math.abs(panY-cache.panY)>MARGIN||(pendingImages&&now-cache.at>400))scene(s,a);
   shift={x:Math.round((panX-cache.panX-MARGIN)*dpr)/dpr,y:Math.round((panY-cache.panY-MARGIN)*dpr)/dpr};
   ctx.drawImage(cacheCanvas,shift.x,shift.y,cacheCanvas.width/dpr,cacheCanvas.height/dpr);
