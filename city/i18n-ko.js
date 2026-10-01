@@ -2422,4 +2422,6 @@ export default {
 "Create Building From Uploaded Image":"업로드 이미지로 AI 건물 만들기",
 "This studio is out of date. Reload the game to create an AI building from your image.":"이전 버전의 설계실입니다. 게임을 새로고침한 뒤 이미지로 AI 건물을 만들어 주세요.",
 "<p class=\"help\">Previously uploaded originals are not AI buildings. Upload the image again to convert it before construction. Existing buildings are unchanged.</p>":"<p class=\"help\">이전에 그대로 저장한 원본 이미지는 AI 건물이 아닙니다. 이미지를 다시 업로드해 AI로 변환한 뒤 건설해 주세요. 이미 건설한 건물은 유지됩니다.</p>",
+"Owned landmarks: {0} / {1}":"보유 랜드마크: {0} / {1}",
+"You can own up to 5 landmarks. Sell or demolish one before building another.":"랜드마크는 최대 5개까지 보유할 수 있습니다. 새로 건설하려면 기존 랜드마크를 매각하거나 철거해 주세요.",
 };

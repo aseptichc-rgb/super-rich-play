@@ -1,12 +1,15 @@
 import {L} from './i18n.js';
 import {build,canBuild,developmentQuote,footprintCells,coords,SIZE} from './engine.js';
 import {validLandmark} from './landmarks.js';
+export const LANDMARK_LIMIT=5;
+export const ownedLandmarks=s=>s.tiles.filter(t=>t.owner==='player'&&t.landmark&&t.type!=='extension').length;
 export function landmarkQuote(s,i,type,footprint){
  const q=developmentQuote(s,i,type,1,footprint),construction=q.construction*100,revenue=q.revenue*3;
  const fame=Math.max(0,500+(q.cells.length-1)*100-(s.empire?.landmarkFame?.[i]||0));
  return {...q,fame,baseConstruction:q.construction,construction,total:construction+q.land+q.demolition,revenue,profit:revenue-q.cost};
 }
 export function landmarkBuildError(s,i,design,footprint){
+ if(ownedLandmarks(s)>=LANDMARK_LIMIT)return L('You can own up to 5 landmarks. Sell or demolish one before building another.');
  if(!validLandmark(design))return L('Select a valid design.');
  const cells=footprintCells(i,footprint);
  if(!cells.length)return L('Select a lot inside the map, 1–3 tiles wide and tall.');
