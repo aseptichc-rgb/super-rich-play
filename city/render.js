@@ -15,7 +15,8 @@ import {createWorldLife} from './world-life.js';
 import {reducedMotion} from './motion.js';
 import {flexState} from './flex.js';
 import {selectedModel} from './luxury-models.js';
-import {drawMapYacht,YACHT_DESIGNS} from './map-vehicles.js';
+import {drawMapCar,drawMapYacht,YACHT_DESIGNS} from './map-vehicles.js';
+import {mapCollection} from './map-collection.js';
 import {mansionDesign,MANSION_COLORS,MANSION_HIT} from './mansion.js';
 import {mansionArtURL,estateArtURL} from './mansion-art.js';
 import {SIZE,BOULEVARD,TYPES,coords,canBuild,footprintCells,buildingArea,mapOffset,buildingName} from './engine.js';
@@ -43,7 +44,7 @@ export function createRenderer(canvas,getState,getAnalysis,onTile,onHover){
  let ctx=canvas.getContext('2d');const mainCtx=ctx;let w=0,h=0,dpr=1,zoom=1,panX=0,panY=0,hover=-1,selected=-1,tool='inspect',layer='normal',groundView=false,down=null;
  let hits=[],recordingHit=null,drawingFootprint=null,buildingTransform=null,depth=0,column=0,dynamics=[],pendingImages=false,buildFootprint={width:1,height:1},landmarkPlacement=null,ultraPlacement=null;
  // world shifts fixed scenery (estate, yacht) by the map expansion offset; viewState keeps the camera still when the map grows.
- let world=0,viewState=null,viewOffset=0,framePhase=0;
+ let world=0,viewState=null,viewOffset=0,framePhase=0,collectionDisplay={cars:[],yachts:[],marina:-1};
  // X-ray: buildings drawn in front of the pointed-at or selected building fade, so it stays visible and clickable.
  let under=-1,faded=new Set(),fadeKey='';
  const imageMasks=new WeakMap(),imageTops=new Map();
@@ -196,12 +197,14 @@ export function createRenderer(canvas,getState,getAnalysis,onTile,onHover){
    return;
   }
   if(original==='garage'){
-   tile(x+.08,y+.08,'#b7c3a5','#f0daa7');
-   box(x+.14,y+.15,.72,.69,23,'#d9c49c','#71827d','#9d9280');
-   for(const offset of [.22,.53]){
-    poly([screen(x+offset,y+.84,2),screen(x+offset+.24,y+.84,2),screen(x+offset+.24,y+.84,17),screen(x+offset,y+.84,17)],'#394f56','#e9d6ab');
-    line(screen(x+offset+.02,y+.845,10),screen(x+offset+.22,y+.845,10),'#adbec0',1);
+   tile(x+.02,y+.02,'#d9d2be','#f0daa7');
+   // An open showroom keeps every parked car visible within the one-tile lot.
+   box(x+.04,y+.02,.92,.06,13,'#e4d4b1','#738984','#b9ac91');
+   for(let row=0;row<3;row++)for(let col=0;col<2;col++){
+    const xx=x+.08+col*.46,yy=y+.12+row*.27;
+    poly([screen(xx,yy),screen(xx+.38,yy),screen(xx+.38,yy+.23),screen(xx,yy+.23)],'#7c8d8950','#f8ebc1');
    }
+   line(screen(x+.04,y+.98),screen(x+.98,y+.98),'#cbb477',1.4);
    return;
   }
   if(type==='golf'){
@@ -568,6 +571,7 @@ export function createRenderer(canvas,getState,getAnalysis,onTile,onHover){
   }
  }
  function scene(s,a){
+  collectionDisplay=mapCollection(s);
   const cw=w+2*MARGIN,ch=h+2*MARGIN;
   if(cacheCanvas.width!==Math.floor(cw*dpr)||cacheCanvas.height!==Math.floor(ch*dpr)){cacheCanvas.width=cw*dpr;cacheCanvas.height=ch*dpr;}
   ctx=cacheCtx;panX+=MARGIN;panY+=MARGIN;hits=[];dynamics=[];pendingImages=false;imageTops.clear();
@@ -579,7 +583,7 @@ export function createRenderer(canvas,getState,getAnalysis,onTile,onHover){
   poly([screen(0,SIZE),screen(SIZE,SIZE),screen(SIZE,SIZE,-15),screen(0,SIZE,-15)],'#b8beaa');
   poly([screen(SIZE,0),screen(SIZE,SIZE),screen(SIZE,SIZE,-15),screen(SIZE,0,-15)],'#9cad9f');
   ground(s,a);
-  if(!groundView&&s.flex?.owned?.includes('yacht')){world=mapOffset(s);depth=39+2*world;column=22+world;sceneryPlot('marina-pier',19.8,17.6,2.1,1.6);world=0;}
+  if(!groundView&&collectionDisplay.marina<0&&s.flex?.owned?.includes('yacht')){world=mapOffset(s);depth=39+2*world;column=22+world;sceneryPlot('marina-pier',19.8,17.6,2.1,1.6);world=0;}
   if(!groundView&&flexState(s).owned.includes('penthouse')){
    world=mapOffset(s);for(let xx=1;xx<=5;xx++)for(let yy=19;yy<=22;yy++)tile(xx,yy,(xx+yy)%2?'#acc195':'#b8cca0','#d8c986');world=0;
   }
@@ -629,6 +633,14 @@ export function createRenderer(canvas,getState,getAnalysis,onTile,onHover){
    endHit();
   }
   moonSurface(s);
+  if(!groundView)for(const kind of ['cars','yachts'])for(const v of collectionDisplay[kind]){
+   const yacht=kind==='yachts',p=screen(v.x,v.y),d=yacht?YACHT_DESIGNS[v.model.id]:null,pad=(yacht?d.length:40)*v.scale*zoom;
+   depth=Math.floor(v.x)+Math.floor(v.y);column=Math.floor(v.x);
+   const bounds=[p.x-pad,p.y-pad*1.4,p.x+pad,p.y+pad*.5];
+   // Clicking a displayed vehicle opens the collection building that owns it.
+   startHit(v.site);recordingHit.dynamic=true;record([{x:p.x-pad*.55,y:p.y-pad*.5},{x:p.x+pad*.55,y:p.y-pad*.5},{x:p.x+pad*.55,y:p.y+pad*.25},{x:p.x-pad*.55,y:p.y+pad*.25}]);endHit();
+   animate(bounds,time=>{if(yacht)drawMapYacht(ctx,screen,v.x,v.y,v.model,time+v.site*37,v.scale);else drawMapCar(ctx,screen,v.x,v.y,v.model,1,v.scale);});
+  }
   recordingHit=null;
   }finally{panX-=MARGIN;panY-=MARGIN;ctx=mainCtx;}
   hitGrid=new Map();
@@ -647,14 +659,14 @@ export function createRenderer(canvas,getState,getAnalysis,onTile,onHover){
    const f=built?t.footprint||{width:1,height:1}:placing?landmarkPlacement?.footprint||buildFootprint:{width:1,height:1};
    const z=built?badgeHeight(t.type,t.level):30,col=x+f.width-1,d=col+y+f.height-1;
    const box=[screen(x,y+f.height).x-sx,screen(x,y,z).y-sy,screen(x+f.width,y).x-sx,screen(x+f.width,y+f.height).y-sy];
-   for(const o of nearby([box]))if(o.i>=0&&o.i!==root&&(o.depth>d||o.depth===d&&o.col>col)&&o.box[0]<box[2]&&o.box[2]>box[0]&&o.box[1]<box[3]&&o.box[3]>box[1])set.add(o.i);
+   for(const o of nearby([box]))if(!o.dynamic&&o.i>=0&&o.i!==root&&(o.depth>d||o.depth===d&&o.col>col)&&o.box[0]<box[2]&&o.box[2]>box[0]&&o.box[1]<box[3]&&o.box[3]>box[1])set.add(o.i);
   }
   return set;
  }
  function composite(s,a){
   const now=performance.now();
   // Financial refreshes do not alter the background. Overlay maps still depend on the complete analysis.
-  if(visualAnalysis!==a||visualState!==s){visualAnalysis=a;visualState=s;visualKey=JSON.stringify([mapOffset(s),s.tiles.map(t=>[t.terrain,t.type,t.level,t.owner,t.buildingAnchor,t.footprint,t.landmark,t.construction,t.billboard,t.tree,t.damage,t.boulevard]),s.flex?.owned,s.flex?.mansion,s.ultra?.items,s.lunar,s.month,ultraPlacement,[...a.connected],a.active]);}
+  if(visualAnalysis!==a||visualState!==s){visualAnalysis=a;visualState=s;visualKey=JSON.stringify([mapOffset(s),s.tiles.map(t=>[t.terrain,t.type,t.level,t.owner,t.buildingAnchor,t.footprint,t.landmark,t.construction,t.billboard,t.tree,t.damage,t.boulevard]),s.flex?.owned,s.flex?.vehicles,s.flex?.mansion,s.ultra?.items,s.lunar,s.month,ultraPlacement,[...a.connected],a.active]);}
   if(!cache||cache.motion!==reducedMotion()||cache.visualKey!==visualKey||(layer!=='normal'&&layer!=='assets'&&cache.a!==a)||cache.zoom!==zoom||cache.w!==w||cache.h!==h||cache.dpr!==dpr||cache.layer!==layer||cache.groundView!==groundView||cache.fade!==fadeKey||Math.abs(panX-cache.panX)>MARGIN||Math.abs(panY-cache.panY)>MARGIN||(pendingImages&&now-cache.at>400))scene(s,a);
   shift={x:Math.round((panX-cache.panX-MARGIN)*dpr)/dpr,y:Math.round((panY-cache.panY-MARGIN)*dpr)/dpr};
   ctx.drawImage(cacheCanvas,shift.x,shift.y,cacheCanvas.width/dpr,cacheCanvas.height/dpr);
@@ -677,7 +689,7 @@ export function createRenderer(canvas,getState,getAnalysis,onTile,onHover){
   }
   coverBand();
  }
- function cover(o){const X0=Math.floor(o.box[0]*dpr),Y0=Math.floor(o.box[1]*dpr),sw=Math.ceil(o.box[2]*dpr)-X0,sh=Math.ceil(o.box[3]*dpr)-Y0;if(sw<=0||sh<=0)return;ctx.save();ctx.globalAlpha=o.alpha;
+ function cover(o){if(o.dynamic)return;const X0=Math.floor(o.box[0]*dpr),Y0=Math.floor(o.box[1]*dpr),sw=Math.ceil(o.box[2]*dpr)-X0,sh=Math.ceil(o.box[3]*dpr)-Y0;if(sw<=0||sh<=0)return;ctx.save();ctx.globalAlpha=o.alpha;
   if(o.image){// Build the masked patch once per scene, then reuse it for every passing sprite.
    if(!o.stamp){const patch=offscreen();patch.width=sw;patch.height=sh;const c=patch.getContext('2d');c.drawImage(cacheCanvas,X0,Y0,sw,sh,0,0,sw,sh);c.globalCompositeOperation='destination-in';c.save();const ix=o.box[0]*dpr-X0,iy=o.box[1]*dpr-Y0,iw=(o.box[2]-o.box[0])*dpr,ih=(o.box[3]-o.box[1])*dpr;c.translate(o.mirror?ix+iw:ix,iy);if(o.mirror)c.scale(-1,1);c.drawImage(o.image,0,0,iw,ih);c.restore();o.stamp=patch;}
    ctx.setTransform(1,0,0,1,shift.x*dpr,shift.y*dpr);ctx.drawImage(o.stamp,X0,Y0);
@@ -705,7 +717,7 @@ export function createRenderer(canvas,getState,getAnalysis,onTile,onHover){
   }
   if(groundView)return;
   const collection=flexState(s).owned;
-  if(collection.includes('yacht')){world=mapOffset(s);const yy=16+(reducedMotion()?0:Math.sin(time*.0005)*.15),model=selectedModel(s,'yacht');const art=drawMapYacht(ctx,screen,22.4,yy+.2,model,time);const design=YACHT_DESIGNS[model.id],p=art?.top||screen(22.4,yy+.2,design.roof+Math.max(0,design.levels-1)*7+26);world=0;ctx.font='bold 11px sans-serif';ctx.textAlign='center';ctx.fillStyle='#21485a';ctx.fillText('✦ '+model.name,p.x,p.y);}
+  if(collection.includes('yacht')&&!collectionDisplay.yachts.length){world=mapOffset(s);const yy=16+(reducedMotion()?0:Math.sin(time*.0005)*.15),model=selectedModel(s,'yacht');const art=drawMapYacht(ctx,screen,22.4,yy+.2,model,time);const design=YACHT_DESIGNS[model.id],p=art?.top||screen(22.4,yy+.2,design.roof+Math.max(0,design.levels-1)*7+26);world=0;ctx.font='bold 11px sans-serif';ctx.textAlign='center';ctx.fillStyle='#21485a';ctx.fillText('✦ '+model.name,p.x,p.y);}
   life.drawFront(time,phase);
  }
  function point(e){const r=canvas.getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top};}

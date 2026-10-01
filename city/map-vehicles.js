@@ -14,9 +14,9 @@ export const YACHT_DESIGNS={
  super:{length:126,beam:33,transom:.88,taper:.60,cabinAft:-.32,cabinFront:.14,roof:21,levels:3,hull:'#edf3f1',deck:'#bf996b',pool:true},
  mega:{length:166,beam:43,transom:.94,taper:.66,cabinAft:-.36,cabinFront:.08,roof:25,levels:5,hull:'#9eabb3',deck:'#ad987b',helipad:true}
 };
-export function drawMapCar(ctx,screen,x,y,model,heading=1){
+export function drawMapCar(ctx,screen,x,y,model,heading=1,displayScale=1){
  const d=CAR_DESIGNS[model.id]||{...CAR_DESIGNS.gt,length:29,width:13,roof:12},L=d.length,B=d.width,H=d.height;
- const anchor=screen(x,y),unit=screen(x+1,y),scale=Math.hypot(unit.x-anchor.x,unit.y-anchor.y)/Math.hypot(28,14),axis=Math.abs(heading)===1?1:-1,dir=(heading<0?-1:1)*axis;
+ const anchor=screen(x,y),unit=screen(x+1,y),scale=displayScale*Math.hypot(unit.x-anchor.x,unit.y-anchor.y)/Math.hypot(28,14),axis=Math.abs(heading)===1?1:-1,dir=(heading<0?-1:1)*axis;
  if(drawCarArt(ctx,anchor,scale,model,d,heading))return;
  const project=([u,v,z])=>({x:(u*.92-v*.7*axis)*dir,y:(u*.4*axis+v*.48)*dir-z});
  const shape=(points,fill,stroke,width=.6)=>{ctx.beginPath();points.forEach((v,i)=>{const p=project(v);i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y);});ctx.closePath();if(fill){ctx.fillStyle=fill;ctx.fill();}if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=width;ctx.stroke();}};
@@ -84,9 +84,9 @@ export function yachtHullProfile(metres){
  return{length,beam,port,starboard};
 }
 
-export function drawMapYacht(ctx,screen,x,y,model,time=0){
+export function drawMapYacht(ctx,screen,x,y,model,time=0,displayScale=1){
  const design=YACHT_DESIGNS[model.id]||YACHT_DESIGNS.riverside;
- const p=screen(x,y),q=screen(x+1,y),scale=Math.hypot(q.x-p.x,q.y-p.y)/Math.hypot(28,14);
+ const p=screen(x,y),q=screen(x+1,y),scale=displayScale*Math.hypot(q.x-p.x,q.y-p.y)/Math.hypot(28,14);
  const art=drawYachtArt(ctx,p,scale,model,design,time);if(art)return art;
  const {length:L,beam:B,port,starboard}=yachtHullProfile(model.length),bob=Math.sin(time*.0009)*.45,roll=Math.sin(time*.0007)*.012;
  // Project a curved, raised deck and its tapered lower hull in the map's view.

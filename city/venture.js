@@ -27,7 +27,7 @@ export function ventureCompany(id){
 }
 export function ventureOffering(s){const round=Math.floor(s.month/3);return{round,nextMonth:(round+1)*3,companies:Array.from({length:5},(_,slot)=>{const id=round===0?(slot===4?'moonshot':Object.keys(VENTURES)[slot]):`round-${round}-${slot}`;return{id,...ventureCompany(id)};})};}
 
-export const VENTURE_AMOUNTS=[10000,50000,100000,10000000,50000000,100000000];
+export const VENTURE_AMOUNTS=[10000,50000,100000,1000000,10000000,50000000,100000000];
 const hashRoll=(seed,sequence,id)=>{
  let x=(Number(seed)||0)^Math.imul(sequence+1,0x9e3779b1);
  for(const c of id)x=Math.imul(x^c.charCodeAt(0),0x85ebca6b);
@@ -37,6 +37,7 @@ const hashRoll=(seed,sequence,id)=>{
 
 export function ensureVentures(s){
  if(!s.ventures)s.ventures={active:[],history:[],sequence:0,lastInvestedMonth:-1};
+ s.ventures.totals??={invested:s.ventures.history.reduce((n,i)=>n+i.amount,0),payout:s.ventures.history.reduce((n,i)=>n+i.payout,0),partial:s.ventures.sequence>s.ventures.active.length+s.ventures.history.length};
  return s.ventures;
 }
 
@@ -78,6 +79,7 @@ export function advanceVentures(s){
   const d=ventureCompany(item.ventureId),multiple=ventureMultiple(item.ventureId,item.roll,item.odds??1),success=multiple>0,payout=venturePayout(item);
   const result={...item,resolvedMonth:s.month,success,payout,multiple};
   if(payout)s.money+=payout;
+  v.totals.invested+=item.amount;v.totals.payout+=payout;
   v.history.unshift(result);resolved.push(result);
   s.log.unshift(success?L`✦ Venture jackpot! ${d.name} ${multiple}× exit · +₲${payout.toLocaleString('en-US')}`:L`× Venture failed · ${d.name} stake ₲${item.amount.toLocaleString('en-US')} ${payout?L`· ₲${payout.toLocaleString('en-US')} recovered`:L('lost entirely')}`);
   return false;
@@ -89,9 +91,9 @@ export function advanceVentures(s){
 const validItem=(item,settled=false)=>item&&typeof item.id==='string'&&!!ventureCompany(item.ventureId)&&item.name===ventureCompany(item.ventureId).name&&VENTURE_AMOUNTS.includes(item.amount)&&Number.isInteger(item.startedMonth)&&item.startedMonth>=0&&Number.isInteger(item.dueMonth)&&item.dueMonth===item.startedMonth+3&&Number.isFinite(item.roll)&&item.roll>=0&&item.roll<1&&(item.odds===undefined||VENTURE_ODDS.includes(item.odds))&&(item.salvage===undefined||item.salvage===true)&&(!settled||(Number.isInteger(item.resolvedMonth)&&item.resolvedMonth>=item.dueMonth&&typeof item.success==='boolean'&&item.success===(ventureMultiple(item.ventureId,item.roll,item.odds??1)>0)&&item.payout===venturePayout(item)));
 export function validVentures(s){
  const v=s.ventures;if(v===undefined)return true;
- return !!(v&&Array.isArray(v.active)&&v.active.length<=3&&v.active.every(i=>validItem(i))&&Array.isArray(v.history)&&v.history.length<=12&&v.history.every(i=>validItem(i,true))&&Number.isInteger(v.sequence)&&v.sequence>=v.active.length+v.history.length&&Number.isInteger(v.lastInvestedMonth)&&v.lastInvestedMonth>=-1&&v.lastInvestedMonth<=s.month&&(!v.latest||Array.isArray(v.latest)&&v.latest.every(i=>validItem(i,true))));
+ return !!(v&&Array.isArray(v.active)&&v.active.length<=3&&v.active.every(i=>validItem(i))&&Array.isArray(v.history)&&v.history.length<=12&&v.history.every(i=>validItem(i,true))&&Number.isInteger(v.sequence)&&v.sequence>=v.active.length+v.history.length&&Number.isInteger(v.lastInvestedMonth)&&v.lastInvestedMonth>=-1&&v.lastInvestedMonth<=s.month&&(v.totals===undefined||(v.totals&&Number.isSafeInteger(v.totals.invested)&&v.totals.invested>=v.history.reduce((n,i)=>n+i.amount,0)&&Number.isSafeInteger(v.totals.payout)&&v.totals.payout>=v.history.reduce((n,i)=>n+i.payout,0)&&typeof v.totals.partial==='boolean'))&&(!v.latest||Array.isArray(v.latest)&&v.latest.every(i=>validItem(i,true))));
 }
 
-export function ventureSummary(s){const v=ensureVentures(s);return{active:v.active,history:v.history,committed:v.active.reduce((n,i)=>n+i.amount,0),wins:v.history.filter(i=>i.success).length,losses:v.history.filter(i=>!i.success).length};}
+export function ventureSummary(s){const v=ensureVentures(s);return{active:v.active,history:v.history,committed:v.active.reduce((n,i)=>n+i.amount,0),wins:v.history.filter(i=>i.success).length,losses:v.history.filter(i=>!i.success).length,invested:v.totals.invested,payout:v.totals.payout,returnPercent:v.totals.invested?(v.totals.payout/v.totals.invested-1)*100:null,partial:v.totals.partial};}
 
 export function investVenture(s,...args){return transaction(s,()=>investVentureImpl(s,...args));}

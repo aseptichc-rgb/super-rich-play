@@ -7,3 +7,4 @@
 .flex-item .ultra-art{display:block;width:100%;height:140px;object-fit:contain;align-self:center;margin-bottom:10px}@media(max-width:650px){.flex-item .ultra-art{grid-column:1/-1;height:170px}.ultra-art~h3,.ultra-art~strong{grid-column:1/-1}}
 
 .ultra-contract-art{display:block;width:100%;height:260px;object-fit:contain;margin:12px auto}
+.ultra-owned-list{grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}.ultra-owned-card{align-items:flex-start}.ultra-owned-benefits{line-height:1.5}.ultra-benefits{width:100%;margin:4px 0 10px;padding:10px 12px;border-radius:8px;background:#e9eee4;color:#365548;font-size:11px;line-height:1.6}.ultra-benefits b{font-size:12px}.ultra-benefits ul{margin:4px 0 0;padding-left:17px}@media(max-width:650px){.flex-item .ultra-benefits{grid-column:1/-1}}

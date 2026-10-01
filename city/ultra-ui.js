@@ -10,6 +10,7 @@ export function createUltraUI({getState,renderer,preparePlacement,finishPlacemen
   const s=getState();if(!Object.hasOwn(ULTRA_ITEMS,id))return;
   if(s.ultra?.items?.[id]?.position)return toast(L('This facility is already placed.'));
   const existing=!!s.ultra?.items?.[id],reason=existing?null:ultraReason(s,id);if(reason)return toast(reason);
+  if(s.ultra?.items?.[id]?.position)return toast(L('Already placed on the map.'));
   if(ULTRA_ITEMS[id].operation){
    if(existing)return;
    cancel();pending={id,existing:false};const d=ULTRA_ITEMS[id];

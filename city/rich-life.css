@@ -29,3 +29,20 @@
  .world-wrap .layer-control{top:235px;right:14px;width:min(280px,44%);min-width:0}
 }
 @media(max-width:720px){.world-wrap .live-card{top:204px;width:270px;max-width:calc(100% - 32px);max-height:170px}}
+
+/* Show every private-office choice without an inner scrollbar. */
+.world-wrap .live-card:has(.rich-office){width:440px;max-height:none!important;overflow-y:visible}
+@media(min-width:901px) and (max-height:1000px){
+ .world-wrap .world-title{display:none}
+ .world-wrap .world-top{top:24px;max-width:calc(50% - 34px);flex-wrap:wrap}
+ .world-wrap .layer-control{top:24px;right:80px;width:calc(50% - 80px)}
+ .world-wrap .live-card:has(.rich-office){top:125px;width:calc(100% - 116px);max-width:none}
+ .world-wrap .rich-office{grid-template-columns:repeat(4,minmax(0,1fr));padding:6px}
+ .world-wrap .rich-office button{padding:6px}
+}
+@media(min-width:1201px) and (max-height:1000px){
+ .world-wrap .world-top{max-width:none}
+ .world-wrap .live-card:has(.rich-office){top:75px}
+ .world-wrap .layer-control{width:auto}
+}
+.venture-performance{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:16px 0}.venture-performance>div{padding:12px;background:#edf1e5;border:1px solid #d9dfd2;border-radius:8px;overflow-wrap:anywhere}.venture-performance small{display:block;color:#7d8b77;font-size:9px}.venture-performance b{display:block;margin-top:5px;color:#315b49;font-size:15px}
