@@ -9,6 +9,7 @@ function entry(id){
  return images.get(id);
 }
 export const sceneryPending=id=>entry(id)?.pending??false;
+export const sceneryReady=id=>{const image=entry(id)?.image;return !!(image?.complete&&image.naturalWidth);};
 export function drawSceneryArt(ctx,id,p,width,{maxHeight=Infinity,mirror=false,heightRatio=1}={}){
  const image=entry(id)?.image;if(!image?.complete||!image.naturalWidth)return false;
  const ratio=Math.min(width/image.naturalWidth,maxHeight/(image.naturalHeight*heightRatio)),w=image.naturalWidth*ratio,h=image.naturalHeight*ratio*heightRatio;

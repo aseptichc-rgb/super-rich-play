@@ -8,7 +8,8 @@ import {L} from './i18n.js';
 import {drawLandmark} from './landmarks.js';
 import {billboardAd,billboardLayout,drawBillboard} from './billboards.js';
 import {drawBuildingArt,buildingArtPending,SKYSCRAPER_FLOOR_HEIGHT} from './building-art.js';
-import {drawSceneryArt,sceneryPending} from './scenery-art.js';
+import {drawSceneryArt,sceneryPending,sceneryReady} from './scenery-art.js';
+import {spaceportLaunch,drawLaunchRocket} from './rocket-launch.js';
 import {landmarkAnchor,landmarkBuildError} from './landmark-construction.js';
 import {createWorldLife} from './world-life.js';
 import {reducedMotion} from './motion.js';
@@ -42,7 +43,7 @@ export function createRenderer(canvas,getState,getAnalysis,onTile,onHover){
  let ctx=canvas.getContext('2d');const mainCtx=ctx;let w=0,h=0,dpr=1,zoom=1,panX=0,panY=0,hover=-1,selected=-1,tool='inspect',layer='normal',groundView=false,down=null;
  let hits=[],recordingHit=null,drawingFootprint=null,buildingTransform=null,depth=0,column=0,dynamics=[],pendingImages=false,buildFootprint={width:1,height:1},landmarkPlacement=null,ultraPlacement=null;
  // world shifts fixed scenery (estate, yacht) by the map expansion offset; viewState keeps the camera still when the map grows.
- let world=0,viewState=null,viewOffset=0;
+ let world=0,viewState=null,viewOffset=0,framePhase=0;
  // X-ray: buildings drawn in front of the pointed-at or selected building fade, so it stays visible and clickable.
  let under=-1,faded=new Set(),fadeKey='';
  const imageMasks=new WeakMap(),imageTops=new Map();
@@ -503,6 +504,14 @@ export function createRenderer(canvas,getState,getAnalysis,onTile,onHover){
  }
  function ultraBuilding(site){
    const {x,y,id,hit,complete,remaining}=site;depth=x+y+4;column=x+2;
+   const launch=id==='launch'&&complete,flight=launch?spaceportLaunch(getState()):null;
+   const pad='city/assets/ultra/launch-pad.webp',rocket='city/assets/ultra/launch-rocket.webp';
+   let split=false;
+   if(launch&&!groundView&&!reducedMotion()){
+    const padReady=sceneryReady(pad),rocketReady=sceneryReady(rocket);
+    split=padReady&&rocketReady;
+    if(sceneryPending(pad)||sceneryPending(rocket))pendingImages=true;
+   }
    startHit(hit);
    poly([screen(x,y),screen(x+3,y),screen(x+3,y+3),screen(x,y+3)],id==='moon'?'#b7b9ba':'#d7ddc7','#c5ceb8');
    if(!groundView){
@@ -510,17 +519,21 @@ export function createRenderer(canvas,getState,getAnalysis,onTile,onHover){
      const alpha=ctx.globalAlpha,progress=Math.max(0,Math.min(1,1-remaining/site.total));ctx.globalAlpha=alpha*(.2+.8*progress);
      if(!sceneryPlot(site.image,x,y,3,3))box(x+.3,y+.3,2.4,2.4,38,'#e5dfc8','#568a80','#abc3b5');
      ctx.globalAlpha=alpha;
-    }else if(!sceneryPlot(site.image,x,y,3,3)){
+    }else if(!sceneryPlot(split?pad:site.image,x,y,3,3)){
      box(x+.3,y+.3,2.4,2.4,38,'#e5dfc8','#568a80','#abc3b5');
      const p=screen(x+1.5,y+1.5,55);ctx.font=`${30*zoom}px sans-serif`;ctx.textAlign='center';ctx.fillText(ULTRA_ITEMS[id].icon,p.x,p.y);
     }
    }
    endHit();
+   if(split){
+    const front=screen(x+3,y+3),width=6*halfW*zoom;
+    animate([front.x-width,front.y-750*zoom,front.x+width,front.y],()=>drawLaunchRocket(ctx,screen(x+3,y+3),width,zoom,spaceportLaunch(getState(),framePhase)));
+   }
    const p=screen(x+3,y+3.2);
    if(!complete){ctx.fillStyle='#edf3edeb';ctx.fillRect(p.x-85*zoom,p.y-13*zoom,170*zoom,63*zoom);}
    ctx.textAlign='center';ctx.font=`bold ${Math.max(10,11*zoom)}px sans-serif`;ctx.fillStyle='#244d43';
    ctx.fillText(ULTRA_ITEMS[id].name,p.x,p.y);
-   ctx.font=`${Math.max(9,10*zoom)}px sans-serif`;ctx.fillText(complete?L('Completed'):L`${remaining} game months to complete`,p.x,p.y+15*zoom);
+   ctx.font=`${Math.max(9,10*zoom)}px sans-serif`;ctx.fillText(flight?(flight.active?L('Scheduled rocket launch'):L`Next launch in ${flight.nextIn} game months`):complete?L('Completed'):L`${remaining} game months to complete`,p.x,p.y+15*zoom);
    if(!complete){
     const progress=Math.max(0,Math.min(1,1-remaining/site.total)),width=110*zoom;
     ctx.fillStyle='#344b60';ctx.fillRect(p.x-width/2,p.y+23*zoom,width,5*zoom);
@@ -608,7 +621,7 @@ export function createRenderer(canvas,getState,getAnalysis,onTile,onHover){
   hitGrid=new Map();
   for(let n=0;n<hits.length;n++){const b=hits[n].box;if(!b.every(Number.isFinite)||!overlaps(b,[0,0,cw,ch]))continue;for(let y=Math.floor(b[1]/HIT_CELL);y<=Math.floor(b[3]/HIT_CELL);y++)for(let x=Math.floor(b[0]/HIT_CELL);x<=Math.floor(b[2]/HIT_CELL);x++){const key=x+','+y;if(!hitGrid.has(key))hitGrid.set(key,[]);hitGrid.get(key).push(n);}}
   const grouped=new Map();for(const d of dynamics){const key=d.depth+','+d.col;if(!grouped.has(key))grouped.set(key,{depth:d.depth,col:d.col,items:[]});grouped.get(key).items.push(d);}dynamicTiles=[...grouped.values()];
-  cache={a,visualKey,zoom,w,h,dpr,layer,groundView,panX,panY,fade:fadeKey,at:performance.now()};
+  cache={a,visualKey,motion:reducedMotion(),zoom,w,h,dpr,layer,groundView,panX,panY,fade:fadeKey,at:performance.now()};
  }
  // Uses the cached hit shapes: a building fades when it is drawn later than the focus and its outline overlaps the focus volume.
  function occluders(s){
@@ -629,7 +642,7 @@ export function createRenderer(canvas,getState,getAnalysis,onTile,onHover){
   const now=performance.now();
   // Financial refreshes do not alter the background. Overlay maps still depend on the complete analysis.
   if(visualAnalysis!==a||visualState!==s){visualAnalysis=a;visualState=s;visualKey=JSON.stringify([mapOffset(s),s.tiles.map(t=>[t.terrain,t.type,t.level,t.owner,t.buildingAnchor,t.footprint,t.landmark,t.construction,t.billboard,t.tree,t.damage,t.boulevard]),s.flex?.owned,s.flex?.mansion,s.ultra?.items,s.lunar,s.month,ultraPlacement,[...a.connected],a.active]);}
-  if(!cache||cache.visualKey!==visualKey||(layer!=='normal'&&layer!=='assets'&&cache.a!==a)||cache.zoom!==zoom||cache.w!==w||cache.h!==h||cache.dpr!==dpr||cache.layer!==layer||cache.groundView!==groundView||cache.fade!==fadeKey||Math.abs(panX-cache.panX)>MARGIN||Math.abs(panY-cache.panY)>MARGIN||(pendingImages&&now-cache.at>400))scene(s,a);
+  if(!cache||cache.motion!==reducedMotion()||cache.visualKey!==visualKey||(layer!=='normal'&&layer!=='assets'&&cache.a!==a)||cache.zoom!==zoom||cache.w!==w||cache.h!==h||cache.dpr!==dpr||cache.layer!==layer||cache.groundView!==groundView||cache.fade!==fadeKey||Math.abs(panX-cache.panX)>MARGIN||Math.abs(panY-cache.panY)>MARGIN||(pendingImages&&now-cache.at>400))scene(s,a);
   shift={x:Math.round((panX-cache.panX-MARGIN)*dpr)/dpr,y:Math.round((panY-cache.panY-MARGIN)*dpr)/dpr};
   ctx.drawImage(cacheCanvas,shift.x,shift.y,cacheCanvas.width/dpr,cacheCanvas.height/dpr);
  }
@@ -659,6 +672,7 @@ export function createRenderer(canvas,getState,getAnalysis,onTile,onHover){
   ctx.restore();}
 
  function render(time,phase=0){
+  framePhase=phase;
   life.update(time);
   ctx.setTransform(dpr,0,0,dpr,0,0);ctx.lineJoin='round';ctx.lineCap='round';
   if(reducedMotion())time=0;

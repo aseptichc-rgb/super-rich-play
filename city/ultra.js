@@ -8,7 +8,7 @@ import {ultraCells,ultraPlacementError,clearUltraSite,setUltraSite} from './ultr
 
 export const ULTRA_UNLOCK=1000000000000;
 export const ULTRA_ITEMS={
- launch:{name:L('Private Spaceport'),group:'space',icon:'🚀',cost:200000000000,months:6,fame:1000,asset:true,description:L('Build a launch complex and open the route to the Moon.')},
+ launch:{name:L('Private Spaceport'),group:'space',icon:'🚀',cost:200000000000,months:6,fame:1000,asset:true,description:L('Build a launch complex and open the route to the Moon. Rockets launch automatically every 6 game months after completion.')},
  moon:{name:L('Lunar Research Base'),group:'space',icon:'🌕',cost:800000000000,months:18,fame:3000,asset:true,requires:'launch',description:L('Build a permanent lunar base after completing your spaceport.')},
  probe:{name:L('Deep Space Expedition'),group:'space',icon:'🛰',cost:300000000000,months:12,fame:2000,requires:'moon',description:L('Send a scientific probe beyond the Moon. Complete a deep-space survey.')},
  disease:{name:L('Disease Eradication Initiative'),group:'foundation',icon:'🧬',cost:150000000000,months:12,fame:2500,description:L('Fund vaccine research and access to treatment. Complete a global health campaign.')},

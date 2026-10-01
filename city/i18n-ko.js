@@ -2507,4 +2507,7 @@ export default {
 "An engineering review will pause construction halfway.":"공사 중간에 기술 심사로 진행이 멈춥니다.",
 "The Moon base supports your permanent settlement and cannot be sold.":"달 기지는 정착지를 지원하므로 매각할 수 없습니다.",
 "Lunar development · Choose your next milestone":"달 정착지 개발 · 다음 목표를 선택하세요",
+"Scheduled rocket launch":"정기 로켓 발사 중",
+"Next launch in {0} game months":"다음 발사까지 게임 {0}개월",
+"Build a launch complex and open the route to the Moon. Rockets launch automatically every 6 game months after completion.":"발사 단지를 건설해 달로 가는 길을 여세요. 완공 후 게임 시간 6개월마다 로켓이 자동 발사됩니다.",
 };
