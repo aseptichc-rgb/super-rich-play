@@ -168,7 +168,7 @@ export function createRenderer(canvas,getState,getAnalysis,onTile,onHover){
   const artPending=!t.landmark&&buildingArtPending(t.type,t.level,t.footprint);if(artPending)pendingImages=true;
   if(picture){recordingHit.image=picture.image;recordingHit.baseHeight=picture.baseHeight;recordingHit.capHeight=picture.capHeight;recordingHit.mirror=picture.mirror;recordingHit.path.rect(picture.x,picture.y,picture.width,picture.height);extend(recordingHit.box,picture.x,picture.y);extend(recordingHit.box,picture.x+picture.width,picture.y+picture.height);imageTops.set(y*SIZE+x,{x:picture.x+picture.width/2,y:picture.y-12*zoom});recordingHit=null;drawingFootprint=null;return picture;}
   // Leave the lot empty until the sprite loads rather than flashing the older procedural building.
-  if(artPending){endHit();drawingFootprint=null;return;}
+  if(artPending||t.landmark){endHit();drawingFootprint=null;return;}
   const scale=buildingScale(t.type,t.level),p=screen(x+.5,y+.5),width=scale===1?1:[.90,.94,.98][Math.max(0,Math.min(2,t.level-1))];
   ctx.save();ctx.translate(p.x,p.y);ctx.scale(width,scale);ctx.translate(-p.x,-p.y);
   buildingTransform=width===1&&scale===1?null:{x:x+.5,y:y+.5,width,scale};const custom=false;buildingBody(x,y,t);buildingTransform=null;
