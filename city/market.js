@@ -81,7 +81,7 @@ export function advanceStocks(s,crashed,previousMarket,dividends=0){
   const crash=Math.pow(marketFactor(s)/previousMarket,p.beta);
   s.prices[id]=Math.max(1,Math.round(s.prices[id]*(crashed&&!p.founder?1:factor)*crash*100)/100);
  }
- if(crashed){const worst=[...m.listed].sort((a,b)=>s.prices[a]/before[a]-s.prices[b]/before[b])[0];s.log.unshift(L`📉 Stocks plunge · ${stockInfo(worst,s).name} −${Math.round((1-s.prices[worst]/before[worst])*100)}% · defensive and dividend names hold up better`);}
+ if(crashed&&m.listed.length){const worst=[...m.listed].sort((a,b)=>s.prices[a]/before[a]-s.prices[b]/before[b])[0];s.log.unshift(L`📉 Stocks plunge · ${stockInfo(worst,s).name} −${Math.round((1-s.prices[worst]/before[worst])*100)}% · defensive and dividend names hold up better`);}
  for(const id of [...m.listed]){
   const f=ipoFate(s,id),k=stockInfo(id,s);
   if(f&&s.month===f.at){
@@ -91,7 +91,7 @@ export function advanceStocks(s,crashed,previousMarket,dividends=0){
  }
  const broker=settleBroker(s,dividends);
  const capNow=m.listed.reduce((n,id)=>n+marketCap(s,id),0),capBefore=m.listed.reduce((n,id)=>n+before[id]*stockInfo(id,s).shares,0);
- m.index=Math.round(m.index*capNow/capBefore*100)/100;m.indexHistory.push(m.index);m.indexHistory=m.indexHistory.slice(-36);
+ if(capBefore>0)m.index=Math.round(m.index*capNow/capBefore*100)/100;m.indexHistory.push(m.index);m.indexHistory=m.indexHistory.slice(-36);
  for(const id of [...m.listed]){
   const price=s.prices[id],peak=m.peak[id]=Math.max(m.peak[id]||price,price),k=stockInfo(id,s);
   if(k.founder)continue;

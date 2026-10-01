@@ -38,6 +38,7 @@ export function nationalizeRiotAssets(s,wealth){
  if(s.empire)s.empire={owned:[],earnedFame:s.empire.earnedFame||0};
  if(s.flex)s.flex={owned:[],lastParty:s.flex.lastParty};
  if(s.ultra)s.ultra.items={};
+ delete s.lunar;
  if(s.journey){s.journey.deal=null;s.journey.workroom=null;}
  for(const p of s.projects||[]){p.status='archived';p.sale=0;p.royalty=0;p.monthsLeft=0;}
  s.pending=[];s.effect=null;s.event=null;s.shift=null;s.money=retained;s.universityRisk.months=0;

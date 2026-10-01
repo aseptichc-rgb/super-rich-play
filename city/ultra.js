@@ -1,3 +1,4 @@
+import {activeMegaProjects,megaCapacity,lunarPanel,lunarStatus,validLunar,settleLunar} from './lunar.js';
 import {healthReason} from './health.js';
 import {transaction} from './health.js';
 import {L} from './i18n.js';
@@ -19,6 +20,9 @@ export const ULTRA_ITEMS={
  mars:{name:L('Mars Exploration Project'),group:'space',icon:'🔴',cost:600000000000,months:24,fame:30000,requires:'moon',operation:true,art:'probe',description:L('Use your completed lunar base to launch a Mars expedition and earn world-changing renown.')},
  relic:{name:L('Rare Antiquities Collection'),group:'collection',icon:'🏺',cost:80000000000,months:0,fame:600,asset:true,requires:'museum',description:L('Collect documented antiquities and display them in your completed museum.')}
 };
+// New contracts use longer schedules; old saves retain their original durations.
+export const ULTRA_MONTHS={launch:36,moon:60,probe:48,disease:36,climate:48,museum:24,satellite:36,mars:72};
+export const ultraDuration=(id,item)=>item?(item.duration??ULTRA_ITEMS[id].months):(ULTRA_MONTHS[id]??ULTRA_ITEMS[id].months);
 const owned=s=>s.ultra?.items||{};
 const done=(s,id)=>!!owned(s)[id]?.complete;
 const money=n=>'₲'+n.toLocaleString('en-US');
@@ -36,6 +40,7 @@ export function ultraReason(s,id){
  if(owned(s)[id])return L('Already commissioned or owned.');
  if(s.ultra?.sold?.includes(id))return L('Already purchased and sold.');
  if(d.requires&&!done(s,d.requires))return L`Complete ${ULTRA_ITEMS[d.requires].name} first.`;
+ if(d.months&&activeMegaProjects(s)>=megaCapacity(s))return L('All major project teams are busy.');
  if(s.money<d.cost)return L('Not enough cash.');
  return null;
 }
@@ -43,7 +48,7 @@ function buyUltraImpl(s,id,position){
  const reason=ultraReason(s,id);if(reason)return{ok:false,msg:reason};
  const siteError=ULTRA_ITEMS[id].operation?null:ultraPlacementError(s,id,position);if(siteError)return{ok:false,msg:siteError};
  const d=ULTRA_ITEMS[id];s.highestWealth=Math.max(s.highestWealth||0,analyze(s).wealth);
- s.money-=d.cost;s.ultra??={items:{}};s.ultra.items[id]={start:s.month,complete:d.months===0,lastActivity:-1};
+ s.money-=d.cost;s.ultra??={items:{}};s.ultra.items[id]={start:s.month,complete:ultraDuration(id)===0,lastActivity:-1,duration:ultraDuration(id)};
  if(!d.operation)setUltraSite(s,id,position);
  if(!d.months)fame(s,d.fame);
  const msg=L`${d.name} · ${money(d.cost)} paid`;s.log.unshift(msg);s.log=s.log.slice(0,25);
@@ -51,6 +56,7 @@ function buyUltraImpl(s,id,position){
 }
 export function ultraSaleReason(s,id){
  if(!Object.hasOwn(ULTRA_ITEMS,id)||!owned(s)[id])return L('You do not own this collection asset.');
+ if(id==='moon'&&s.lunar)return L('The Moon base supports your permanent settlement and cannot be sold.');
  const dependent=Object.entries(ULTRA_ITEMS).find(([key,d])=>d.requires===id&&owned(s)[key]);
  return dependent?L`Sell ${dependent[1].name} first.`:null;
 }
@@ -63,7 +69,8 @@ function sellUltraImpl(s,id){
  return{ok:true,msg,value};
 }
 export function settleUltra(s){
- for(const [id,item] of Object.entries(owned(s))){const d=ULTRA_ITEMS[id];if(!item.complete&&s.month-item.start>=d.months){
+ settleLunar(s);
+ for(const [id,item] of Object.entries(owned(s))){const d=ULTRA_ITEMS[id];if(!item.complete&&s.month-item.start>=ultraDuration(id,item)){
   item.complete=true;fame(s,d.fame);s.log.unshift(L`${d.name} completed · Reputation +${d.fame}`);s.log=s.log.slice(0,25);
  }}
 }
@@ -74,10 +81,11 @@ export function enjoyUltra(s,id){const blocked=healthReason(s);if(blocked)return
  return{ok:true,msg:L`${d.name} · Memories +1 · Reputation +20 · Stress −30`};
 }
 export function validUltra(s){
+ if(!validLunar(s))return false;
  if(s.ultra===undefined)return Array.isArray(s.tiles)&&!s.tiles.some(t=>t?.type==='ultra'||t?.ultraId!==undefined);
  const u=s.ultra;if(!u||typeof u!=='object'||Array.isArray(u)||!u.items||typeof u.items!=='object'||Array.isArray(u.items))return false;
  if(u.sold!==undefined&&(!Array.isArray(u.sold)||new Set(u.sold).size!==u.sold.length||!u.sold.every(id=>Object.hasOwn(ULTRA_ITEMS,id)&&!u.items[id])))return false;
- if(!Object.entries(u.items).every(([id,v])=>Object.hasOwn(ULTRA_ITEMS,id)&&v&&Number.isInteger(v.start)&&v.start>=0&&v.start<=s.month&&typeof v.complete==='boolean'&&Number.isInteger(v.lastActivity)&&v.lastActivity>=-1&&v.lastActivity<=s.month&&(v.lastActivity===-1||(v.complete&&ULTRA_ITEMS[id].group==='collection'))&&(!v.complete||s.month-v.start>=ULTRA_ITEMS[id].months)&&(!ULTRA_ITEMS[id].requires||u.items[ULTRA_ITEMS[id].requires]?.complete)))return false;
+ if(!Object.entries(u.items).every(([id,v])=>Object.hasOwn(ULTRA_ITEMS,id)&&v&&Number.isInteger(v.start)&&v.start>=0&&v.start<=s.month&&typeof v.complete==='boolean'&&Number.isInteger(v.lastActivity)&&v.lastActivity>=-1&&v.lastActivity<=s.month&&(v.lastActivity===-1||(v.complete&&ULTRA_ITEMS[id].group==='collection'))&&(v.duration===undefined||v.duration===ultraDuration(id))&&(!v.complete||s.month-v.start>=ultraDuration(id,v))&&(!ULTRA_ITEMS[id].requires||u.items[ULTRA_ITEMS[id].requires]?.complete)))return false;
  if(!Array.isArray(s.tiles))return false;
  const occupied=new Map();
  for(const [id,v]of Object.entries(u.items))if(v.position!==undefined){
@@ -90,11 +98,12 @@ export function validUltra(s){
 export function placeUltra(s,id,position){return transaction(s,()=>{
  if(!Object.hasOwn(ULTRA_ITEMS,id)||!Object.hasOwn(owned(s),id))return{ok:false,msg:L('You do not own this collection asset.')};
  if(ULTRA_ITEMS[id].operation)return{ok:false,msg:L('This activity uses its existing facility.')};
+ if(owned(s)[id].position)return{ok:false,msg:L('This facility is already placed.')};
  if(id==='moon'&&!done(s,'launch'))return{ok:false,msg:L`Complete ${ULTRA_ITEMS.launch.name} first.`};
  const reason=ultraPlacementError(s,id,position);if(reason)return{ok:false,msg:reason};
  setUltraSite(s,id,position);return{ok:true,msg:L('3×3 site confirmed.')};
 });}
-export function ultraEntry(s){return `<section class="owner-reputation"><h3>${L('Trillion Club')}</h3><p>${L('Space exploration · Global foundation · Exceptional collections')}</p>${ultraOwnedGallery(s)}<button data-action="ultra">${ultraUnlocked(s)?L('Enter the Trillion Club'):L('Preview · Unlocks at ₲1 trillion')}</button></section>`;}
+export function ultraEntry(s){return `<section class="owner-reputation"><h3>${L('Trillion Club')}</h3><p>${L('Space exploration · Global foundation · Exceptional collections')}</p>${ultraOwnedGallery(s)}${s.ultra?.items?.moon?.complete?`<p>${lunarStatus(s)}</p>`:''}<button data-action="ultra">${ultraUnlocked(s)?L('Enter the Trillion Club'):L('Preview · Unlocks at ₲1 trillion')}</button></section>`;}
 const ultraArt=id=>`./city/assets/ultra/${ULTRA_ITEMS[id].art||id}.webp`;
 export function ultraOwnedGallery(s){
  const assets=Object.entries(ULTRA_ITEMS).filter(([id,d])=>d.asset&&owned(s)[id]);
@@ -104,9 +113,9 @@ export function ultraOwnedGallery(s){
 export function ultraDialog(s){
  const groups={space:L('Private Space Development'),foundation:L('Global Foundation'),collection:L('Exceptional Collections')};
  const activities={museum:L('Host a private exhibition'),superyacht:L('Dive on a deep-sea expedition'),jet:L('Take a world tour'),relic:L('View the antiquities')};
- return `<span class="eyebrow">TRILLION CLUB</span><h2>${L('Beyond a trillion')}</h2><p>${L('Unlock permanently after reaching ₲1 trillion net worth. Pay each price once in cash. Projects advance with game months.')}</p><div class="flex-summary"><b>${L`Collection and infrastructure value: ${money(ultraValue(s))}`}</b><span>${L('Infrastructure and collections count toward net worth · All club holdings can be sold for half their purchase price')}</span></div>${ultraOwnedGallery(s)}<p class="help">${L('Infrastructure and collections retain their purchase value, including construction in progress. Research, foundation and satellite funding are expenses. All holdings and project rights can be sold for half their price. Sell dependent activities first. Sold items cannot be repurchased; future income and progress stop, while earned reputation remains.')}</p>${Object.entries(groups).map(([group,title])=>`<h3>${title}</h3><div class="flex-grid">${Object.entries(ULTRA_ITEMS).filter(([,d])=>d.group===group).map(([id,d])=>{
- const item=owned(s)[id],reason=ultraReason(s,id),remaining=item?Math.max(0,d.months-(s.month-item.start)):d.months;
- return `<section class="flex-item"><img class="ultra-art" src="${ultraArt(id)}" alt="${d.name}" loading="lazy"><h3>${d.name}</h3><p>${d.description}</p><p>${d.operation?L('Uses the completed facility · No additional land required'):id==='moon'?L('Moon only · Requires a completed spaceport · 3×3 tiles'):L('Choose 9 empty city tiles · Fixed 3×3 footprint')}</p><strong>${money(d.cost)}</strong><p>${d.asset?L('Retained asset value'):L('One-time project expense')} · ${L`Reputation +${d.fame} on completion`}</p><p>${d.income?L`Monthly net profit after deployment · ${money(d.income)}`:''}</p><p>${item?.complete?(d.income?L('Operating'):L('Completed')):d.months?L`${remaining} game months to complete`:L('Available immediately')}</p><button data-ultra-buy="${id}" ${reason?'disabled':''}>${reason||(d.operation?L('Review and start'):L('Choose 3×3 build site'))}</button>${item&&!d.operation?`<button data-ultra-place="${id}">${item.position?L('Relocate · 3×3'):L('Place on map · 3×3')}</button>${item.position?`<button data-ultra-map="${id}">${L('View on map')}</button>`:''}`:''}${item?.complete&&group==='collection'?`<p>${L('Free monthly experience · Memories +1 · Reputation +20 · Stress −30')}</p><button data-ultra-enjoy="${id}" ${item.lastActivity===s.month||lifeEnded(s)?'disabled':''}>${activities[id]}</button>`:''}${item?`<button data-ultra-sell="${id}" ${ultraSaleReason(s,id)?'disabled':''}>${ultraSaleReason(s,id)||L`Sell · ${money(ultraSaleValue(id))}`}</button>`:''}</section>`;
+ return `<span class="eyebrow">TRILLION CLUB</span><h2>${L('Beyond a trillion')}</h2><p>${L('Unlock permanently after reaching ₲1 trillion net worth. Pay each price once in cash. Projects advance with game months.')}</p><div class="flex-summary"><b>${L`Collection and infrastructure value: ${money(ultraValue(s))}`}</b><span>${L('Infrastructure and collections count toward net worth · Check each asset for sale restrictions')}</span></div>${ultraOwnedGallery(s)}${lunarPanel(s)}<p class="help">${L('Infrastructure and collections retain their purchase value, including construction in progress. Research, foundation and satellite funding are expenses. Eligible holdings and project rights can be sold for half their price. A Moon base supporting lunar development cannot be sold. Sell dependent activities first. Sold items cannot be repurchased; future income and progress stop, while earned reputation remains.')}</p>${Object.entries(groups).map(([group,title])=>`<h3>${title}</h3><div class="flex-grid">${Object.entries(ULTRA_ITEMS).filter(([,d])=>d.group===group).map(([id,d])=>{
+ const item=owned(s)[id],reason=ultraReason(s,id),remaining=item?Math.max(0,ultraDuration(id,item)-(s.month-item.start)):ultraDuration(id);
+ return `<section class="flex-item"><img class="ultra-art" src="${ultraArt(id)}" alt="${d.name}" loading="lazy"><h3>${d.name}</h3><p>${d.description}</p><p>${d.operation?L('Uses the completed facility · No additional land required'):id==='moon'?L('Moon only · Requires a completed spaceport · 3×3 tiles'):L('Choose 9 empty city tiles · Fixed 3×3 footprint')}</p><strong>${money(d.cost)}</strong><p>${d.asset?L('Retained asset value'):L('One-time project expense')} · ${L`Reputation +${d.fame} on completion`}</p><p>${d.income?L`Monthly net profit after deployment · ${money(d.income)}`:''}</p><p>${item?.complete?(d.income?L('Operating'):L('Completed')):d.months?L`${remaining} game months to complete`:L('Available immediately')}</p><button data-ultra-buy="${id}" ${reason?'disabled':''}>${reason||(d.operation?L('Review and start'):L('Choose 3×3 build site'))}</button>${item&&!d.operation?`${item.position?`<button data-ultra-map="${id}">${L('View on map')}</button>`:`<button data-ultra-place="${id}">${L('Place on map · 3×3')}</button>`}`:''}${item?.complete&&group==='collection'?`<p>${L('Free monthly experience · Memories +1 · Reputation +20 · Stress −30')}</p><button data-ultra-enjoy="${id}" ${item.lastActivity===s.month||lifeEnded(s)?'disabled':''}>${activities[id]}</button>`:''}${item?`<button data-ultra-sell="${id}" ${ultraSaleReason(s,id)?'disabled':''}>${ultraSaleReason(s,id)||L`Sell · ${money(ultraSaleValue(id))}`}</button>`:''}</section>`;
  }).join('')}</div>`).join('')}<button data-action="lifestyle" class="full">${L('Back to lifestyle')}</button>`;
 }
 

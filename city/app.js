@@ -1,3 +1,4 @@
+import {lunarAction} from './lunar.js';
 import {universityRiskPanel,universityRiotDialog} from './university-riot.js';
 import {investUniversity} from './university.js';
 import {createUltraUI} from './ultra-ui.js';
@@ -198,9 +199,11 @@ function renderRichDock(){
   for(const d of Object.values(EMPIRE_ASSETS))cards.push(card('data-action="owners"',d.icon,d.role,L`Acquire ${money(d.cost)} · Unlock ${money(d.unlock)}`));
   description=L('Back a venture, or become the owner of a company, a broadcaster or a sports club. Check the terms and monthly dividends before you sign.');
  }else if(tab==='property'){
-  for(const id of ['university','skyscraper','hotel','office','resort','golf','citypark','housing','hospital','themepark','hq','monument']){const d=TYPES[id],locked=state.mode!=='sandbox'&&(d.unlock||0)>state.highestWealth;cards.push(`<div class="property-build-card">${card(`data-build="${id}"`,d.icon,d.name,locked?L`Unlocks at peak net worth ${money(d.unlock)}`:['citypark','university'].includes(id)?L`Base ${money(d.cost)} + land · No rent · Lifts nearby traffic`:id==='hospital'?L`Base ${money(d.cost)} + land · Clinic → Hospital → General Hospital`:L`Base ${money(d.cost)} + land · Returns vary by location`,tool===id,locked,id)}<button class="property-benefits" data-building-benefits="${id}" aria-label="${esc(L`View benefits of ${d.name}`)}">${L('View benefits')} →</button></div>`);}
+  const rareCards=[];
+  for(const id of ['university','skyscraper','hotel','office','resort','golf','citypark','housing','hospital','themepark','hq','monument']){const d=TYPES[id],locked=state.mode!=='sandbox'&&(d.unlock||0)>state.highestWealth;(['university','skyscraper'].includes(id)?rareCards:cards).push(`<div class="property-build-card">${card(`data-build="${id}"`,d.icon,d.name,locked?L`Unlocks at peak net worth ${money(d.unlock)}`:['citypark','university'].includes(id)?L`Base ${money(d.cost)} + land · No rent · Lifts nearby traffic`:id==='hospital'?L`Base ${money(d.cost)} + land · Clinic → Hospital → General Hospital`:L`Base ${money(d.cost)} + land · Returns vary by location`,tool===id,locked,id)}<button class="property-benefits" data-building-benefits="${id}" aria-label="${esc(L`View benefits of ${d.name}`)}">${L('View benefits')} →</button></div>`);}
   cards.push(card('data-action="mansion-design"','🏛',L('Mansion Design'),L('Size · Floors · Custom spaces'),false,false,'estate'));
   cards.push(card('data-action="portfolio"','▥',L('Manage My Property'),L('Rentals · Expansion · Sale')));
+  cards.push(...rareCards);
   description=TYPES[tool]?.group==='property'?TYPES[tool].desc+L(' Select empty land to see the total contract cost.'):L('Pick a hotel, resort, tower or a park, housing complex or theme park for residents, then build it on empty land. Operating profit settles automatically every month.');
  }else{
   cards.push(card('data-action="art"','◈',L('World Masterpiece Collection'),L('Masterpiece auctions · View your holdings')));
@@ -446,6 +449,7 @@ $('#app').addEventListener('click',e=>{
  if(action==='legacy-save'){const raw=localStorage.getItem('super-rich-life-v2');if(!raw){toast(L('No older Tycoon save in this browser.'));return;}const url=URL.createObjectURL(new Blob([raw],{type:'application/json'})),link=document.createElement('a');link.href=url;link.download='super-rich-legacy-backup.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);return;}
  if(b.dataset.ultraMap){if(state.ultra?.items?.[b.dataset.ultraMap]){closeDialog();selectTool('inspect');if(!$('.game').classList.contains('menus-collapsed'))$('[data-action="toggle-menus"]').click();renderer.focusUltra(b.dataset.ultraMap);$('#world').scrollIntoView({block:'center'});$('#world').focus({preventScroll:true});}return;}
  if(action==='ultra'){openDialog('growth',ultraDialog(state));return;}
+ if(b.dataset.lunar){const r=lunarAction(state,b.dataset.lunar,b.dataset.lunarId);if(r.ok)changed();openDialog('growth',ultraDialog(state));toast(r.msg);return;}
  if(b.dataset.ultraBuy||b.dataset.ultraPlace){ultraUI.begin(b.dataset.ultraBuy||b.dataset.ultraPlace);return;}
  if(b.dataset.ultraConfirm!==undefined){ultraUI.confirm();return;}
  if(b.dataset.ultraCancel!==undefined){ultraUI.cancel();closeDialog();return;}

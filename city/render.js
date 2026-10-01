@@ -1,3 +1,4 @@
+import {lunarTitle} from './lunar.js';
 import {constructionProgress} from './building-progress.js';
 import {researchLevel} from './university.js';
 import {ultraSites,ultraHitId,moonHit,moonHitPosition} from './ultra-map.js';
@@ -506,7 +507,7 @@ export function createRenderer(canvas,getState,getAnalysis,onTile,onHover){
    poly([screen(x,y),screen(x+3,y),screen(x+3,y+3),screen(x,y+3)],id==='moon'?'#b7b9ba':'#d7ddc7','#c5ceb8');
    if(!groundView){
     if(!complete){
-     const alpha=ctx.globalAlpha,progress=Math.max(0,Math.min(1,1-remaining/ULTRA_ITEMS[id].months));ctx.globalAlpha=alpha*(.2+.8*progress);
+     const alpha=ctx.globalAlpha,progress=Math.max(0,Math.min(1,1-remaining/site.total));ctx.globalAlpha=alpha*(.2+.8*progress);
      if(!sceneryPlot(site.image,x,y,3,3))box(x+.3,y+.3,2.4,2.4,38,'#e5dfc8','#568a80','#abc3b5');
      ctx.globalAlpha=alpha;
     }else if(!sceneryPlot(site.image,x,y,3,3)){
@@ -521,7 +522,7 @@ export function createRenderer(canvas,getState,getAnalysis,onTile,onHover){
    ctx.fillText(ULTRA_ITEMS[id].name,p.x,p.y);
    ctx.font=`${Math.max(9,10*zoom)}px sans-serif`;ctx.fillText(complete?L('Completed'):L`${remaining} game months to complete`,p.x,p.y+15*zoom);
    if(!complete){
-    const progress=Math.max(0,Math.min(1,1-remaining/ULTRA_ITEMS[id].months)),width=110*zoom;
+    const progress=Math.max(0,Math.min(1,1-remaining/site.total)),width=110*zoom;
     ctx.fillStyle='#344b60';ctx.fillRect(p.x-width/2,p.y+23*zoom,width,5*zoom);
     ctx.fillStyle='#a2deed';ctx.fillRect(p.x-width/2,p.y+23*zoom,width*progress,5*zoom);
     ctx.fillStyle='#244d43';ctx.fillText(L`Under construction · ${Math.floor(progress*100)}%`,p.x,p.y+43*zoom);
@@ -532,8 +533,13 @@ export function createRenderer(canvas,getState,getAnalysis,onTile,onHover){
   const m=moonOrigin(s);
   if(!scenery('city/assets/ultra/moon-surface.webp',{x:screen(m.x+4.5,m.y+4.5).x,y:screen(m.x+9,m.y+9).y},18*halfW*zoom,{heightRatio:.8}))box(m.x,m.y,MOON_SIZE,MOON_SIZE,5,'#bfc3c5','#8d959c','#a5aeb5');
   if(ultraPlacement==='moon'||groundView)for(let x=0;x<MOON_SIZE;x++)for(let y=0;y<MOON_SIZE;y++)tile(m.x+x,m.y+y,'#ffffff08','#b4bdc580');
-  const p=screen(m.x+9,m.y+9.8);ctx.fillStyle='#526579';ctx.font=`bold ${16*zoom}px sans-serif`;ctx.textAlign='center';ctx.fillText(L('Moon · Lunar construction zone'),p.x,p.y);
+  const p=screen(m.x+9,m.y+9.8);ctx.fillStyle='#526579';ctx.font=`bold ${16*zoom}px sans-serif`;ctx.textAlign='center';ctx.fillText(s.lunar?.stage?lunarTitle(s):L('Moon · Lunar construction zone'),p.x,p.y);
   const site=ultraSites(s).find(v=>v.id==='moon');if(site)ultraBuilding(site);
+  if(site&&s.lunar?.stage){const level=s.lunar.stage,base=site.x-m.x<4?m.x+6:m.x+.5;
+   startHit(site.hit);
+   for(let n=0;n<level;n++){const x=base,y=m.y+1+n*2;box(x,y,1.4,1.4,15+n*7,s.lunar.route==='garden'?'#9bc9a8':'#b6d9ed','#668ca0','#90acbf');circle(screen(x+.7,y+.7,26+n*7),10,'#e3f5f7');}
+   endHit();
+  }
  }
  function scene(s,a){
   const cw=w+2*MARGIN,ch=h+2*MARGIN;
@@ -622,7 +628,7 @@ export function createRenderer(canvas,getState,getAnalysis,onTile,onHover){
  function composite(s,a){
   const now=performance.now();
   // Financial refreshes do not alter the background. Overlay maps still depend on the complete analysis.
-  if(visualAnalysis!==a||visualState!==s){visualAnalysis=a;visualState=s;visualKey=JSON.stringify([mapOffset(s),s.tiles.map(t=>[t.terrain,t.type,t.level,t.owner,t.buildingAnchor,t.footprint,t.landmark,t.construction,t.billboard,t.tree,t.damage,t.boulevard]),s.flex?.owned,s.flex?.mansion,s.ultra?.items,s.month,ultraPlacement,[...a.connected],a.active]);}
+  if(visualAnalysis!==a||visualState!==s){visualAnalysis=a;visualState=s;visualKey=JSON.stringify([mapOffset(s),s.tiles.map(t=>[t.terrain,t.type,t.level,t.owner,t.buildingAnchor,t.footprint,t.landmark,t.construction,t.billboard,t.tree,t.damage,t.boulevard]),s.flex?.owned,s.flex?.mansion,s.ultra?.items,s.lunar,s.month,ultraPlacement,[...a.connected],a.active]);}
   if(!cache||cache.visualKey!==visualKey||(layer!=='normal'&&layer!=='assets'&&cache.a!==a)||cache.zoom!==zoom||cache.w!==w||cache.h!==h||cache.dpr!==dpr||cache.layer!==layer||cache.groundView!==groundView||cache.fade!==fadeKey||Math.abs(panX-cache.panX)>MARGIN||Math.abs(panY-cache.panY)>MARGIN||(pendingImages&&now-cache.at>400))scene(s,a);
   shift={x:Math.round((panX-cache.panX-MARGIN)*dpr)/dpr,y:Math.round((panY-cache.panY-MARGIN)*dpr)/dpr};
   ctx.drawImage(cacheCanvas,shift.x,shift.y,cacheCanvas.width/dpr,cacheCanvas.height/dpr);
