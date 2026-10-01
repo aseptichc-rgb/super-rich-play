@@ -1,0 +1,77 @@
+/* A viewport-sized map with one optional sheet on phones and small tablets. */
+.mobile-nav,.mobile-panel-close{display:none}
+@media(max-width:900px),(max-width:1100px) and (max-height:500px){
+ body{overflow:hidden}
+ #app{height:calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom));display:flex;flex-direction:column;min-height:0}
+ #app .topbar{height:52px;min-height:52px;flex-wrap:nowrap;padding:4px 8px;gap:8px;overflow:hidden}
+ .topbar .brand{font-size:12px;letter-spacing:0;flex-shrink:0;gap:5px}
+ .topbar .brand-icon{width:26px;height:26px;line-height:26px;font-size:20px}
+ .topbar .brand small,.topbar .top-divider,.topbar .city-name,.topbar .badge,.topbar .top-actions>span{display:none}
+ #app .top-actions{min-width:0;overflow-x:auto;gap:4px;scrollbar-width:none;overscroll-behavior-x:contain}
+ #app .top-actions [data-action=settings]{order:-2}
+ #app .top-actions [data-action=language]{order:-1}
+ #app .top-actions button{flex-shrink:0;min-width:44px;min-height:44px;padding:6px}
+ #app .top-actions .shortcut-button span,#app .top-actions .new-game-button span{display:none}
+ #app .game{position:relative;display:block;flex:1;min-height:0;height:auto;padding-bottom:60px;isolation:isolate}
+ #app .world-wrap{height:100%;min-height:0;width:100%}
+ #app .newsbar{display:none}
+ #app .world-title,#app .world-hint,#app .month-progress,#app .tile-tip{display:none}
+ #app .world-top{display:flex;top:8px;left:8px;right:66px;gap:4px;flex-wrap:wrap;max-width:none;pointer-events:none}
+ #app .world-top>*{pointer-events:auto}
+ #app .date-card{height:32px;gap:5px;padding:0 8px;font-size:12px}
+ #app .date-card .muted{display:none}
+ #app .speed-group{height:44px;padding:1px}
+ #app .speed-group button{height:40px;min-width:40px;font-size:13px}
+ #app .map-tools{top:8px;right:8px;padding:2px;gap:2px}
+ #app .map-tools button{width:44px;min-width:44px;height:44px;min-height:44px}
+ #app .map-tools [data-action=toggle-menus],#app .map-tools [data-action=toggle-sidebar],#app .map-tools>span{display:none}
+ #app .mobile-nav{position:absolute;bottom:0;left:0;right:0;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:3px;height:60px;padding:4px;background:#f9faf4;border-top:1px solid #cbd7c3;z-index:5}
+ .mobile-nav button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border:0;background:transparent;padding:3px;font-size:12px;min-width:0;min-height:44px;white-space:nowrap}
+ .mobile-nav button>span{font-size:19px;line-height:20px}
+ .mobile-nav button[aria-pressed=true]{background:#315f4f;color:#fff}
+ /* All sheets share the same bounds, leaving the upper map visible. */
+ #app .game :is(.live-card,.build-dock,.layer-control,.sidebar){display:none;position:absolute;inset:auto 8px 8px;width:auto;min-width:0;max-width:none;height:auto;max-height:calc(100% - 152px)!important;margin:0;overflow:auto;overscroll-behavior:contain;border:1px solid #c5d3bb;border-radius:14px;box-shadow:0 8px 32px #18372933;background:#fafbf4;z-index:3}
+ #app .game[data-mobile-panel=build] .build-dock,#app .game[data-mobile-panel=office] .live-card,#app .game[data-mobile-panel=layers] .layer-control{display:block}
+ #app .game[data-mobile-panel=assets]>.sidebar{display:flex;bottom:68px;max-height:calc(100% - 212px)!important}
+ #app .game:not([data-mobile-panel=map]) .map-tools{visibility:hidden}
+ #app .game:not([data-mobile-panel=map])>.mobile-panel-close{display:block;position:absolute;right:8px;top:90px;min-height:44px;padding:8px 14px;z-index:4;background:#315f4f;color:white;border-color:#315f4f}
+ #app .dock-heading{flex-wrap:wrap;padding:0 8px;gap:0}
+ #app .dock-tabs{flex:1;gap:0}
+ #app .dock-tabs button{font-size:13px;min-height:44px;padding:8px}
+ #app .dock-utilities{margin-left:auto;gap:0}
+ #app .dock-utilities button{min-width:44px;min-height:44px}
+ #app .dock-utilities span{display:inline;font-size:12px}
+ #app #build-items{padding:8px;gap:8px;overscroll-behavior-x:contain}
+ #app .build-item,#app .build-item.illustrated-build,#app .property-build-card{min-width:190px}
+ #app .build-item{padding:8px;gap:8px}
+ #app .illustrated-build .building-icon{width:44px;height:44px}
+ #app .build-item b{font-size:13px}
+ #app .build-item small,#app #tool-description{font-size:12px}
+ #app #tool-description{min-height:0;padding:0 10px 8px}
+ #app .rich-office{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;padding:8px}
+ #app .rich-office button{min-height:64px;padding:10px;text-align:left}
+ #app .rich-office b{font-size:13px}
+ #app .rich-office small{font-size:12px}
+ #app .layer-control{padding:12px}
+ #app .layer-control select{max-width:100%;min-height:44px;font-size:16px}
+ #app .layer-control button,#app .sidebar button{min-height:44px}
+ #app .sidebar-collapse{top:12px}
+ #app .side-heading{padding:14px 60px 12px 18px}
+ #app .sidebar .side-tabs{position:sticky;top:0;background:#fafbf4;z-index:1;flex-shrink:0}
+ #dialog{width:calc(100% - 16px);max-width:calc(100% - 16px);max-height:calc(100dvh - 16px - env(safe-area-inset-top) - env(safe-area-inset-bottom));padding:20px 16px;overflow-x:hidden;overscroll-behavior:contain;overflow-wrap:anywhere}
+ #dialog .dialog-close{position:sticky;top:0;float:right;z-index:5;min-width:44px;min-height:44px;background:#fafbf4}
+ #dialog button{min-height:44px}
+ #dialog input,#dialog select,#dialog textarea{font-size:16px}
+ #toast{bottom:calc(72px + env(safe-area-inset-bottom));font-size:13px}
+ #shortcut-hint{bottom:calc(72px + env(safe-area-inset-bottom))}
+}
+@media(max-width:1100px) and (max-height:500px){
+ #app .topbar{height:44px;min-height:44px}
+ #app .game{padding-bottom:52px}
+ #app .mobile-nav{height:52px}
+ #app .world-top{right:210px}
+ #app .map-tools{flex-direction:row}
+ #app .game:not([data-mobile-panel=map])>.mobile-panel-close{top:56px}
+ #app .game :is(.live-card,.build-dock,.layer-control,.sidebar){max-height:calc(100% - 112px)!important}
+ #app .game[data-mobile-panel=assets]>.sidebar{bottom:60px;max-height:calc(100% - 164px)!important}
+}

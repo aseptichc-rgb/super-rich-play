@@ -2,6 +2,13 @@
 // Placeholders {0}, {1}, ... stand for the template's ${...} values in English order.
 // "context::Text" keys hold a second wording for L('Text','context').
 export default {
+"Mobile navigation":"모바일 메뉴",
+"mobile::Map":"지도",
+"mobile::Build":"건설",
+"mobile::Office":"활동",
+"mobile::Assets":"자산",
+"mobile::Layers":"지도 보기",
+"Back to map":"지도로 돌아가기",
 "My nickname":"내 닉네임",
 "Tallest skyscraper":"최고층 마천루",
 "World tallest skyscraper":"세계 최고 마천루",
