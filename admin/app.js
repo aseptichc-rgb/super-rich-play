@@ -7,7 +7,7 @@ const date=v=>v?new Date(v).toLocaleString('ko-KR',{month:'2-digit',day:'2-digit
 const duration=s=>s===null?'미측정':s<60?`${Math.floor(s)}초`:`${num(Math.floor(s/3600))}시간 ${Math.floor(s/60)%60}분`;
 let sdk,auth,token='',data=null,page=0,controller=null,epoch=0;
 function status(text,error=false){$('status').textContent=text;$('status').classList.toggle('error',error);}
-function clear(){epoch++;controller?.abort();controller=null;token='';data=null;page=0;$('dashboard').hidden=true;$('metrics').replaceChildren();$('players').replaceChildren();$('assets').replaceChildren();$('signups').replaceChildren();$('coverage').textContent='';$('identity').textContent='';$('login-panel').hidden=false;$('refresh').hidden=true;$('logout').hidden=true;}
+function clear(){epoch++;controller?.abort();controller=null;token='';data=null;page=0;$('dashboard').hidden=true;$('metrics').replaceChildren();$('players').replaceChildren();$('assets').replaceChildren();$('signups').replaceChildren();$('feedback-list').replaceChildren();$('feedback-count').textContent='';$('coverage').textContent='';$('identity').textContent='';$('login-panel').hidden=false;$('refresh').hidden=true;$('logout').hidden=true;}
 const errors={permission:'관리 권한이 없습니다. 프로젝트의 Firebase Authentication 조회 권한과 Cloud Datastore Viewer 권한을 확인하세요. Google 동의 화면에서 요청한 권한을 모두 허용해야 합니다.',expired:'관리자 인증이 만료되었습니다. 다시 로그인하세요.',network:'데이터를 불러오지 못했습니다. 네트워크 연결을 확인하고 다시 시도하세요.',invalid:'서버 응답을 확인할 수 없습니다. 잠시 후 다시 시도하세요.'};
 async function refresh(){
  controller?.abort();controller=new AbortController();const current=++epoch,requestController=controller;
@@ -32,6 +32,8 @@ function render(){
  const assets=[['현금',s.cash],['부동산·사업장',s.property],['주식',s.stocks],['복리 계좌',s.compound],['기타 자산¹',s.other],['부채',s.debt]],total=assets.reduce((n,[,v])=>n+Math.max(0,v),0);
  $('assets').innerHTML=s.saved?assets.map(([label,value])=>`<div class="asset-row"><span>${label}</span><div class="track"><i style="width:${total?Math.max(0,value)/total*100:0}%"></i></div><strong>${money(value)}</strong></div>`).join('')+'<small class="muted">¹ 컬렉션·기업 지분 등, 공매도 평가액 포함</small>':'<p class="muted">집계할 수 있는 게임 저장이 없습니다.</p>';
  $('coverage').textContent=`저장 없음 ${s.registered-s.saved-s.invalid}명 · 저장 확인 필요 ${s.invalid}명 · 삭제된 계정 등의 연결 없는 저장 ${s.orphanSaves}개. 자산·시간은 클라이언트 저장 기반으로, 조작 방지 통계가 아닙니다.`;
+ $('feedback-count').textContent=`${num(data.feedback.length)}건`;
+ $('feedback-list').innerHTML=data.feedback.map(f=>`<article class="feedback-entry"><div class="feedback-head"><time>${date(f.createdAt)}</time><span>${esc(f.version||'버전 미상')}</span></div><pre>${esc(f.body)}</pre></article>`).join('')||'<p class="muted">아직 받은 피드백이 없습니다.</p>';
  renderRows();
 }
 function renderRows(){

@@ -35,6 +35,7 @@ import {empireSummary,validEmpire,settleOwnerBenefits} from './empire.js';
 import {acquisitionSummary,settleAcquisitions,validAcquisitions} from './acquisitions.js';
 import {lifestyleCostReport} from './living-costs.js';
 import {lifeEnded} from './longevity.js';
+import {ensureElection,advanceElection,electionTaxRate,validElection} from './elections.js';
 import {ultraValue,ultraIncome,validUltra,settleUltra} from './ultra.js';
 // Personal wealth simulation. All money is fictional G; one tick is one month.
 export const SAVE_KEY='super-rich-life-v2';
@@ -96,7 +97,7 @@ function migrateSaveAt(s){
  if(s?.concept==='rich-life'&&s.plan){s.plan.create=0;s.plan.learn=0;}
  if(s?.concept==='rich-life'&&Number.isFinite(s.signatureMultiplier))s.signatureMultiplier=Math.min(s.signatureMultiplier,SIGNATURE_GROWTH.maxMultiplier);
  if(s?.concept==='rich-life'&&s.log)checkHealth(s);
- if(s){ensureEconomy(s);ensureLongShocks(s);ensureMarket(s);retireCompoundAccounts(s);s.growthStartMonth??=s.month;if(s.tiles?.length===SIZE*SIZE){installBoulevards(s);thinRoadSlabs(s);}repairVentureNames(s);}
+ if(s){ensureEconomy(s);ensureLongShocks(s);ensureElection(s);ensureMarket(s);retireCompoundAccounts(s);s.growthStartMonth??=s.month;if(s.tiles?.length===SIZE*SIZE){installBoulevards(s);thinRoadSlabs(s);}repairVentureNames(s);}
  if(s&&RETIRED_EVENTS.some(e=>JSON.stringify(e)===JSON.stringify(s.event)))s.event=null;
  if(s?.event?.id==='networking')s.event=null;
  if(Array.isArray(s?.eventLog))s.eventLog=s.eventLog.filter(id=>id!=='networking');
@@ -120,7 +121,7 @@ function createGameAt(mode,seed){
  for(const[x,y,l]of[[5,5,1],[5,6,2],[7,5,1],[8,6,1],[9,6,2],[4,8,1],[5,8,1],[7,8,1],[8,8,2],[12,5,2],[13,6,1],[15,6,2],[16,6,1],[12,12,2],[13,12,1],[16,12,2],[18,12,1],[7,17,1],[8,17,2],[12,17,1],[15,17,2],[16,17,1]])put(x,y,'home',l);
  put(9,10,'hall');put(10,8,'park');put(8,10,'shop',2);put(13,10,'shop',2);put(18,8,'factory');put(19,8,'factory');put(12,8,'school');put(16,14,'park');put(4,15,'park');put(10,17,'clinic');put(18,17,'tower');
  installBoulevards({tiles});
- return{economy:ensureEconomy({month:0,seed}),longShocks:ensureLongShocks({month:0,seed}),version:2,growthStartMonth:0,name:L('Riverside'),mode,seed,tiles,money:12000,debt:0,month:0,skill:10,stress:12,plan:{work:80,manage:40,learn:20,create:0},career:'flexible',propertyTax:{accrued:0},costBasis:Object.fromEntries(STOCKS.map(k=>[k.id,0])),realizedGains:0,holdings:Object.fromEntries(STOCKS.map(k=>[k.id,0])),prices:Object.fromEntries(STOCKS.map(k=>[k.id,k.base])),market:createMarket(0),history:[],log:[L('You\'ve arrived in Riverside. Work to build seed money and pick a spot for your first shop.')],event:null,effect:null,highestWealth:12000,milestones:[],lastReport:null};
+ return{economy:ensureEconomy({month:0,seed}),longShocks:ensureLongShocks({month:0,seed}),election:ensureElection({month:0,seed}),version:2,growthStartMonth:0,name:L('Riverside'),mode,seed,tiles,money:12000,debt:0,month:0,skill:10,stress:12,plan:{work:80,manage:40,learn:20,create:0},career:'flexible',propertyTax:{accrued:0},costBasis:Object.fromEntries(STOCKS.map(k=>[k.id,0])),realizedGains:0,holdings:Object.fromEntries(STOCKS.map(k=>[k.id,0])),prices:Object.fromEntries(STOCKS.map(k=>[k.id,k.base])),market:createMarket(0),history:[],log:[L('You\'ve arrived in Riverside. Work to build seed money and pick a spot for your first shop.')],event:null,effect:null,highestWealth:12000,milestones:[],lastReport:null};
 }
 export const BOULEVARD={axis:11,land:1.5,rent:1.3};
 // Upgrade existing streets and vacant parcels; never displace saved buildings or owned land.
@@ -580,13 +581,13 @@ function settlePropertyTax(s,a){
  const profit=a.owned.filter(({t})=>TYPES[t.type]?.group==='property').reduce((sum,{i})=>sum+(a.reports[i]?.profit||0),0);
  s.propertyTax??={accrued:0};s.propertyTax.accrued+=profit;
  if(s.month%6)return 0;
- const paid=Math.round(Math.max(0,s.propertyTax.accrued)*PROPERTY_TAX_RATE);
+ const paid=Math.round(Math.max(0,s.propertyTax.accrued)*electionTaxRate(s,PROPERTY_TAX_RATE));
  s.propertyTax.accrued=0;s.money-=paid;
  if(paid)s.log.unshift(L`Property income tax · ₲${paid.toLocaleString('en-US')} paid for the last six months`);
  return paid;
 }
 function tickMonth(s){
- if(s.event||s.shift||lifeEnded(s))return analyze(s);ensureEconomy(s);const previousMarket=marketFactor(s),rich=s.concept==='rich-life',chapterBefore=rich?chapterOf(s).n:0,tilesBefore=rich?s.tiles.map(t=>({...t})):null;s.growthStartMonth??=s.month;const a=analyze(s);for(const {t,i} of a.owned){t.assetLedger??=assetLedger(s,i);t.assetLedger.operating+=a.reports[i]?.profit||0;}s.money+=a.net;advanceProjects(s);if(s.empire){s.empire.acquiredMonths??={};for(const id of s.empire.owned)s.empire.acquiredMonths[id]??=s.month;}settleCompound(s);if(rich)s.signatureMultiplier=signatureGrowth(s).next;s.month++;settleConstruction(s);const propertyTaxPaid=settlePropertyTax(s,a),corporateTaxPaid=settleAcquisitions(s,a.acquisitions.income);
+ if(s.event||s.shift||lifeEnded(s))return analyze(s);ensureEconomy(s);ensureElection(s);const previousMarket=marketFactor(s),rich=s.concept==='rich-life',chapterBefore=rich?chapterOf(s).n:0,tilesBefore=rich?s.tiles.map(t=>({...t})):null;s.growthStartMonth??=s.month;const a=analyze(s);for(const {t,i} of a.owned){t.assetLedger??=assetLedger(s,i);t.assetLedger.operating+=a.reports[i]?.profit||0;}s.money+=a.net;advanceProjects(s);if(s.empire){s.empire.acquiredMonths??={};for(const id of s.empire.owned)s.empire.acquiredMonths[id]??=s.month;}settleCompound(s);if(rich)s.signatureMultiplier=signatureGrowth(s).next;s.month++;settleConstruction(s);const propertyTaxPaid=settlePropertyTax(s,a),corporateTaxPaid=settleAcquisitions(s,a.acquisitions.income),election=advanceElection(s);
  const crashed=advanceEconomy(s);
  advanceNeighborhood(s);
  advanceVentures(s);advanceStartups(s);
@@ -603,7 +604,7 @@ function tickMonth(s){
  const riotWealth=analyze(s).wealth,riot=advanceUniversityRisk(s,riotWealth);if(riot){const cash=s.money;nationalizeRiotAssets(s,riotWealth);riot.lostCash=cash-s.money;rareShock=riot;}
  // Neighbor and rival development is reported only when it touches land prices or rent near the player's assets.
  const development=rich?developmentImpacts(s,tilesBefore).filter(e=>e.owner!=='player'&&(Math.abs(e.land)>=.001||e.rent)&&(e.assets||nearPlayer(s,e.tile))):[];
- s.lastReport={development,rareShock,compoundIncome:compoundSummary(s).last,compoundReinvested:s.compound?.auto?compoundSummary(s).last:0,compoundShock:s.compound?.lastShock||null,dividends:a.investment.dividends,companyIncome:a.acquisitions.income,corporateTaxPaid,ownerIncome:a.empire.income,luxuryMaintenance:a.lifestyleCosts.maintenance,creative:a.creative.income,month:s.month,wage:a.wage,revenue:a.revenue,expense:a.expense,living:a.living,tuition:a.tuition,interest:a.interest,bonus:a.bonus,propertyTaxPaid,net:a.net-propertyTaxPaid-corporateTaxPaid-(riot?.lostCash||0),economy:economyReport(s).label,pending,rival:rivalEvents,fireSale:crisis?.items?.length?crisis.items:null,restructure:!!crisis?.restructure,broker};
+ s.lastReport={development,rareShock,election,compoundIncome:compoundSummary(s).last,compoundReinvested:s.compound?.auto?compoundSummary(s).last:0,compoundShock:s.compound?.lastShock||null,dividends:a.investment.dividends,companyIncome:a.acquisitions.income,corporateTaxPaid,ownerIncome:a.empire.income,luxuryMaintenance:a.lifestyleCosts.maintenance,creative:a.creative.income,month:s.month,wage:a.wage,revenue:a.revenue,expense:a.expense,living:a.living,tuition:a.tuition,interest:a.interest,bonus:a.bonus,propertyTaxPaid,net:a.net-propertyTaxPaid-corporateTaxPaid-(riot?.lostCash||0),economy:economyReport(s).label,pending,rival:rivalEvents,fireSale:crisis?.items?.length?crisis.items:null,restructure:!!crisis?.restructure,broker};
  const after=analyze(s);s.highestWealth=Math.max(s.highestWealth,after.wealth);
  for(const m of rich?RICH_GOALS:MILESTONES)if(after.wealth>=m.wealth&&!s.milestones.includes(m.wealth)){s.milestones.push(m.wealth);s.log.unshift(L`✦ ${m.name} reached! Net worth ₲${m.wealth.toLocaleString()}`);}
  if(rich){const chapter=chapterOf(s);if(chapter.n>chapterBefore){s.lastReport.chapterUp=chapter.n;s.log.unshift(L`✦ CHAPTER ${chapter.n} · ${chapter.name} begins! ${chapter.unlocks[0]} unlocked`);}
@@ -620,7 +621,7 @@ export function validSave(s){
 }
 function validSaveAt(s){
  if(!validPlayTime(s)||!validUniversityRisk(s))return false;
- if(!validHealth(s)||!validEconomy(s)||!validLongShocks(s)||!validLandmarks(s))return false;
+ if(!validHealth(s)||!validEconomy(s)||!validLongShocks(s)||!validElection(s)||!validLandmarks(s))return false;
  if(s?.signatureMultiplier!==undefined&&(!Number.isFinite(s.signatureMultiplier)||s.signatureMultiplier<1||s.signatureMultiplier>SIGNATURE_GROWTH.maxMultiplier))return false;
  if(s?.propertyTax!==undefined&&(!s.propertyTax||typeof s.propertyTax!=='object'||Array.isArray(s.propertyTax)||!Number.isFinite(s.propertyTax.accrued)||Math.abs(s.propertyTax.accrued)>1e15))return false;
  if(s?.growthStartMonth!==undefined&&(!Number.isInteger(s.growthStartMonth)||s.growthStartMonth<0||s.growthStartMonth>s.month))return false;

@@ -115,19 +115,29 @@ export function createRenderer(canvas,getState,getAnalysis,onTile,onHover){
  function line(a,b,color,width=1){ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.strokeStyle=color;ctx.lineWidth=width*zoom;ctx.stroke();}
  function circle(p,r,color){if(recordingHit){const pts=[];for(let n=0;n<12;n++)pts.push({x:p.x+Math.cos(n*Math.PI/6)*r*zoom,y:p.y+Math.sin(n*Math.PI/6)*r*zoom});record(pts);}ctx.beginPath();ctx.arc(p.x,p.y,r*zoom,0,Math.PI*2);ctx.fillStyle=color;ctx.fill();}
  function assetBadge(x,y,t){const p=imageTops.get(y*SIZE+x)||screen(x+.5,y+.5,badgeHeight(t.type,t.level)+16),label=t.type==='university'?'Lv.'+researchLevel(t):`✦ ${t.landmark?.name||buildingName(t)}${t.type==='plot'?'':' · Lv.'+t.level}`;ctx.font=`bold ${Math.max(10,11*zoom)}px sans-serif`;ctx.textAlign='center';const width=ctx.measureText(label).width+14;if(recordingHit)record([{x:p.x-width/2,y:p.y-13*zoom},{x:p.x+width/2,y:p.y-13*zoom},{x:p.x+width/2,y:p.y+6*zoom},{x:p.x-width/2,y:p.y+6*zoom}]);ctx.fillStyle='#2f4d3eeb';ctx.fillRect(p.x-width/2,p.y-13*zoom,width,19*zoom);ctx.fillStyle='#ffe59a';ctx.fillText(label,p.x,p.y+1*zoom);}
- // Mountain tiles share corner heights, so a range reads as one massif: corners rise with how deep the four tiles around them
- // sit inside the range, each tile peaks above its corners, and the tallest peaks carry snow.
+ // Mountain tiles share corner heights. A small curved height mesh joins the slopes into a rounded range;
+ // it is drawn only when the cached map is rebuilt, not on every animation frame.
  function mountain(s,x,y){
-  const rock=(a,b)=>a>=0&&b>=0&&a<SIZE&&b<SIZE&&s.tiles[b*SIZE+a].terrain==='mountain',cross=[[1,0],[-1,0],[0,1],[0,-1]];
-  const inner=(a,b)=>rock(a,b)&&cross.every(([dx,dy])=>rock(a+dx,b+dy)),deep=(a,b)=>inner(a,b)&&cross.every(([dx,dy])=>inner(a+dx,b+dy));
-  const level=(a,b)=>rock(a,b)?1+inner(a,b)+deep(a,b):0;
-  const rise=(a,b)=>{const n=Math.min(level(a-1,b-1),level(a,b-1),level(a-1,b),level(a,b));return n?n*17+(a*7+b*13)%8:0;};
-  const z=[rise(x,y),rise(x+1,y),rise(x+1,y+1),rise(x,y+1)],height=Math.max(...z)+16+(x*11+y*5)%12;
-  const apex=screen(x+.5+((x+y)%3-1)*.1,y+.5,height),corner=[screen(x,y,z[0]),screen(x+1,y,z[1]),screen(x+1,y+1,z[2]),screen(x,y+1,z[3])];
-  for(const[a,b,color]of[[0,1,'#8d9a8c'],[3,0,'#a3ad9a'],[1,2,'#5f7268'],[2,3,'#7c8c7b']])poly([corner[a],corner[b],apex],color,color);
-  if(height<62)return;
-  const cap=p=>({x:apex.x+(p.x-apex.x)*.4,y:apex.y+(p.y-apex.y)*.4});
-  for(const[a,b,color]of[[0,1,'#e4e9e4'],[3,0,'#fafaf5'],[1,2,'#cfd9d8'],[2,3,'#eef1ea']])poly([cap(corner[a]),cap(corner[b]),apex],color,color);
+  const rock=(a,b)=>a>=0&&b>=0&&a<SIZE&&b<SIZE&&s.tiles[b*SIZE+a].terrain==='mountain';
+  const rise=(a,b)=>{
+   if(!rock(a-1,b-1)||!rock(a,b-1)||!rock(a-1,b)||!rock(a,b))return 0;
+   let nearby=0;for(let yy=b-2;yy<=b+1;yy++)for(let xx=a-2;xx<=a+1;xx++)if(rock(xx,yy))nearby++;
+   return nearby*3.5+(a*7+b*13)%4;
+  };
+  const z=[rise(x,y),rise(x+1,y),rise(x+1,y+1),rise(x,y+1)],average=z.reduce((sum,v)=>sum+v,0)/4,height=average+4+(x*11+y*5)%5;
+  const steps=6,grid=[];
+  const elevation=(u,v)=>z[0]*(1-u)*(1-v)+z[1]*u*(1-v)+z[2]*u*v+z[3]*(1-u)*v+(height-average)*Math.sin(Math.PI*u)*Math.sin(Math.PI*v);
+  for(let j=0;j<=steps;j++){
+   const row=[];for(let i=0;i<=steps;i++){const u=i/steps,v=j/steps;row.push(screen(x+u,y+v,elevation(u,v)));}grid.push(row);
+  }
+  for(let sum=0;sum<steps*2-1;sum++)for(let i=0;i<steps;i++){
+   const j=sum-i;if(j<0||j>=steps)continue;
+   const u=(i+.5)/steps,v=(j+.5)/steps,slopeX=elevation(Math.min(1,u+.08),v)-elevation(Math.max(0,u-.08),v),slopeY=elevation(u,Math.min(1,v+.08))-elevation(u,Math.max(0,v-.08));
+   const altitude=elevation(u,v),light=Math.max(43,Math.min(61,52+(slopeY-slopeX)*.8+altitude*.055));
+   const face=[grid[j][i],grid[j][i+1],grid[j+1][i+1],grid[j+1][i]];
+   poly(face,`hsl(145, 12%, ${light}%)`);
+   const frost=Math.max(0,Math.min(1,(altitude-49)/15));if(frost)poly(face,`rgba(247,249,244,${frost})`);
+  }
  }
  function tree(x,y,scale=1){
   const p=screen(x,y),r=10*scale*zoom;

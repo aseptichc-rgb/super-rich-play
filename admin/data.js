@@ -26,14 +26,15 @@ export async function loadDashboard({projectId,token,fetch:request=globalThis.fe
  }
  // Auth calls its request cursor nextPageToken; Firestore calls it pageToken.
  const id=encodeURIComponent(projectId);
- const [users,documents]=await Promise.all([
+ const [users,documents,feedbackDocuments]=await Promise.all([
   pages(`https://identitytoolkit.googleapis.com/v1/projects/${id}/accounts:batchGet`,'users',{maxResults:'1000',fields:'users(localId,displayName,email,createdAt,lastLoginAt,disabled),nextPageToken'}),
-  pages(`https://firestore.googleapis.com/v1/projects/${id}/databases/(default)/documents/playerSaves`,'documents',{pageSize:'100', 'mask.fieldPaths':'save'})
+  pages(`https://firestore.googleapis.com/v1/projects/${id}/databases/(default)/documents/playerSaves`,'documents',{pageSize:'100', 'mask.fieldPaths':'save'}),
+  pages(`https://firestore.googleapis.com/v1/projects/${id}/databases/(default)/documents/feedback`,'documents',{pageSize:'100'})
  ]);
- return summarizeDashboard(users,documents,now);
+ return summarizeDashboard(users,documents,now,feedbackDocuments);
 }
 const timestamp=value=>{const n=Number(value);return Number.isFinite(n)&&n>0?n:null;};
-export function summarizeDashboard(users,documents,now=Date.now()){
+export function summarizeDashboard(users,documents,now=Date.now(),feedbackDocuments=[]){
  const saves=new Map(documents.map(d=>[d.name?.split('/').at(-1),d]));
  const rows=users.map(user=>{
   const doc=saves.get(user.localId);
@@ -59,5 +60,6 @@ export function summarizeDashboard(users,documents,now=Date.now()){
   const date=new Date(now-(13-i)*86400000).toISOString().slice(0,10);
   return{date,count:rows.filter(r=>r.createdAt&&new Date(r.createdAt).toISOString().slice(0,10)===date).length};
  });
- return{updatedAt:new Date(now).toISOString(),summary,rows,signups};
+ const feedback=feedbackDocuments.map(d=>({id:d.name?.split('/').at(-1)||'',body:d.fields?.body?.stringValue,version:d.fields?.version?.stringValue,createdAt:d.createTime})).filter(d=>typeof d.body==='string').sort((a,b)=>Date.parse(b.createdAt)-Date.parse(a.createdAt));
+ return{updatedAt:new Date(now).toISOString(),summary,rows,signups,feedback};
 }
