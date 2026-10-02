@@ -103,7 +103,7 @@ export function placeUltra(s,id,position){return transaction(s,()=>{
  const reason=ultraPlacementError(s,id,position);if(reason)return{ok:false,msg:reason};
  setUltraSite(s,id,position);return{ok:true,msg:L('3×3 site confirmed.')};
 });}
-export function ultraEntry(s){return `<section class="owner-reputation"><h3>${L('Trillion Club')}</h3><p>${L('Space exploration · Global foundation · Exceptional collections')}</p>${ultraOwnedGallery(s)}${s.ultra?.items?.moon?.complete?`<p>${lunarStatus(s)}</p>`:''}<button data-action="ultra">${ultraUnlocked(s)?L('Enter the Trillion Club'):L('Preview · Unlocks at ₲1 trillion')}</button></section>`;}
+export function ultraEntry(s){return `<section class="owner-reputation"><h3>${L('Trillion Club')}</h3><p>${L('Space exploration · Global foundation · Exceptional collections')}</p>${ultraOwnedGallery(s)}${s.ultra?.items?.moon?.complete?`<p>${lunarStatus(s)}</p>`:''}<button data-action="ultra">${ultraUnlocked(s)?L('Enter the Trillion Club'):L('Preview · Unlocks at ₲1 trillion')}</button></section><section class="owner-reputation island-entry"><h3>${L('Private Island')}</h3><p>${s.privateIsland?.villa?L('Your island villa is ready.'):s.privateIsland?.owned?L('Build a villa on your island.'):L('Buy an island for ₲500,000,000,000.')}</p><button data-action="island">${L('Visit island map')} →</button></section>`;}
 const ultraArt=id=>`./city/assets/ultra/${ULTRA_ITEMS[id].art||id}.webp`;
 function ultraBenefits(id,d){
  const unlocks=Object.values(ULTRA_ITEMS).filter(next=>next.requires===id).map(next=>next.name);

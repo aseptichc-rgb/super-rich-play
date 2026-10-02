@@ -59,7 +59,8 @@ function nextQueued(){const d=dialogQueue.shift();if(!d)return;if(d.fn)d.fn();el
 function crisisDialog(r){return L`<div class="crisis-card"><span class="eyebrow">LIQUIDITY CRISIS</span><h2>${r.restructure?L('Restructuring'):L('Fire sale')}</h2><p>${r.restructure?L('Cash has run dry three months running. Reputation −50. If cash flow does not recover, your assets keep selling at a discount.'):L('Month-end cash went negative, so assets were sold below market value.')}</p><div class="legacy-score">${r.fireSale.map(i=>L`<div><span>${esc(i.name)}</span><b>+${money(i.value)}</b><small>Fire sale price</small></div>`).join('')}</div><p class="help">Stocks sell at a 3% discount; compound accounts, buildings and artwork at 30%. Review upkeep and income on the Cash Flow tab.</p><button data-action="close" class="primary full">Check Cash Flow</button></div>`;}
 function longShockDialog(r){if(r.kind==='riot')return universityRiotDialog(r);const picture=r.kind==='depression'?'':`<img src="./city/assets/disasters/${r.kind}.png" alt="${esc(r.name)}" style="width:100%;border-radius:12px;margin:12px 0">`;return `<div class="crisis-card"><span class="eyebrow">${L('WORLD CRISIS')}</span><h2>${esc(r.name)}</h2>${picture}${r.protection?`<p>🎓 ${L('City damage reduction')} ${Math.round(r.protection*100)}%</p>`:''}<p>${r.kind==='depression'?L('A great depression has permanently reduced asset values and put founded companies under pressure.'):L`The disaster destroyed ${r.destroyed} city buildings, including player property caught in its path.`}</p><p>${L`Stocks −${r.stockLoss}% · Property −${r.propertyLoss}% · Companies −${r.companyLoss}%`}</p><p>${r.delisted.length?L`${r.delisted.length} companies delisted: ${r.delisted.map(esc).join(', ')}`:L('No companies were delisted.')}</p><p class="help">${L('Founded companies face an 18-month management crisis. Business and rental income falls for 36 months. The damaged assets do not automatically recover when time passes.')}</p><button data-action="close" class="primary full">${L('View My City')}</button></div>`;}
 import {flexDialog,buyFlex,hostParty,flexState} from './flex.js';
-import {artDialog,artViewDialog,buyArtwork,sellArtwork,artPortfolio} from './art.js';
+import {artDialog,artViewDialog,buyArtwork,sellArtwork,placeArtwork,artPortfolio} from './art.js';
+import {ownerLifeDialog,ownerAlbumDialog,ownerMemoryDialog,enjoyOwnerScene} from './owner-life.js';
 import {photoViewer} from './collection-photos.js';
 import {vehicleDialog,chooseVehicle} from './luxury-models.js';
 const vehicleStyles=document.createElement('link');vehicleStyles.rel='stylesheet';vehicleStyles.href='./city/luxury-models.css';document.head.append(vehicleStyles);
@@ -71,6 +72,8 @@ function showMansion(){mansionDraft=mansionDesign(state);openDialog('mansion',ma
 const flexStyles=document.createElement('link');flexStyles.rel='stylesheet';flexStyles.href='./city/flex.css';document.head.append(flexStyles);
 const mansionStyles=document.createElement('link');mansionStyles.rel='stylesheet';mansionStyles.href='./city/mansion.css';document.head.append(mansionStyles);
 const richStyles=document.createElement('link');richStyles.rel='stylesheet';richStyles.href='./city/rich-life.css';document.head.append(richStyles);
+const ownerLifeStyles=document.createElement('link');ownerLifeStyles.rel='stylesheet';ownerLifeStyles.href='./city/owner-life.css';document.head.append(ownerLifeStyles);
+const islandStyles=document.createElement('link');islandStyles.rel='stylesheet';islandStyles.href='./city/private-island.css';document.head.append(islandStyles);
 const artStyles=document.createElement('link');artStyles.rel='stylesheet';artStyles.href='./city/art.css';document.head.append(artStyles);
 const empireStyles=document.createElement('link');empireStyles.rel='stylesheet';empireStyles.href='./city/empire.css';document.head.append(empireStyles);
 let growthSnapshot=null,reputationSnapshot=null;
@@ -98,6 +101,7 @@ import {createRichGame as createGame,RICH_GOALS,lifestyleDialog,experienceScene,
 import {createPlayTimer} from './play-time.js';
 import {lifeAge,lifeEnded,lifeEndingDialog,rejuvenate,rejuvenationPreparation} from './longevity.js';
 import {ultraDialog,ultraExperienceScene,sellUltra,enjoyUltra,ultraEntry,ULTRA_ITEMS} from './ultra.js';
+import {buyIsland,islandScene} from './private-island.js';
 const $=s=>document.querySelector(s),money=n=>'₲'+Math.round(n).toLocaleString('en-US'),esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let state=createGame(),loadWarning='',hadLocalSave=false;
 try{const raw=sessionSave(localStorage,devSession);if(raw){const saved=migrateSave(JSON.parse(raw));if(validSave(saved)){state=saved;hadLocalSave=true;}else loadWarning=L('Could not read the save. Your existing save will not be overwritten.');}}catch{loadWarning=L('Auto-save is unavailable. Use file export instead.');}
@@ -108,6 +112,7 @@ ensureEmpire(state);
 let buildFootprint={width:1,height:1},buildFloors=1;
 useMap(state);
 let analysis=analyze(state),speed=0,tool='inspect',tab='property',panel='overview',mapLayer='normal',selected=-1,elapsed=0,last=0,modal=null,saveBlocked=!!loadWarning;
+let islandOpen=false;
 $('#app').innerHTML=L`
 <header class="topbar"><a class="brand" href="./"><span class="brand-icon">▥</span><span>SUPER RICH<small>GROW WEALTH. LIVE WELL.</small></span></a><span class="top-divider"></span><button id="city-name" class="city-name" title="Rename"></button><span id="mode-badge" class="badge"></span><div class="top-actions"><span class="version-tag" title="Game version">${VERSION}</span><span id="save-state">Auto-saved locally</span><button data-action="feedback" class="icon-button" aria-label="Send feedback" title="Send feedback">✉</button><button data-action="sound" class="icon-button" aria-label="Turn sound on" title="Turn sound on">♪</button><button data-action="guide" class="icon-button" aria-label="Play guide">?</button><button data-action="new-game" class="new-game-button" title="Start a completely new game">↺<span> New Game</span></button><button data-action="settings" class="icon-button" aria-label="Game settings">⚙</button></div></header>
 <main class="game"><section class="world-wrap" aria-label="Business and property map"><canvas id="world" aria-label="Click a lot to sign a contract, or pick one of your own places to run it."></canvas>
@@ -119,6 +124,8 @@ $('#app').innerHTML=L`
 <div id="build-dock" class="build-dock"><div class="dock-heading"><div class="dock-tabs"><button data-tab="business">Business</button><button data-tab="property">Property</button><button data-tab="creative">Hobby · Creative</button></div><div class="dock-utilities"><button data-action="portfolio">▥ <span>My Assets</span></button><button data-action="stocks">↗ <span>Stocks</span></button></div></div><div id="build-items"></div><div id="tool-description"></div></div>
 </section><aside id="game-sidebar" class="sidebar"><div class="side-heading"><button class="sidebar-collapse" data-action="toggle-sidebar" aria-expanded="true" aria-controls="game-sidebar" aria-label="Collapse wealth panel" title="Collapse wealth panel">›</button><span class="eyebrow">MY WEALTH, MY CHOICES</span><h2>My Wealth Story <span class="live-dot"></span></h2></div><section id="stats"></section><section id="wealth-growth" aria-label="My wealth growth"></section><div class="side-tabs"><button data-panel="overview" class="active">Assets</button><button data-panel="plan">Time & Life</button><button data-panel="budget">Cash Flow</button></div><div id="side-content"></div><div class="sidebar-bottom"><span>Super Rich, my own way. · ${VERSION}</span><button data-action="feedback">Send Feedback ↗</button></div></aside></main>
 <footer class="newsbar"><span class="news-tag">MY JOURNEY</span><span id="news"></span><button data-action="history">Growth Log ↗</button></footer><dialog id="dialog"></dialog><input type="file" id="import-file" accept="application/json,.json" hidden>`;
+$('.world-wrap').insertAdjacentHTML('beforeend','<section id="island-view" class="island-view" aria-label="'+L('Private island map')+'" hidden></section>');
+$('.map-tools').insertAdjacentHTML('beforeend','<span></span><button data-action="island" title="'+L('Visit private island')+'" aria-label="'+L('Visit private island')+'">🏝</button>');
 // The switch shows the other language in its own script so a reader of either language can find it.
 $('.top-actions [data-action="feedback"]').insertAdjacentHTML('beforebegin',`<button data-action="shortcut" data-shortcut-button class="shortcut-button" title="${L('Add a shortcut to your desktop')}" ${shortcutAdded()?'hidden':''}>⤓<span> ${L('Add Shortcut')}</span></button><button data-action="language" data-lang="${lang==='ko'?'en':'ko'}" class="icon-button lang-button" aria-label="${L('Change language')}" title="${L('Change language')}">${lang==='ko'?'EN':'한'}</button>`);
 // Reserve the dock's actual height, including wrapped text and horizontal scrollbars.
@@ -154,8 +161,9 @@ function refresh(){
   reputationNotice.hidePopover();($('#dialog').open?$('#dialog'):document.body).append(reputationNotice);reputationNotice.showPopover();clearTimeout(reputationNotice.timer);
   reputationNotice.timer=setTimeout(()=>reputationNotice.hidePopover(),3500);
  });
- if(state.concept==='rich-life')ensureRival(state);useMap(state);analysis=analyze(state);renderHUD();renderSide();
+ if(state.concept==='rich-life')ensureRival(state);useMap(state);analysis=analyze(state);renderHUD();renderSide();if(islandOpen)renderIsland();
 }
+function renderIsland(){const view=$('#island-view');view.hidden=false;view.innerHTML=islandScene(state);}
 function changed(){checkHealth(state);refresh();save();maybeSuggestAccount();if(lifeEnded(state))setTimeout(()=>{speed=0;dialogQueue=[];openDialog('lifetime',lifeEndingDialog(state));},0);}
 // The mansion estate keeps its place in the original city as the map grows.
 function homeTile(){return index(3+mapOffset(state),21+mapOffset(state));}
@@ -448,6 +456,9 @@ $('#app').addEventListener('click',e=>{
  if(action==='rankings'){showRankings();return;}
  if(action==='elections'){openDialog('election',electionDialog(state));return;}
  if(b.dataset.fundParty){const r=fundParty(state,b.dataset.fundParty,Number(b.dataset.fundAmount));if(r.ok)changed();openDialog('election',electionDialog(state));toast(r.msg);return;}
+ if(action==='island'){if(modal)closeDialog();islandOpen=true;speed=0;renderHUD();renderIsland();return;}
+ if(action==='island-back'){islandOpen=false;$('#island-view').hidden=true;return;}
+ if(b.dataset.islandBuy){const r=buyIsland(state,b.dataset.islandBuy);if(r.ok){changed();audio.play('build');}toast(r.msg);return;}
  if(action==='reputation'){openDialog('growth',reputationDialog(state));return;}
  if(b.dataset.donate||action==='donate-custom'||action==='media-interview'){const r=action==='media-interview'?mediaInterview(state):donate(state,Number(b.dataset.donate||$('#donation-amount').value));if(r.ok){changed();audio.play('win');}openDialog('growth',reputationDialog(state));toast(r.msg);return;}
  if(b.dataset.vehicleKind){const r=chooseVehicle(state,b.dataset.vehicleKind,b.dataset.vehicleId);if(r.ok)changed();openDialog('growth',vehicleDialog(state,b.dataset.vehicleKind));toast(r.msg);return;}
@@ -461,14 +472,22 @@ $('#app').addEventListener('click',e=>{
  if(b.dataset.ultraBuy||b.dataset.ultraPlace){ultraUI.begin(b.dataset.ultraBuy||b.dataset.ultraPlace);return;}
  if(b.dataset.ultraConfirm!==undefined){ultraUI.confirm();return;}
  if(b.dataset.ultraCancel!==undefined){ultraUI.cancel();closeDialog();return;}
+ if(b.dataset.ultraEnjoy==='jet'){openDialog('growth',ownerLifeDialog(state,'jet'));return;}
  if(b.dataset.ultraSell||b.dataset.ultraEnjoy){const before=state.stress,r=b.dataset.ultraSell?sellUltra(state,b.dataset.ultraSell):enjoyUltra(state,b.dataset.ultraEnjoy);if(r.ok)changed();openDialog('growth',r.ok&&b.dataset.ultraEnjoy?ultraExperienceScene(state,b.dataset.ultraEnjoy,before-state.stress):ultraDialog(state));toast(r.msg);return;}
  if(action==='lifestyle'){openDialog('growth',lifestyleDialog(state));return;}
+ if(action==='owner-life'){openDialog('growth',ownerLifeDialog(state));return;}
+ if(action==='owner-album'){openDialog('growth',ownerAlbumDialog(state));return;}
+ if(b.dataset.ownerOpen){openDialog('growth',ownerLifeDialog(state,b.dataset.ownerOpen,b.dataset.ownerVenue!==undefined?Number(b.dataset.ownerVenue):undefined));return;}
+ if(b.dataset.ownerMemory!==undefined){const entry=state.lifestyle?.journal?.[Number(b.dataset.ownerMemory)];if(entry)openDialog('growth',ownerMemoryDialog(state,entry));return;}
+ if(b.dataset.ownerChoice){const venue=b.dataset.ownerVenue!==undefined?Number(b.dataset.ownerVenue):undefined,r=enjoyOwnerScene(state,b.dataset.ownerKind,b.dataset.ownerChoice,{venue,subject:$('#owner-art')?.value});if(r.ok){changed();audio.play('win');}openDialog('growth',r.ok?ownerMemoryDialog(state,r.entry):ownerLifeDialog(state,b.dataset.ownerKind,venue));toast(r.msg);return;}
  if(action==='rejuvenate'){const r=rejuvenate(state);if(r.ok){changed();closeDialog();audio.play('win');renderer.burst(-1,L('Age 20 · A new lifetime begins'),'coin');}else openDialog('lifetime',lifeEndingDialog(state));toast(r.msg);return;}
+ if(b.dataset.experience==='cruise'){openDialog('growth',ownerLifeDialog(state,'yacht'));return;}
  if(b.dataset.experience){const id=b.dataset.experience,before=state.stress,r=enjoyExperience(state,id);if(r.ok){changed();audio.play('win');renderer.burst(-1,r.msg);}openDialog('growth',r.ok?experienceScene(state,id,before-state.stress):lifestyleDialog(state));toast(r.msg);return;}
  if(b.dataset.artBuy){const r=buyArtwork(state,b.dataset.artBuy);if(r.ok){changed();audio.play('win');renderer.burst(-1,r.msg);}openDialog('growth',artDialog(state));toast(r.msg);return;}
  if(b.dataset.artSell){const r=sellArtwork(state,b.dataset.artSell);if(r.ok)changed();openDialog('growth',artDialog(state));toast(r.msg);return;}
  if(action==='art'){openDialog('growth',artDialog(state));return;}
  if(b.dataset.artView){const html=artViewDialog(state,b.dataset.artView);if(html)openDialog('art-view',html);return;}
+ if(b.dataset.artPlace){const r=placeArtwork(state,b.dataset.artId,b.dataset.artPlace);if(r.ok)changed();const html=artViewDialog(state,b.dataset.artId);if(html)openDialog('art-view',html);toast(r.msg);return;}
  if(b.dataset.artZoom!==undefined){const zoomed=b.closest('.art-room').classList.toggle('zoomed');b.setAttribute('aria-pressed',zoomed);return;}
  if(action==='mansion-design'){showMansion();return;}
  if(action==='mansion-reset'){mansionDraft={...DEFAULT_MANSION};openDialog('mansion',mansionDialog(state,mansionDraft,analysis.wealth));return;}

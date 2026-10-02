@@ -1,6 +1,7 @@
 import {L} from './i18n.js';
 import {RICH_GOALS} from './rich-life.js';
 import {compoundSummary} from './compound.js';
+import {islandValue} from './private-island.js';
 import {TYPES,MILESTONES,assetValue} from './engine.js';
 const money=n=>'₲'+Math.round(n).toLocaleString('en-US');
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -10,7 +11,7 @@ export function growthModel(s,a){
  const points=[{month:0,wealth:baseline},...s.history.filter(h=>h.month<s.month),{month:s.month,wealth:a.wealth}];
  if(s.month===0)points.splice(0,points.length,{month:0,wealth:baseline},{month:0,wealth:a.wealth});
  const tier=stages.filter(m=>a.wealth>=m.wealth).length,next=stages[tier];
- const buckets=[{name:L('Cash'),value:Math.max(0,s.money),color:'#d9b359'},{name:L('Property'),value:a.assets,color:'#7ba58c'},{name:L('Stocks'),value:a.stocks,color:'#739fbd'},{name:L('Inventory'),value:a.inventory,color:'#b998bd'},{name:L('Compound assets'),value:compoundSummary(s).assets,color:'#438363'},{name:L('Owner equity · art'),value:(a.empire?.assets||0)+(a.art?.value||0),color:'#b39961'}];
+ const buckets=[{name:L('Cash'),value:Math.max(0,s.money),color:'#d9b359'},{name:L('Property'),value:a.assets,color:'#7ba58c'},{name:L('Private island'),value:islandValue(s),color:'#2a8c91'},{name:L('Stocks'),value:a.stocks,color:'#739fbd'},{name:L('Inventory'),value:a.inventory,color:'#b998bd'},{name:L('Compound assets'),value:compoundSummary(s).assets,color:'#438363'},{name:L('Owner equity · art'),value:(a.empire?.assets||0)+(a.art?.value||0),color:'#b39961'}];
  return{stages,baseline,delta:a.wealth-baseline,monthly:a.wealth-previous,tier,next,points,buckets,gross:buckets.reduce((n,b)=>n+b.value,0),label:[s.concept==='rich-life'?L('Super Rich'):L('Building seed money'),...stages.map(m=>m.name)][tier],royalties:(s.projects||[]).filter(p=>p.status==='earning').length};
 }
 function skyline(s,a){const owns=a.owned.filter(({t})=>t.type!=='plot').slice(0,9),width=640,base=164;let shapes='';

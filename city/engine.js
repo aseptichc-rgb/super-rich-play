@@ -37,6 +37,7 @@ import {lifestyleCostReport} from './living-costs.js';
 import {lifeEnded} from './longevity.js';
 import {ensureElection,advanceElection,electionTaxRate,validElection} from './elections.js';
 import {ultraValue,ultraIncome,validUltra,settleUltra} from './ultra.js';
+import {islandValue,validIsland} from './private-island.js';
 // Personal wealth simulation. All money is fictional G; one tick is one month.
 export const SAVE_KEY='super-rich-life-v2';
 // The map is square. Building on its edge opens MAP_GROWTH tiles of land on every side, so the
@@ -465,7 +466,7 @@ function analyzeAt(s){
  for(const{t,i}of owned){assets+=assetValue(s,i);if(t.type){const r=businessReport(s,i,{businessCount});reports[i]=r;revenue+=r.revenue;expense+=r.cost;}}
  const career=wageQuote(s),wage=career.wage,investment=investmentReport(s);
  const stocks=investment.market,compound=compoundSummary(s),creative=projectReport(s),empire=empireSummary(s);
- const acquisitions=acquisitionSummary(s),inventory=journeyInventoryValue(s),art=artPortfolio(s),wealth=ultraValue(s)+startupSummary(s).assets+acquisitions.assets+s.money+assets+stocks+inventory+empire.assets+art.value+compound.assets-s.debt-(s.market?.margin||0)+(s.market?.shorts?shortValue(s):0),connected=new Set();s.tiles.forEach((t,i)=>{if(t.type==='road')connected.add(i);});
+ const acquisitions=acquisitionSummary(s),inventory=journeyInventoryValue(s),art=artPortfolio(s),wealth=islandValue(s)+ultraValue(s)+startupSummary(s).assets+acquisitions.assets+s.money+assets+stocks+inventory+empire.assets+art.value+compound.assets-s.debt-(s.market?.margin||0)+(s.market?.shorts?shortValue(s):0),connected=new Set();s.tiles.forEach((t,i)=>{if(t.type==='road')connected.add(i);});
  const lifestyleCosts=lifestyleCostReport(s,wealth),living=lifestyleCosts.total,tuition=s.plan.learn*4,interest=Math.round(s.debt*.012+(s.market?.margin||0)*MARGIN_RATE);
  const bonus=s.effect?.bonus||0,net=wage+revenue-expense-living-tuition-interest+bonus+creative.income+investment.dividends+empire.income+acquisitions.income+(compound.auto?0:compound.income);
  // Per-tile overlay data is only drawn in the data map views, so it is worked out on first use instead of every refresh.
@@ -626,7 +627,7 @@ function validSaveAt(s){
  if(s?.propertyTax!==undefined&&(!s.propertyTax||typeof s.propertyTax!=='object'||Array.isArray(s.propertyTax)||!Number.isFinite(s.propertyTax.accrued)||Math.abs(s.propertyTax.accrued)>1e15))return false;
  if(s?.growthStartMonth!==undefined&&(!Number.isInteger(s.growthStartMonth)||s.growthStartMonth<0||s.growthStartMonth>s.month))return false;
  if(Array.isArray(s?.tiles)&&!s.tiles.every(t=>(t.shockFactor===undefined||(Number.isFinite(t.shockFactor)&&t.shockFactor>0&&t.shockFactor<=1))&&(t.assetLedger===undefined||(t.assetLedger&&['initial','upgrades','buildingValue'].every(k=>Number.isFinite(t.assetLedger[k])&&t.assetLedger[k]>=0)&&Number.isFinite(t.assetLedger.operating)&&['since','valuationMonth'].every(k=>Number.isInteger(t.assetLedger[k])&&t.assetLedger[k]>=0&&t.assetLedger[k]<=s.month)&&typeof t.assetLedger.estimated==='boolean'))))return false;
- if(!s||!validUltra(s)||!validReputation(s)||!validAcquisitions(s)||!validStartups(s)||!validCompound(s)||!validFlex(s)||!validArt(s)||!validRichLife(s)||!validVentures(s)||!validEmpire(s))return false;
+ if(!s||!validIsland(s)||!validUltra(s)||!validReputation(s)||!validAcquisitions(s)||!validStartups(s)||!validCompound(s)||!validFlex(s)||!validArt(s)||!validRichLife(s)||!validVentures(s)||!validEmpire(s))return false;
  if(!s||!validShift(s)||!validProjects(s)||!validCareer(s)||!validInvestment(s)||!validRewards(s)||!validJourney(s)||s.version!==2||!['standard','sandbox'].includes(s.mode)||typeof s.name!=='string'||s.name.length>40)return false;
  if(!['money','month','debt','skill','stress','seed','highestWealth'].every(k=>Number.isFinite(s[k]))||!Number.isInteger(s.month)||s.month<0||s.debt<0||s.skill<0||s.skill>100||s.stress<0||s.stress>100)return false;
  if(!['create','inspect','curate'].every(k=>s.plan?.[k]===undefined||(Number.isInteger(s.plan[k])&&s.plan[k]>=0)))return false;

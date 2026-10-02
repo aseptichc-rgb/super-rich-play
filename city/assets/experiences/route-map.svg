@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 330" role="img" aria-label="Stylized world route map">
+ <defs><linearGradient id="sea" x2="0" y2="1"><stop stop-color="#143c51"/><stop offset="1" stop-color="#245d65"/></linearGradient></defs>
+ <rect width="800" height="330" fill="url(#sea)"/>
+ <g fill="#6e9d82" opacity=".75" stroke="#b9c99d" stroke-width="2">
+  <path d="M40 72 Q65 50 112 51 L143 70 179 65 202 91 194 120 167 126 151 153 129 164 112 151 94 169 72 152 58 119 37 107Z"/>
+  <path d="M133 181 Q170 171 185 190 L201 218 194 251 174 291 154 306 143 277 151 247 132 221Z"/>
+  <path d="M346 81 Q369 68 394 74 L417 90 433 84 445 102 424 122 391 117 374 130 351 115Z"/>
+  <path d="M382 139 Q417 125 456 151 L470 189 449 238 422 264 398 244 388 206 369 173Z"/>
+  <path d="M433 87 Q477 50 528 58 L561 72 599 61 653 77 697 94 710 119 681 133 657 120 631 144 610 141 579 167 548 151 527 174 498 151 467 155 449 129Z"/>
+  <path d="M649 238 Q679 214 713 227 L744 248 738 278 699 290 663 275Z"/>
+ </g>
+ <g fill="none" stroke="#f2d69b" stroke-width="2.5" stroke-dasharray="7 7" opacity=".85">
+  <path d="M630 134 Q516 37 390 102"/><path d="M630 134 Q533 77 425 146"/><path d="M630 134 Q651 112 677 143"/>
+ </g>
+ <g fill="#f6d993" stroke="#fff7de" stroke-width="2"><circle cx="630" cy="134" r="6"/><circle cx="390" cy="102" r="5"/><circle cx="425" cy="146" r="5"/><circle cx="677" cy="143" r="5"/></g>
+</svg>

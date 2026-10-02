@@ -44,7 +44,9 @@ export function propertyPartyPanel(s,i){
  const t=s.tiles[i],party=t&&Object.hasOwn(PROPERTY_PARTIES,t.type)&&PROPERTY_PARTIES[t.type];
  if(!party||t.owner!=='player'||t.tenure!=='buy')return '';
  const done=s.reputation?.lastParties?.[t.type]===s.month,poor=s.money<party.cost;
- return L`<section class="owner-reputation"><h3>🥂 ${party.name}</h3><p>Invite guests to unwind and mingle.</p><p>Hosting cost ${money(party.cost)} · Stress up to −${party.stress} · Reputation +${party.fame}</p><button class="primary full" data-property-party="${i}" ${done||poor?'disabled':''}>${done?L("This month's party held"):poor?L('Not enough cash to host'):L('Host a Party')}</button><p class="help">Once a month per venue type (golf club / resort). Owning several venues of the same type still shares one hosting slot.</p></section>`;
+ const journal=s.lifestyle?.journal||[],latest=journal.findLastIndex(entry=>entry.kind===t.type);
+ const owner=s.concept==='rich-life'?`<button data-owner-open="${t.type}" data-owner-venue="${i}" class="full">${L('Visit as the owner →')}</button>${latest>=0?`<button data-owner-memory="${latest}" class="full">${t.type==='golf'?L('Clubhouse photo · View the last round →'):L('Owner guestbook · Read the latest visit →')}</button>`:''}`:'';
+ return L`<section class="owner-reputation"><h3>🥂 ${party.name}</h3><p>Invite guests to unwind and mingle.</p><p>Hosting cost ${money(party.cost)} · Stress up to −${party.stress} · Reputation +${party.fame}</p><button class="primary full" data-property-party="${i}" ${done||poor?'disabled':''}>${done?L("This month's party held"):poor?L('Not enough cash to host'):L('Host a Party')}</button><p class="help">Once a month per venue type (golf club / resort). Owning several venues of the same type still shares one hosting slot.</p></section>`+owner;
 }
 export function validReputation(s){
  const r=s.reputation;if(r===undefined)return true;
