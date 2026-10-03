@@ -1,6 +1,6 @@
 // Local illustrations are decorative; names and prices remain readable HTML.
 import {buildingArtURL} from './building-art.js';
-const DISPLAY_ART={marina:'city/assets/scenery/marina-pier.webp',garage:'city/assets/vehicles/car-sunset-front.webp'};
+const DISPLAY_ART={marina:'city/assets/scenery/marina-pier.webp',garage:'city/assets/vehicles/car-sunset-front.webp',observatory:'city/assets/scenery/mountain-observatory.webp',cablecar:'city/assets/scenery/cablecar-station.webp'};
 export function propertyArt(type,thumbnail=false,level=1){
  // Thumbnails exist only for tier 1; the large illustration follows the expansion tier.
  const display=Object.hasOwn(DISPLAY_ART,type)?DISPLAY_ART[type]:null;

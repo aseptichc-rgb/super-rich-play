@@ -5,6 +5,7 @@ import {checkHealth,hospitalized,settling,validHealth,transaction,healthReason} 
 import {validPlayTime} from './play-time.js';
 import {startupSummary,advanceStartups,validStartups,decideStartup,validStartupEvent} from './startups.js';
 import {L} from './i18n.js';
+import {mountainElevation} from './mountains.js';
 import {marketFactor,marketPrice,incomeFactor} from './economy.js';
 import {ensureEconomy,advanceEconomy,validEconomy} from './economy.js';
 import {ensureLongShocks,advanceLongShocks,validLongShocks} from './long-shocks.js';
@@ -58,6 +59,8 @@ const mapSize=s=>BASE_SIZE+2*mapOffset(s);
 export function useMap(s){SIZE=mapSize(s);return s;}
 function onMap(s,fn){const size=SIZE;SIZE=mapSize(s);try{return fn();}finally{SIZE=size;}}
 export const TYPES={
+ observatory:{name:L('Mountain Observatory'),group:'property',icon:'🔭',cost:200000,upkeep:2500,color:'#baaa79',shape:'observatory',base:18000,staff:0,managed:true,mountainOnly:true,desc:L('Build on one mountain tile. Higher terrain adds up to 75% revenue. Your operating cable car within 3 tiles adds another 25% · Runs automatically · Expands up to 3 tiers.')},
+ cablecar:{name:L('Cable Car'),group:'property',icon:'🚠',cost:350000,upkeep:4500,color:'#dc8e56',shape:'cablecar',base:24000,staff:0,managed:true,mountainOnly:true,desc:L('A mountain-only cable car with lower and upper stations. Earns fares and adds 25% revenue to your observatories within 3 tiles · Runs automatically · Expands up to 3 tiers.')},
  marina:{name:L('Yacht Marina'),group:'property',icon:'🛥',cost:120000,upkeep:0,color:'#77b7b8',shape:'park',base:0,staff:0,unique:true,desc:L('Build on land beside the river to display every yacht you own.')},
  garage:{name:L('My Garage'),group:'property',icon:'🏎',cost:75000,upkeep:0,color:'#b3a486',shape:'shop',base:0,staff:0,unique:true,desc:L('Build a private garage to display every car you own.')},
  skyscraper:{name:L('Skyscraper'),group:'property',icon:'🌆',cost:150000,upkeep:1200,color:'#78aeb1',shape:'tower',base:9000,staff:0,managed:true,desc:L('A 3×3 skyscraper with no floor limit. Each floor costs 4% more than the one below. Rent, upkeep and visible height grow with the floor count.')},
@@ -156,6 +159,7 @@ export const OFF_ROAD={land:.65,construction:.8,revenue:.45};
 export function hasRoadAccess(s,i,footprint){return footprintCells(i,footprint).some(j=>neighbors(j).some(n=>s.tiles[n].type==='road'));}
 // Connect completed buildings through unowned empty land, without demolishing assets.
 function connectBuildingRoad(s,i){
+ if(TYPES[s.tiles[i]?.type]?.mountainOnly)return;
  if(hasRoadAccess(s,i,s.tiles[i].footprint))return;
  const cells=new Set(footprintCells(i,s.tiles[i].footprint)),previous=new Map(),queue=[];
  const vacant=j=>!cells.has(j)&&s.tiles[j].terrain==='land'&&!s.tiles[j].type&&!s.tiles[j].owner;
@@ -273,7 +277,7 @@ export function advanceNeighborhood(s){
  s.log=s.log.slice(0,25);
 }
 export function parcelQuote(s,i){
- i=buildingAnchor(s,i);const t=s.tiles[i];if(!t||t.terrain!=='land'||t.owner==='player')return null;
+ i=buildingAnchor(s,i);const t=s.tiles[i];if(!t||(t.terrain!=='land'&&!(t.terrain==='mountain'&&(TYPES[t.type]?.mountainOnly||t.type==='plot')))||t.owner==='player')return null;
  if(t.owner==='rival'&&(!TYPES[t.type]?.managed||(s.mode!=='sandbox'&&(s.highestWealth||0)<30000000)))return null;
  const type=!t.type&&!t.owner?'plot':['npc','rival'].includes(t.owner)?({home:'rental',shop:'market',tower:'office',factory:'workshop'}[t.type]||(TYPES[t.type]?.group?t.type:null)):null;
  if(!type)return null;
@@ -306,7 +310,7 @@ function buyParcelImpl(s,i){
 export function amenityPower(t){return t?.type&&(['park','garden','citypark','hospital','university','themepark'].includes(t.type)||t.landmark)?Math.round((['park','garden','citypark'].includes(t.type)?6:12)*t.level*Math.pow(Math.max(1,(t.constructionCost??TYPES[t.type]?.cost??1600)/1600),.15)):0;}
 // Foot traffic is not fixed: homes, parks and the attractions below within four tiles all feed it, so expanding a
 // resort or finishing a landmark lifts the neighbors. A building's own lot is skipped so it never inflates itself.
-export const ATTRACTION={resort:10,golf:8,hotel:6,office:4,hall:3,shop:2,cafe:2,market:2,hq:20,monument:30};
+export const ATTRACTION={observatory:8,cablecar:6,resort:10,golf:8,hotel:6,office:4,hall:3,shop:2,cafe:2,market:2,hq:20,monument:30};
 export function location(s,i){let residents=0,competition=0,amenity=0,attraction=0;for(const j of around(i,4)){const t=s.tiles[j],d=dist(i,j);if(underConstruction(s,t))continue;if(d<=4&&['home','rental','condo','housing'].includes(t.type))residents+=t.level*12;if(d<=4)amenity+=j!==i?amenityPower(t):t.type==='themepark'?18*t.level:0;if(d<=4&&j!==i&&t.type===s.tiles[i].type)competition++;if(d<=4&&j!==i&&t.buildingAnchor!==i&&ATTRACTION[t.type])attraction+=ATTRACTION[t.type]*(t.level||1)*(t.landmark?3:1);}attraction=Math.min(40,attraction);const access=hasRoadAccess(s,i,s.tiles[i].footprint);return{residents,competition,amenity:Math.min(36,amenity),attraction,access,boulevard:hasBoulevardAccess(s,i,s.tiles[i].footprint),footfall:Math.round(Math.max(20,35+residents*.32+amenity+attraction))};}
 export function footprintCells(i,footprint={width:1,height:1}){
  const {width,height}=footprint||{},p=coords(i);
@@ -330,7 +334,7 @@ export function ownerAttention(s){
 // Tourism clusters: hotels, resorts, golf courses and theme parks within two tiles of each other lift one another; HQ and monument lift everything.
 export function synergyReport(s,i,type){
  if(!TYPES[type]?.managed)return{partners:0,hq:false,monument:false,bonus:0};
- let partners=0,hq=false,monument=false;const tourism=['hotel','resort','golf','themepark'],cluster=tourism.includes(type);
+ let partners=0,hq=false,monument=false;const tourism=['hotel','resort','golf','themepark','observatory','cablecar'],cluster=tourism.includes(type);
  for(let j=0;j<s.tiles.length;j++){const t=s.tiles[j];if(t.owner!=='player'||j===i||underConstruction(s,t))continue;if(t.type==='hq')hq=true;else if(t.type==='monument')monument=true;else if(cluster&&tourism.includes(t.type)&&dist(i,j)<=2)partners++;}
  partners=Math.min(3,partners);
  return{partners,hq,monument,bonus:partners*.08+(hq?.05:0)+(monument?.1:0)};
@@ -348,6 +352,12 @@ export function crowdingReport(s,i,footprint=s.tiles[i]?.footprint){
 }
 // Mountain view: a mountain within three tiles lifts the location score of resorts, hotels and golf courses.
 export const MOUNTAIN_VIEW={resort:.25,hotel:.1,golf:.1};
+export function mountainSite(s,i,type=s.tiles[i]?.type){
+ const {x,y}=coords(i),elevation=s.tiles[i]?.terrain==='mountain'?mountainElevation(s,x,y):0;
+ const height=Math.max(0,Math.min(1,elevation/80)),altitudeBonus=type==='observatory'?height*.75:0;
+ const cableBonus=type==='observatory'&&around(i,3).some(j=>j!==i&&dist(i,j)<=3&&s.tiles[j].type==='cablecar'&&s.tiles[j].owner==='player'&&!underConstruction(s,s.tiles[j]))?.25:0;
+ return {elevation,height,altitudeBonus,cableBonus,multiplier:(1+altitudeBonus)*(1+cableBonus)};
+}
 // Roads provide access, not tenants. A rental's own residents cannot supply its rental demand.
 function propertyDemand(s,i,loc){
  const {x,y}=coords(i),central=clamp(1-Math.hypot(x-mapOffset(s)-10,y-mapOffset(s)-10)/15,0,1),t=s.tiles[i];
@@ -366,24 +376,24 @@ export function signatureGrowth(s){
 export function developmentQuote(s,i,type,level=1,footprint=s.tiles[i]?.footprint){
  // A contract quote sees the finished map: the new building at the quoted level, owned by the player, replacing what stood in its footprint.
  const cells=footprintCells(i,footprint),view=footprint?{...s,tiles:s.tiles.map((t,j)=>cells.includes(j)?j===i?{...t,type,footprint,level,owner:'player'}:{terrain:'land',type:null,level:1}:t)}:s;
- const d=TYPES[type],loc=location(view,i),{x,y}=coords(i),central=clamp(1-Math.hypot(x-mapOffset(s)-10,y-mapOffset(s)-10)/15,0,1);
+ const d=TYPES[type],loc=location(view,i),site=d.mountainOnly?mountainSite(s,i,type):null,{x,y}=coords(i),central=clamp(1-Math.hypot(x-mapOffset(s)-10,y-mapOffset(s)-10)/15,0,1);
  const near=around(i,3).filter(j=>dist(i,j)<=3),waterfront=near.some(j=>s.tiles[j].terrain==='water'),mountain=near.some(j=>s.tiles[j].terrain==='mountain');
- const score=clamp(.65*(loc.footfall/100)+.35*central+(mountain?MOUNTAIN_VIEW[type]||0:0)+(type==='resort'?(waterfront?.25:0)+loc.amenity/36*.2:type==='hotel'?loc.amenity/36*.1:0),0,1);
- const demand=clamp(propertyDemand(view,i,loc)+(mountain?MOUNTAIN_VIEW[type]||0:0)+(type==='resort'&&waterfront ? .25 : 0),0,1);
- const area=cells.length||1,factor=(d.managed?.75+score*.6:1)*(loc.access?1:OFF_ROAD.construction),floorBaseCost=Math.round(d.cost*factor*Math.pow(area,1.05)),construction=type==='skyscraper'?Math.round(floorBaseCost*skyscraperCostFactor(level)):floorBaseCost;
+ const score=site?clamp(.45+site.height*.35+Math.min(1,loc.footfall/100)*.2,0,1):clamp(.65*(loc.footfall/100)+.35*central+(mountain?MOUNTAIN_VIEW[type]||0:0)+(type==='resort'?(waterfront?.25:0)+loc.amenity/36*.2:type==='hotel'?loc.amenity/36*.1:0),0,1);
+ const demand=site?clamp(.65+site.height*.25+Math.min(1,loc.footfall/100)*.1,0,1):clamp(propertyDemand(view,i,loc)+(mountain?MOUNTAIN_VIEW[type]||0:0)+(type==='resort'&&waterfront ? .25 : 0),0,1);
+ const area=cells.length||1,factor=(d.managed?.75+score*.6:1)*(loc.access||site?1:OFF_ROAD.construction),floorBaseCost=Math.round(d.cost*factor*Math.pow(area,1.05)),construction=type==='skyscraper'?Math.round(floorBaseCost*skyscraperCostFactor(level)):floorBaseCost;
  const land=cells.reduce((sum,j)=>sum+(s.tiles[buildingAnchor(s,j)]?.owner==='player'&&s.tiles[buildingAnchor(s,j)].tenure==='buy'?0:landPrice(s,j)),0);
  // Managed revenue rides the business cycle, tourism clusters, crowding, the owner's reputation premium and on-site attention.
  // Location risk is deliberately curved: prime sites retain the old ceiling, while weak sites can fall below fixed upkeep.
- const synergy=synergyReport(view,i,type),crowding=crowdingReport(view,i,footprint),premium=d.managed?reputationSummary(s).premium:1,cycle=d.managed?cycleFactor(s):1,attention=d.managed?ownerAttention(view):null,boost=cycle*(1+synergy.bonus)*premium*(attention?attention.multiplier:1)*(d.managed?crowding.multiplier:1)*(d.managed&&s.concept==='rich-life'?(s.signatureMultiplier??1):1);
+ const synergy=synergyReport(view,i,type),crowding=crowdingReport(view,i,footprint),premium=d.managed?reputationSummary(s).premium:1,cycle=d.managed?cycleFactor(s):1,attention=d.managed?ownerAttention(view):null,boost=cycle*(1+synergy.bonus)*premium*(attention?attention.multiplier:1)*(d.managed?crowding.multiplier:1)*(d.managed&&s.concept==='rich-life'?(s.signatureMultiplier??1):1)*(site?.multiplier||1);
  // Everything except the level multiplier is rounded first, so an expansion always earns an exact multiple of level 1.
- let revenue=Math.round(incomeFactor(s)*d.base*(d.managed?(.08+1.62*Math.pow(score,1.5))*demand*boost*.75:1)*Math.pow(area,1.3)*(loc.access?1:OFF_ROAD.revenue)*(type==='office'?(loc.boulevard?BOULEVARD.rent:1)*trafficFactor(loc.footfall,TRAFFIC.rent):1))*level,cost=d.upkeep*level*area;
+ let revenue=Math.round(incomeFactor(s)*d.base*(d.managed?(.08+1.62*Math.pow(score,1.5))*demand*boost*.75:1)*Math.pow(area,1.3)*(loc.access||site?1:OFF_ROAD.revenue)*(type==='office'?(loc.boulevard?BOULEVARD.rent:1)*trafficFactor(loc.footfall,TRAFFIC.rent):1))*level,cost=d.upkeep*level*area;
  if(!d.managed&&d.group&&type!=='plot'){
   const virtual={...s,tiles:s.tiles.map((t,j)=>cells.includes(j)?j===i?{terrain:'land',type,owner:'player',tenure:'buy',level,price:100,quality:1,staff:d.staff,marketing:false,footprint}: {terrain:'land',type:'extension',owner:null,level:1,buildingAnchor:i}:t)};
   const report=businessReport(virtual,i);revenue=report.revenue;cost=report.cost;
  }
  revenue=Math.round(revenue);cost=Math.round(cost);
  const demolition=footprint?[...new Set(cells.map(j=>buildingAnchor(s,j)))].reduce((sum,j)=>sum+(demolitionQuote(s,j)?.cost||0),0):0;
- return{loc,waterfront,mountain,score,demand,factor,cells,area,label:demand<.25?L('Low-demand location'):score>=.8?L('Prime location'):score>=.55?L('Popular location'):L('Value location'),floorBaseCost,construction,land,demolition,total:construction+land+demolition,revenue,cost,profit:revenue-cost,synergy,crowding,premium,cycle,attention,boost};
+ return{loc,waterfront,mountain,site,score,demand,factor,cells,area,label:demand<.25?L('Low-demand location'):score>=.8?L('Prime location'):score>=.55?L('Popular location'):L('Value location'),floorBaseCost,construction,land,demolition,total:construction+land+demolition,revenue,cost,profit:revenue-cost,synergy,crowding,premium,cycle,attention,boost};
 }
 export const SKYSCRAPER_FLOOR_RATE=1.04;
 export const skyscraperCostFactor=floors=>Math.expm1(floors*Math.log(SKYSCRAPER_FLOOR_RATE))/(SKYSCRAPER_FLOOR_RATE-1);
@@ -474,6 +484,10 @@ function analyzeAt(s){
  return{satelliteIncome,inventory,art,lifestyleCosts,career,investment,creative,empire,acquisitions,economy:economyReport(s),compound,owned,reports,businessCount,revenue,expense,assets,wage,living,tuition,interest,stocks,bonus,net,wealth,passive:owned.filter(({t})=>TYPES[t.type]?.group==='property').reduce((n,{i})=>n+reports[i].profit,0)+empire.income+acquisitions.income+satelliteIncome,free:160-s.plan.work-s.plan.manage-s.plan.learn-(s.concept==='rich-life'?0:(s.plan.create||0))-(s.plan.inspect||0)-(s.plan.curate||0),attention:ownerAttention(s),connected,active:s.tiles.map(()=>true),get details(){return details??=onMap(s,()=>s.tiles.map((t,i)=>{const l=location(s,i);return{connected:l.access,pollution:100-l.footfall,value:Math.round(landPrice(s,i,buildingAnchor(s,i)===i?l.footfall:undefined)/80),education:l.residents>40,health:l.amenity>0,fire:t.owner==='player'};}));}};
 }
 export function canBuild(s,i,type,tenure='lease',footprint,floors=1){
+ if(TYPES[type]?.mountainOnly){
+  if(s.tiles[i]?.terrain!=='mountain')return L('This facility can only be built on a mountain.');
+  if(footprint&&(footprint.width!==1||footprint.height!==1))return L('Mountain facilities use one mountain tile.');
+ }
  if(['marina','garage'].includes(type)){
   if(footprint&&(footprint.width!==1||footprint.height!==1))return L('This display building uses one land tile.');
   if(type==='marina'&&s.tiles[i]?.terrain==='land'){
@@ -490,7 +504,7 @@ export function canBuild(s,i,type,tenure='lease',footprint,floors=1){
   if(!d?.group||['plot','atelier'].includes(type))return L('Select a business you can build.');
   if(tenure!=='buy')return L('You must own the land to build on a combined lot.');
   for(const j of cells){const t=s.tiles[j],root=s.tiles[buildingAnchor(s,j)];
-   if(t.terrain!=='land'||t.type==='road'||(t.type&&t.type!=='extension'&&!TYPES[t.type]?.group&&!parcelQuote(s,j)))return L('River, mountain, road and public tiles can\'t be part of a building lot.');
+   if(t.terrain!==(d.mountainOnly?'mountain':'land')||t.type==='road'||(t.type&&t.type!=='extension'&&!TYPES[t.type]?.group&&!parcelQuote(s,j)))return L('River, mountain, road and public tiles can\'t be part of a building lot.');
    if((t.type||t.owner)&&!(root.owner==='player'&&root.tenure==='buy'))return L('Buy the existing buildings inside the lot first.');
    if(root.footprint&&!footprintCells(buildingAnchor(s,j),root.footprint).every(k=>cells.includes(k)))return L('Include the entire lot of the existing combined building to rebuild it.');
    if(root.type==='atelier')return L('Clear out the workshop before building here.');
@@ -502,7 +516,7 @@ export function canBuild(s,i,type,tenure='lease',footprint,floors=1){
   if(s.mode!=='sandbox'&&s.money<quote.total)return L('Not enough cash.');
   return null;
  }
- const t=s.tiles[i],d=TYPES[type];if(!t||!d?.group||type==='plot')return L('Select a business you can build.');if(t.terrain==='water')return L('You can\'t build on water.');if(t.terrain==='mountain')return L('You can\'t build on a mountain.');if((t.type||t.owner)&&!(t.type==='plot'&&t.owner==='player'&&tenure==='buy'))return L('This lot is already in use. Pick an empty one.');
+ const t=s.tiles[i],d=TYPES[type];if(!t||!d?.group||type==='plot')return L('Select a business you can build.');if(t.terrain==='water')return L('You can\'t build on water.');if(t.terrain==='mountain'&&!d.mountainOnly)return L('You can\'t build on a mountain.');if((t.type||t.owner)&&!(t.type==='plot'&&t.owner==='player'&&tenure==='buy'))return L('This lot is already in use. Pick an empty one.');
  if(s.mode!=='sandbox'&&(d.unlock||0)>s.highestWealth)return L`Unlocks once peak net worth reaches ₲${d.unlock.toLocaleString()}.`;
  if(d.unique&&s.tiles.some(t=>t.owner==='player'&&t.type===type))return L`${d.name} can only be built once per city.`;
  if(!['buy','lease'].includes(tenure))return L('Choose a contract type.');if(d.group==='property'&&tenure==='lease')return L('Rental properties require buying the land first.');
@@ -516,7 +530,7 @@ function buildImpl(s,i,type,tenure='lease',footprint,floors=1){
   const q=developmentQuote(s,i,type,floors,footprint),ledgers=q.cells.filter(j=>s.tiles[j].owner==='player').map(j=>assetLedger(s,j));
   if(s.mode!=='sandbox')s.money-=q.total;
   for(const j of q.cells)s.tiles[j]={terrain:'land',type:'extension',owner:null,level:1,tree:false,buildingAnchor:i};
-  s.tiles[i]={terrain:'land',type,owner:'player',tenure:'buy',deposit:0,constructionCost:q.construction,footprint:{...footprint},level:floors,...(type==='skyscraper'?{floorBaseCost:q.floorBaseCost}:{}),tree:false,price:100,quality:1,staff:TYPES[type].staff,marketing:false,
+  s.tiles[i]={terrain:TYPES[type].mountainOnly?'mountain':'land',type,owner:'player',tenure:'buy',deposit:0,constructionCost:q.construction,footprint:{...footprint},level:floors,...(type==='skyscraper'?{floorBaseCost:q.floorBaseCost}:{}),tree:false,price:100,quality:1,staff:TYPES[type].staff,marketing:false,
    assetLedger:{initial:q.total+ledgers.reduce((n,l)=>n+l.initial,0),upgrades:ledgers.reduce((n,l)=>n+l.upgrades,0),operating:ledgers.reduce((n,l)=>n+l.operating,0),since:Math.min(s.month,...ledgers.map(l=>l.since)),estimated:ledgers.some(l=>l.estimated),buildingValue:q.construction*.7*Math.pow(q.area,.15),valuationMonth:s.month}};
   
   connectBuildingRoad(s,i);
@@ -536,7 +550,7 @@ function demolishAssetImpl(s,i){
  if(!q)return{ok:false,msg:L('Only buildings on your own land can be demolished.')};
  if(s.money<q.cost)return{ok:false,msg:L('Not enough cash for demolition.')};
  const ledger=assetLedger(s,i);s.money-=q.cost;
- for(const j of q.cells)s.tiles[j]={terrain:'land',type:'plot',owner:'player',tenure:'buy',deposit:0,constructionCost:0,level:1,tree:false,price:100,quality:1,staff:0,marketing:false,assetLedger:{...ledger,initial:ledger.initial/q.cells.length,upgrades:ledger.upgrades/q.cells.length,operating:(ledger.operating-q.cost)/q.cells.length,buildingValue:0,valuationMonth:s.month}};
+ for(const j of q.cells)s.tiles[j]={terrain:s.tiles[j].terrain,type:'plot',owner:'player',tenure:'buy',deposit:0,constructionCost:0,level:1,tree:false,price:100,quality:1,staff:0,marketing:false,assetLedger:{...ledger,initial:ledger.initial/q.cells.length,upgrades:ledger.upgrades/q.cells.length,operating:(ledger.operating-q.cost)/q.cells.length,buildingValue:0,valuationMonth:s.month}};
  const msg=L`${q.name} demolished · ₲${q.cost.toLocaleString()} paid · Land retained`;s.log.unshift(msg);s.log=s.log.slice(0,25);
  return{ok:true,msg,cost:q.cost};
 }
@@ -637,7 +651,8 @@ function validSaveAt(s){
  if(!validUniversity(s))return false;
  if(!s.tiles.every((t,i)=>{
   if(t.type==='skyscraper'&&(t.footprint?.width!==3||t.footprint?.height!==3||!Number.isFinite(t.floorBaseCost)||t.floorBaseCost<=0||!Number.isFinite(t.floorBaseCost*skyscraperCostFactor(t.level))))return false;
-  if(t.footprint!==undefined){const cells=footprintCells(i,t.footprint);if(t.terrain!=='land'||!['player','npc','rival'].includes(t.owner)||t.tenure!=='buy'||!TYPES[t.type]?.group||['plot','atelier'].includes(t.type)||!cells.length||!cells.every(j=>j===i||s.tiles[j].type==='extension'&&s.tiles[j].buildingAnchor===i))return false;}
+  if(TYPES[t.type]?.mountainOnly&&(t.terrain!=='mountain'||buildingArea(t)!==1||t.tenure!=='buy'))return false;
+  if(t.footprint!==undefined){const cells=footprintCells(i,t.footprint);if(t.terrain!==(TYPES[t.type]?.mountainOnly?'mountain':'land')||!['player','npc','rival'].includes(t.owner)||t.tenure!=='buy'||!TYPES[t.type]?.group||['plot','atelier'].includes(t.type)||!cells.length||!cells.every(j=>j===i||s.tiles[j].type==='extension'&&s.tiles[j].buildingAnchor===i))return false;}
   if(t.type==='extension'){const root=s.tiles[t.buildingAnchor];return Number.isInteger(t.buildingAnchor)&&t.buildingAnchor!==i&&t.terrain==='land'&&t.owner===null&&t.assetLedger===undefined&&t.footprint===undefined&&root?.footprint!==undefined&&['player','npc','rival'].includes(root.owner)&&footprintCells(t.buildingAnchor,root.footprint).includes(i);}
   return t.buildingAnchor===undefined;
  }))return false;

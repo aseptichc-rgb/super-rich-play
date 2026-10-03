@@ -3,6 +3,7 @@ import {checkHealth} from './health.js';
 import {L} from './i18n.js';
 import {hashRoll} from './rng.js';
 import {shockPrices} from './market.js';
+import {CHANCE_EVENTS} from './chance-events.js';
 const money=n=>'₲'+Math.round(n).toLocaleString('en-US');
 const pct=(wealth,p,min=0)=>Math.max(min,Math.round(wealth*p));
 // Spending stops growing at the Tycoon chapter's ₲30M; investments keep scaling because they return the stake.
@@ -50,7 +51,8 @@ export const RICH_EVENTS=[
   {label:L('Hold'),prices:.9,desc:L('Stock prices −10% · No extra spending')}]},
  {id:'rival_offer',title:L('Rival\'s buyout offer'),text:L('Your rival offers to buy your building above market price. Take the cash, or keep your pride?'),hidden:true,build:(s,c)=>[
   {label:L('Sell at a premium'),money:c.offer,action:'sell-to-rival',tile:c.tile,desc:L`${c.tileName} sold · 130% of market (${money(c.offer)}) in cash`},
-  {label:L('Decline'),fame:10,desc:L('Reputation +10 · Rival\'s next offer comes in a year')}]}
+  {label:L('Decline'),fame:10,desc:L('Reputation +10 · Rival\'s next offer comes in a year')}]},
+ ...CHANCE_EVENTS
 ];
 const eventById=id=>RICH_EVENTS.find(e=>e.id===id);
 export function buildRichEvent(s,id,ctx){

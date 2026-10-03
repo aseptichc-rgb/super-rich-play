@@ -1,8 +1,8 @@
-export const SCENERY_ART=Object.freeze(['estate-pool','estate-garden','marina-pier','bridge-arch','tree-oak','tree-plane','tree-cypress']);
+export const SCENERY_ART=Object.freeze(['estate-pool','estate-garden','marina-pier','bridge-arch','tree-oak','tree-plane','tree-cypress','mountain-observatory','cablecar-station','cablecar-cabin']);
 export const sceneryArtURL=id=>SCENERY_ART.includes(id)?`city/assets/scenery/${id}.webp`:null;
 const images=new Map();
 // Scenery ids resolve to their files; the estate passes its generated mansion art (city/assets/mansion) by URL.
-const urlOf=id=>sceneryArtURL(id)??(/^city\/assets\/(?:mansion|ultra)\/[\w-]+\.webp$/.test(id)?id:null);
+const urlOf=id=>sceneryArtURL(id)??(/^city\/assets\/(?:(?:mansion|ultra)\/[\w-]+\.webp|island\/private-island-(?:map|retreat)\.png)$/.test(id)?id:null);
 function entry(id){
  const url=urlOf(id);if(!url||typeof Image==='undefined')return null;
  if(!images.has(id)){const image=new Image(),item={image,pending:true};images.set(id,item);image.onload=()=>item.pending=false;image.onerror=()=>item.pending=false;image.src=url;}
