@@ -1,8 +1,12 @@
-export const SCENERY_ART=Object.freeze(['estate-pool','estate-garden','marina-pier','bridge-arch','tree-oak','tree-plane','tree-cypress']);
+const MOUNTAIN_ART=Object.freeze({observatory:'mountain-observatory',cablecar:'cablecar-station'});
+export const mountainArtId=(type,level=1,variant=1)=>{
+ const base=MOUNTAIN_ART[type];return base?`${base}${level>1?'-'+Math.min(3,level):''}${variant>1?'-v'+variant:''}`:null;
+};
+export const SCENERY_ART=Object.freeze(['estate-pool','estate-garden','marina-pier','bridge-arch','tree-oak','tree-plane','tree-cypress','cablecar-cabin',...Object.keys(MOUNTAIN_ART).flatMap(type=>[1,2,3].flatMap(level=>[1,2,3,4,5].map(variant=>mountainArtId(type,level,variant))))]);
 export const sceneryArtURL=id=>SCENERY_ART.includes(id)?`city/assets/scenery/${id}.webp`:null;
 const images=new Map();
 // Scenery ids resolve to their files; the estate passes its generated mansion art (city/assets/mansion) by URL.
-const urlOf=id=>sceneryArtURL(id)??(/^city\/assets\/(?:mansion|ultra)\/[\w-]+\.webp$/.test(id)?id:null);
+const urlOf=id=>sceneryArtURL(id)??(/^city\/assets\/(?:(?:mansion|ultra)\/[\w-]+\.webp|island\/private-island-(?:map|retreat)\.png)$/.test(id)?id:null);
 function entry(id){
  const url=urlOf(id);if(!url||typeof Image==='undefined')return null;
  if(!images.has(id)){const image=new Image(),item={image,pending:true};images.set(id,item);image.onload=()=>item.pending=false;image.onerror=()=>item.pending=false;image.src=url;}

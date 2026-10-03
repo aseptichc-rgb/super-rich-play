@@ -4,9 +4,8 @@
 .island-header h2{margin:4px 0;font-size:20px;color:#294b44}
 .island-header p,.island-actions span{display:block;margin:0;font-size:11px;color:#657d6c}
 .island-header button{white-space:nowrap}
-.island-map{position:relative;flex:1;min-height:260px;max-height:calc(100% - 165px);aspect-ratio:3/2;margin:auto;overflow:hidden;border-radius:14px;background:#0e5970;box-shadow:0 14px 35px #163d4628}
+.island-map{position:relative;flex:1;min-height:260px;max-height:calc(100% - 165px);aspect-ratio:2/1;margin:auto;overflow:hidden;background:transparent}
 .island-land{display:block;width:100%;height:100%;object-fit:contain}
-.island-villa{position:absolute;z-index:1;left:50%;top:43%;width:35%;height:auto;transform:translate(-50%,-50%);filter:drop-shadow(7px 12px 8px #233e3555)}
 .island-site{position:absolute;z-index:2;left:50%;top:43%;transform:translate(-50%,-50%);white-space:nowrap;background:#fbfcf2f2;border:2px solid #e9c36b;box-shadow:0 6px 20px #173e4166;font-weight:700}
 .island-actions>div{flex:1}
 .island-actions b{display:block;margin-bottom:4px;color:#294b44;font-size:13px}
@@ -14,4 +13,6 @@
 .island-actions .primary{white-space:nowrap;background:#315f4f;color:white}
 .island-actions small{font-size:10px;color:#80694d}
 .island-entry{margin-top:12px}
-@media(max-width:720px){.island-view{padding:10px;gap:8px}.island-header,.island-actions{padding:10px;gap:8px}.island-header h2{font-size:16px}.island-map{min-height:210px;max-height:none;flex:none;width:100%;aspect-ratio:3/2}.island-actions{flex-wrap:wrap}.island-actions .primary{width:100%}.island-site{font-size:10px;padding:7px}.island-villa{width:38%}}
+.island-entry .ultra-art{object-fit:contain}
+.map-tools [data-action="island"][hidden]{display:none}
+@media(max-width:720px){.island-view{padding:10px;gap:8px}.island-header,.island-actions{padding:10px;gap:8px}.island-header h2{font-size:16px}.island-map{min-height:210px;max-height:none;flex:none;width:100%;aspect-ratio:2/1}.island-actions{flex-wrap:wrap}.island-actions .primary{width:100%}.island-site{font-size:10px;padding:7px}}

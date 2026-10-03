@@ -1,14 +1,16 @@
 import {lunarTitle} from './lunar.js';
+import {islandSite,islandArt,ISLAND_HIT} from './private-island.js';
 import {constructionProgress} from './building-progress.js';
 import {researchLevel} from './university.js';
 import {ultraSites,ultraHitId,moonHit,moonHitPosition} from './ultra-map.js';
 import {moonOrigin,MOON_SIZE,ultraPlacementError} from './ultra-placement.js';
 import {ULTRA_ITEMS} from './ultra.js';
 import {L} from './i18n.js';
+import {mountainCorners,mountainElevation,cablecarStations} from './mountains.js';
 import {drawLandmark} from './landmarks.js';
 import {billboardAd,billboardLayout,drawBillboard} from './billboards.js';
 import {drawBuildingArt,buildingArtPending,SKYSCRAPER_FLOOR_HEIGHT} from './building-art.js';
-import {drawSceneryArt,sceneryPending,sceneryReady} from './scenery-art.js';
+import {drawSceneryArt,sceneryPending,sceneryReady,mountainArtId} from './scenery-art.js';
 import {spaceportLaunch,drawLaunchRocket} from './rocket-launch.js';
 import {landmarkAnchor,landmarkBuildError} from './landmark-construction.js';
 import {createWorldLife} from './world-life.js';
@@ -22,6 +24,7 @@ import {mansionArtURL,estateArtURL} from './mansion-art.js';
 import {SIZE,BOULEVARD,TYPES,coords,canBuild,footprintCells,buildingArea,mapOffset,buildingName} from './engine.js';
 // Expansion adds facade detail with only a small change to the architectural envelope.
 export function buildingHeight(type,level){const step=Math.max(0,Math.min(2,level-1)),shape=TYPES[type]?.shape||type;
+ if(type==='observatory')return 200+step*10;if(type==='cablecar')return 36+step*3;
  if(type==='skyscraper')return SKYSCRAPER_FLOOR_HEIGHT*level;
  if(type==='hq')return 170+step*5;if(type==='office')return 134+step*4;if(type==='hotel')return 74+step*3;if(type==='monument')return 72+step*3;if(type==='condo')return 48+step*3;
  if(type==='resort')return 17;if(type==='golf')return 9;if(type==='themepark')return 30;if(type==='garden'||type==='citypark')return 0;
@@ -65,7 +68,7 @@ export function createRenderer(canvas,getState,getAnalysis,onTile,onHover){
  function pick(x,y){
   if(ultraPlacement)return groundTile(x,y);
   ctx.save();ctx.setTransform(1,0,0,1,0,0);
-  let hit=-1;for(let n=hits.length-1;n>=0&&!groundView;n--)if((hits[n].i>=0||hits[n].i===MANSION_HIT||ultraHitId(hits[n].i))&&!faded.has(hits[n].i)&&ctx.isPointInPath(hits[n].path,x-shift.x,y-shift.y)&&imageHit(hits[n],x-shift.x,y-shift.y)){hit=hits[n].i;break;}
+  let hit=-1;for(let n=hits.length-1;n>=0;n--)if((hits[n].i===ISLAND_HIT||!groundView&&(hits[n].i>=0||hits[n].i===MANSION_HIT||ultraHitId(hits[n].i)))&&!faded.has(hits[n].i)&&ctx.isPointInPath(hits[n].path,x-shift.x,y-shift.y)&&imageHit(hits[n],x-shift.x,y-shift.y)){hit=hits[n].i;break;}
   ctx.restore();if(hit!==-1)return hit;
   return groundTile(x,y);}
  function groundTile(x,y){
@@ -80,7 +83,13 @@ export function createRenderer(canvas,getState,getAnalysis,onTile,onHover){
   }
   const mask=imageMasks.get(hit.image);if(!mask)return true;
   const b=hit.box,px=Math.floor((x-b[0])/(b[2]-b[0])*mask.width),height=b[3]-b[1],dy=y-b[1],cap=hit.capHeight||0,body=height-(hit.baseHeight||0)-cap;
- const py=Math.floor((hit.baseHeight?(dy<cap?dy/cap*.2:dy<cap+body?.2+(dy-cap)/body*.55:.75+(dy-cap-body)/hit.baseHeight*.25):dy/height)*mask.height);
+  let sourceY;
+  if(hit.repeatHeight){
+   if(dy<cap)sourceY=dy/cap*hit.repeatStart;
+   else if(dy<cap+hit.repeatHeight)sourceY=hit.repeatStart+(dy-cap)%hit.repeatTileHeight/hit.repeatTileHeight*hit.repeatSpan;
+   else sourceY=hit.repeatStart+(dy-cap-hit.repeatHeight)/(height-cap-hit.repeatHeight)*(1-hit.repeatStart);
+  }else sourceY=hit.baseHeight?(dy<cap?dy/cap*.2:dy<cap+body?.2+(dy-cap)/body*.55:.75+(dy-cap-body)/hit.baseHeight*.25):dy/height;
+  const py=Math.floor(sourceY*mask.height);
   return px>=0&&py>=0&&px<mask.width&&py<mask.height&&mask.data[(py*mask.width+(hit.mirror?mask.width-1-px:px))*4+3]>24;
  }
  function poly(points,fill,stroke){
@@ -117,26 +126,19 @@ export function createRenderer(canvas,getState,getAnalysis,onTile,onHover){
  function assetBadge(x,y,t){const p=imageTops.get(y*SIZE+x)||screen(x+.5,y+.5,badgeHeight(t.type,t.level)+16),label=t.type==='university'?'Lv.'+researchLevel(t):`✦ ${t.landmark?.name||buildingName(t)}${t.type==='plot'?'':' · Lv.'+t.level}`;ctx.font=`bold ${Math.max(10,11*zoom)}px sans-serif`;ctx.textAlign='center';const width=ctx.measureText(label).width+14;if(recordingHit)record([{x:p.x-width/2,y:p.y-13*zoom},{x:p.x+width/2,y:p.y-13*zoom},{x:p.x+width/2,y:p.y+6*zoom},{x:p.x-width/2,y:p.y+6*zoom}]);ctx.fillStyle='#2f4d3eeb';ctx.fillRect(p.x-width/2,p.y-13*zoom,width,19*zoom);ctx.fillStyle='#ffe59a';ctx.fillText(label,p.x,p.y+1*zoom);}
  // Mountain tiles share corner heights. A small curved height mesh joins the slopes into a rounded range;
  // it is drawn only when the cached map is rebuilt, not on every animation frame.
- function mountain(s,x,y){
-  const rock=(a,b)=>a>=0&&b>=0&&a<SIZE&&b<SIZE&&s.tiles[b*SIZE+a].terrain==='mountain';
-  const rise=(a,b)=>{
-   if(!rock(a-1,b-1)||!rock(a,b-1)||!rock(a-1,b)||!rock(a,b))return 0;
-   let nearby=0;for(let yy=b-2;yy<=b+1;yy++)for(let xx=a-2;xx<=a+1;xx++)if(rock(xx,yy))nearby++;
-   return nearby*3.5+(a*7+b*13)%4;
-  };
-  const z=[rise(x,y),rise(x+1,y),rise(x+1,y+1),rise(x,y+1)],average=z.reduce((sum,v)=>sum+v,0)/4,height=average+4+(x*11+y*5)%5;
+ function mountain(s,x,y,overlay=null){
+  const z=mountainCorners(s,x,y);
   const steps=6,grid=[];
-  const elevation=(u,v)=>z[0]*(1-u)*(1-v)+z[1]*u*(1-v)+z[2]*u*v+z[3]*(1-u)*v+(height-average)*Math.sin(Math.PI*u)*Math.sin(Math.PI*v);
+  const elevation=(u,v)=>mountainElevation(s,x,y,u,v,z);
   for(let j=0;j<=steps;j++){
    const row=[];for(let i=0;i<=steps;i++){const u=i/steps,v=j/steps;row.push(screen(x+u,y+v,elevation(u,v)));}grid.push(row);
   }
   for(let sum=0;sum<steps*2-1;sum++)for(let i=0;i<steps;i++){
    const j=sum-i;if(j<0||j>=steps)continue;
    const u=(i+.5)/steps,v=(j+.5)/steps,slopeX=elevation(Math.min(1,u+.08),v)-elevation(Math.max(0,u-.08),v),slopeY=elevation(u,Math.min(1,v+.08))-elevation(u,Math.max(0,v-.08));
-   const altitude=elevation(u,v),light=Math.max(43,Math.min(61,52+(slopeY-slopeX)*.8+altitude*.055));
+   const altitude=elevation(u,v),stone=Math.max(0,Math.min(1,(altitude-26)/44)),light=Math.max(30,Math.min(51,40+(slopeY-slopeX)*.8+stone*5));
    const face=[grid[j][i],grid[j][i+1],grid[j+1][i+1],grid[j+1][i]];
-   poly(face,`hsl(145, 12%, ${light}%)`);
-   const frost=Math.max(0,Math.min(1,(altitude-49)/15));if(frost)poly(face,`rgba(247,249,244,${frost})`);
+   poly(face,overlay||`hsl(${105-stone*35}, ${23-stone*10}%, ${light}%)`);
   }
  }
  function tree(x,y,scale=1){
@@ -168,16 +170,38 @@ export function createRenderer(canvas,getState,getAnalysis,onTile,onHover){
    poly([screen(x+.86,y+offset,zz),screen(x+.86,y+offset+.11,zz),screen(x+.86,y+offset+.11,zz-6),screen(x+.86,y+offset,zz-6)],side);
   }
  }
- function buildingScale(type,level){return TYPES[type]?.group&&!['garden','citypark','golf','resort','themepark','skyscraper'].includes(type)?[.9,.92,.94][Math.max(0,Math.min(2,level-1))]:1;}
+ function mountainFacility(x,y,t){
+  const s=getState(),z=mountainCorners(s,x,y),height=(u,v)=>mountainElevation(s,x,y,u,v,z),base=height(.5,.5),top=base+buildingHeight(t.type,t.level);
+  if(t.type==='observatory'){
+   const picture=scenery(mountainArtId(t.type,t.level,t.artVariant),screen(x+.5,y+.5,base),48*zoom,{maxHeight:buildingHeight(t.type,t.level)*zoom});
+   imageTops.set(y*SIZE+x,screen(x+.5,y+.5,top+12));
+   return typeof picture==='object'?picture:undefined;
+  }else{
+   const ends=cablecarStations(s,x,y),[low,high]=ends,extra=27+t.level*3;
+   for(const p of ends)scenery(mountainArtId(t.type,t.level,t.artVariant),screen(p.x,p.y,p.z),(32+t.level*2)*zoom,{maxHeight:buildingHeight(t.type,t.level)*zoom});
+   endHit();startHit(y*SIZE+x);
+   const point=(p,side=0)=>screen(low.x+(high.x-low.x)*p+side,low.y+(high.y-low.y)*p+side,low.z+(high.z-low.z)*p+extra);
+   line(point(0,-.08),point(1,-.08),'#343f3c',1.4);line(point(0,.08),point(1,.08),'#343f3c',1.4);
+   const a=point(0),b=point(1),bounds=[Math.min(a.x,b.x)-14*zoom,Math.min(a.y,b.y)-4*zoom,Math.max(a.x,b.x)+14*zoom,Math.max(a.y,b.y)+25*zoom];
+   record([{x:bounds[0],y:bounds[1]},{x:bounds[2],y:bounds[1]},{x:bounds[2],y:bounds[3]},{x:bounds[0],y:bounds[3]}]);
+   if(sceneryPending('cablecar-cabin'))pendingImages=true;
+   // Cabins belong only to the live layer; caching them would leave stationary copies behind.
+   const cabins=time=>{for(let n=0;n<t.level+1;n++){const phase=reducedMotion()?(.2+n/(t.level+1))%1:(time/7000+n/(t.level+1))%1,p=point(.5-.5*Math.cos(phase*Math.PI*2),n%2?.08:-.08);drawSceneryArt(ctx,'cablecar-cabin',{x:p.x,y:p.y+20*zoom},16*zoom,{maxHeight:20*zoom,mirror:n%2===1});}};
+   animate(bounds,cabins);
+  }
+  const p=screen(x+.5,y+.5,Math.max(top,base+36)),picture={x:p.x-24*zoom,y:p.y,width:48*zoom,height:36*zoom};imageTops.set(y*SIZE+x,{x:p.x,y:p.y-12*zoom});return picture;
+ }
+ function buildingScale(type,level){return TYPES[type]?.group&&!TYPES[type].mountainOnly&&!['garden','citypark','golf','resort','themepark','skyscraper'].includes(type)?[.9,.92,.94][Math.max(0,Math.min(2,level-1))]:1;}
  function badgeHeight(type,level){if(type==='plot')return 5;if(type==='golf')return 24;if(type==='themepark')return 44;if(type==='resort')return 35;return TYPES[type]?.group?(buildingHeight(type,level)+24)*buildingScale(type,level):(type==='tower'?140:75+level*10);}
  function building(x,y,t){
   drawingFootprint=t.footprint?{x,y,...t.footprint}:null;
   startHit(y*SIZE+x);
+  if(TYPES[t.type]?.mountainOnly){const picture=mountainFacility(x,y,t);endHit();drawingFootprint=null;return picture;}
   const landmark=drawLandmark(ctx,t,screen(x+.5,y+.5),zoom);
   if(t.landmark&&!landmark)pendingImages=true;
   const picture=landmark||(!t.landmark&&drawBuildingArt(ctx,t,screen(x+1,y+1),zoom));
-  const artPending=!t.landmark&&buildingArtPending(t.type,t.level,t.footprint);if(artPending)pendingImages=true;
-  if(picture){recordingHit.image=picture.image;recordingHit.baseHeight=picture.baseHeight;recordingHit.capHeight=picture.capHeight;recordingHit.mirror=picture.mirror;recordingHit.path.rect(picture.x,picture.y,picture.width,picture.height);extend(recordingHit.box,picture.x,picture.y);extend(recordingHit.box,picture.x+picture.width,picture.y+picture.height);imageTops.set(y*SIZE+x,{x:picture.x+picture.width/2,y:picture.y-12*zoom});recordingHit=null;drawingFootprint=null;return picture;}
+  const artPending=!t.landmark&&buildingArtPending(t.type,t.level,t.footprint,t.artVariant);if(artPending)pendingImages=true;
+  if(picture){recordingHit.image=picture.image;recordingHit.baseHeight=picture.repeatHeight===0?0:picture.baseHeight;recordingHit.capHeight=picture.capHeight;recordingHit.repeatHeight=picture.repeatHeight;recordingHit.repeatTileHeight=picture.repeatTileHeight;recordingHit.repeatStart=picture.repeatStart;recordingHit.repeatSpan=picture.repeatSpan;recordingHit.mirror=picture.mirror;recordingHit.path.rect(picture.x,picture.y,picture.width,picture.height);extend(recordingHit.box,picture.x,picture.y);extend(recordingHit.box,picture.x+picture.width,picture.y+picture.height);imageTops.set(y*SIZE+x,{x:picture.x+picture.width/2,y:picture.y-12*zoom});recordingHit=null;drawingFootprint=null;return picture;}
   // Leave the lot empty until the sprite loads rather than flashing the older procedural building.
   if(artPending||t.landmark){endHit();drawingFootprint=null;return;}
   const scale=buildingScale(t.type,t.level),p=screen(x+.5,y+.5),width=scale===1?1:[.90,.94,.98][Math.max(0,Math.min(2,t.level-1))];
@@ -580,6 +604,15 @@ export function createRenderer(canvas,getState,getAnalysis,onTile,onHover){
    endHit();
   }
  }
+ function privateIsland(s){
+  const site=islandSite(s);if(!site)return;
+  const center=screen(site.x+site.size/2,site.y+site.size/2),front=screen(site.x+site.size,site.y+site.size),width=site.size*2*halfW*zoom;
+  startHit(ISLAND_HIT);
+  if(!scenery(islandArt(s,groundView),{x:center.x,y:front.y},width))poly([screen(site.x,site.y),screen(site.x+site.size,site.y),front,screen(site.x,site.y+site.size)],'#0e5970');
+  endHit();
+  ctx.fillStyle='#244d43';ctx.font=`bold ${Math.max(10,14*zoom)}px sans-serif`;ctx.textAlign='center';
+  ctx.fillText(s.privateIsland.villa?L('My island villa'):L('Private Island'),center.x,front.y+20*zoom);
+ }
  function scene(s,a){
   collectionDisplay=mapCollection(s);
   const cw=w+2*MARGIN,ch=h+2*MARGIN;
@@ -610,6 +643,7 @@ export function createRenderer(canvas,getState,getAnalysis,onTile,onHover){
     if(t.type&&t.type!=='road')tile(x,y,TYPES[asset.type]?.color||'#c8bb88',asset.owner==='player'?'#ffe395':'#f2efdf');
     ctx.globalAlpha=1;continue;
    }
+   if(t.terrain==='mountain'){startHit(i);mountain(s,x,y);endHit();}
    if(t.type==='road'){}
    else if(t.type){
     const root=t.buildingAnchor??i,asset=s.tiles[root],cells=footprintCells(root,asset.footprint),last=cells.at(-1),p=coords(root);
@@ -632,7 +666,7 @@ export function createRenderer(canvas,getState,getAnalysis,onTile,onHover){
      if(asset.owner==='rival'){const center=picture?{x:picture.x+picture.width/2,y:picture.y-7*zoom}:screen(p.x+.5,p.y+.5,badgeHeight(asset.type,asset.level)+8);circle(center,7,'#a83d37');ctx.fillStyle='#fff3e6';ctx.font=`bold ${9*zoom}px sans-serif`;ctx.textAlign='center';ctx.fillText('⚑',center.x,center.y+3*zoom);}
      endHit();
     }
-   }else if(t.terrain==='mountain'){startHit(-1);mountain(s,x,y);endHit();}
+   }else if(t.terrain==='mountain'){}
    else if(t.tree&&t.terrain==='land'){startHit(-1);tree(x+.5,y+.5,.85+((x+y)%3)*.1);endHit();}
    if(layer==='assets'&&s.tiles[t.buildingAnchor??i].owner==='player')tile(x,y,'#ffd75f88','#fff0a8',2);if(layer!=='normal'&&layer!=='assets'&&t.terrain==='land'){const d=a.details[i];let val=layer==='pollution'?1-d.pollution/100:layer==='value'?d.value/130:layer==='services'?(d.education+d.health+d.fire)/3:(d.connected?1:0);val=Math.max(0,Math.min(1,val));tile(x,y,`hsla(${val*130},55%,48%,.42)`);}
    ctx.globalAlpha=1;startHit(-1);
@@ -643,6 +677,7 @@ export function createRenderer(canvas,getState,getAnalysis,onTile,onHover){
    endHit();
   }
   moonSurface(s);
+  privateIsland(s);
   if(!groundView)for(const kind of ['cars','yachts'])for(const v of collectionDisplay[kind]){
    const yacht=kind==='yachts',p=screen(v.x,v.y),d=yacht?YACHT_DESIGNS[v.model.id]:null,pad=(yacht?d.length:40)*v.scale*zoom;
    depth=Math.floor(v.x)+Math.floor(v.y);column=Math.floor(v.x);
@@ -676,7 +711,7 @@ export function createRenderer(canvas,getState,getAnalysis,onTile,onHover){
  function composite(s,a){
   const now=performance.now();
   // Financial refreshes do not alter the background. Overlay maps still depend on the complete analysis.
-  if(visualAnalysis!==a||visualState!==s){visualAnalysis=a;visualState=s;visualKey=JSON.stringify([mapOffset(s),s.tiles.map(t=>[t.terrain,t.type,t.level,t.owner,t.buildingAnchor,t.footprint,t.landmark,t.construction,t.billboard,t.tree,t.damage,t.boulevard]),s.flex?.owned,s.flex?.vehicles,s.flex?.mansion,s.ultra?.items,s.lunar,s.month,ultraPlacement,[...a.connected],a.active]);}
+  if(visualAnalysis!==a||visualState!==s){visualAnalysis=a;visualState=s;visualKey=JSON.stringify([mapOffset(s),s.tiles.map(t=>[t.terrain,t.type,t.level,t.owner,t.buildingAnchor,t.footprint,t.landmark,t.construction,t.billboard,t.tree,t.damage,t.boulevard]),s.flex?.owned,s.flex?.vehicles,s.flex?.mansion,s.ultra?.items,s.lunar,s.privateIsland,s.month,ultraPlacement,[...a.connected],a.active]);}
   if(!cache||cache.motion!==reducedMotion()||cache.visualKey!==visualKey||(layer!=='normal'&&layer!=='assets'&&cache.a!==a)||cache.zoom!==zoom||cache.w!==w||cache.h!==h||cache.dpr!==dpr||cache.layer!==layer||cache.groundView!==groundView||cache.fade!==fadeKey||Math.abs(panX-cache.panX)>MARGIN||Math.abs(panY-cache.panY)>MARGIN||(pendingImages&&now-cache.at>400))scene(s,a);
   shift={x:Math.round((panX-cache.panX-MARGIN)*dpr)/dpr,y:Math.round((panY-cache.panY-MARGIN)*dpr)/dpr};
   ctx.drawImage(cacheCanvas,shift.x,shift.y,cacheCanvas.width/dpr,cacheCanvas.height/dpr);
@@ -720,9 +755,10 @@ export function createRenderer(canvas,getState,getAnalysis,onTile,onHover){
   if(target>=0){const{x,y}=coords(target),pulse=.5+.5*Math.sin(time*.006);tile(x,y,`rgba(200,80,70,${(.15+.3*pulse).toFixed(2)})`,'#c0574d',2);const p=screen(x+.5,y+.5,34);ctx.fillStyle='#a83d37';ctx.font=`bold ${10*zoom}px sans-serif`;ctx.textAlign='center';ctx.fillText(L('⚑ Rival buy incoming'),p.x,p.y);}
   const combined=!!ultraPlacement||!!landmarkPlacement||TYPES[tool]?.group&&(buildFootprint.width>1||buildFootprint.height>1);
   const footprint=ultraPlacement?{width:3,height:3}:landmarkPlacement?.footprint||(combined?buildFootprint:{width:1,height:1});
-  if(selected>=0){for(const j of footprintCells(selected,combined?footprint:s.tiles[selected].footprint)){const{x,y}=coords(j);tile(x,y,'#f8f0b42b','#f5e6a5',1);}}
+  const highlight=(x,y,fill,stroke)=>!groundView&&s.tiles[y*SIZE+x]?.terrain==='mountain'?mountain(s,x,y,fill):tile(x,y,fill,stroke,2);
+  if(selected>=0){for(const j of footprintCells(selected,combined?footprint:s.tiles[selected].footprint)){const{x,y}=coords(j);highlight(x,y,'#f8f0b42b','#f5e6a5');}}
   if(hover>=0||ultraPlacement==='moon'&&moonHitPosition(hover)){const anchor=landmarkPlacement?(landmarkAnchor(s,hover,landmarkPlacement.design,footprint)??hover):hover,local=moonHitPosition(hover),offset=local?moonOrigin(s):{x:0,y:0},{x,y}=local?{x:local.x+offset.x,y:local.y+offset.y}:coords(anchor);const ok=ultraPlacement?!ultraPlacementError(s,ultraPlacement,local||coords(anchor)):landmarkPlacement?!landmarkBuildError(s,anchor,landmarkPlacement.design,footprint):tool==='inspect'||!canBuild(s,hover,tool,combined||TYPES[tool]?.group==='property'?'buy':'lease',combined?buildFootprint:undefined);
-   for(let dy=0;dy<footprint.height;dy++)for(let dx=0;dx<footprint.width;dx++)tile(x+dx,y+dy,ok?'#f6ffe255':'#e9947755',ok?'#f8ffe0':'#bb604f',2);
+   for(let dy=0;dy<footprint.height;dy++)for(let dx=0;dx<footprint.width;dx++)highlight(x+dx,y+dy,ok?'#f6ffe255':'#e9947755',ok?'#f8ffe0':'#bb604f');
    if(TYPES[tool]?.radius){const radius=TYPES[tool].radius;for(let yy=0;yy<SIZE;yy++)for(let xx=0;xx<SIZE;xx++)if(Math.hypot(xx-x,yy-y)<=radius)tile(xx,yy,'#fff8ba12','#e8e8b344',1);}
   }
   if(groundView)return;
@@ -736,10 +772,10 @@ export function createRenderer(canvas,getState,getAnalysis,onTile,onHover){
  const cursorFor=v=>v==='inspect'||v==='pan'?'default':'crosshair';
  canvas.addEventListener('pointerdown',e=>{if(e.button!==0&&e.button!==1&&e.button!==2)return;const p=point(e);down={...p,panX,panY,button:e.button,moved:false};canvas.setPointerCapture(e.pointerId);});
  canvas.addEventListener('pointermove',e=>{const p=point(e);under=groundView?-1:groundTile(p.x,p.y);hover=pick(p.x,p.y);onHover(hover);if(!down)return;if(Math.hypot(p.x-down.x,p.y-down.y)>6){down.moved=true;canvas.style.cursor='grabbing';}if(down.moved){panX=down.panX+p.x-down.x;panY=down.panY+p.y-down.y;}});
- canvas.addEventListener('pointerup',e=>{if(down&&down.button===0&&!down.moved){const p=point(e),i=pick(p.x,p.y);if(i>=0||i===MANSION_HIT||ultraHitId(i)||moonHitPosition(i))onTile(i);}down=null;canvas.style.cursor=ultraPlacement?'crosshair':cursorFor(tool);});
+ canvas.addEventListener('pointerup',e=>{if(down&&down.button===0&&!down.moved){const p=point(e),i=pick(p.x,p.y);if(i>=0||i===MANSION_HIT||i===ISLAND_HIT||ultraHitId(i)||moonHitPosition(i))onTile(i);}down=null;canvas.style.cursor=ultraPlacement?'crosshair':cursorFor(tool);});
  canvas.addEventListener('pointercancel',()=>{down=null;canvas.style.cursor=cursorFor(tool);});canvas.addEventListener('pointerleave',()=>{hover=-1;under=-1;onHover(-1);});canvas.addEventListener('contextmenu',e=>e.preventDefault());
  canvas.tabIndex=0;
- canvas.addEventListener('keydown',e=>{if(!['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Enter'].includes(e.key))return;e.preventDefault();if(ultraPlacement==='moon'){let p=moonHitPosition(hover)||{x:3,y:3};if(e.key==='Enter'){onTile(moonHit(p.x,p.y));return;}if(e.key==='ArrowUp')p.y--;if(e.key==='ArrowDown')p.y++;if(e.key==='ArrowLeft')p.x--;if(e.key==='ArrowRight')p.x++;hover=moonHit(Math.max(0,Math.min(MOON_SIZE-1,p.x)),Math.max(0,Math.min(MOON_SIZE-1,p.y)));onHover(hover);return;}if(e.key==='Enter'&&ultraHitId(hover)){onTile(hover);return;}if(hover<0)hover=(9+mapOffset(getState()))*(SIZE+1);if(e.key==='Enter'){onTile(hover);return;}let{x,y}=coords(hover);if(e.key==='ArrowUp')y--;if(e.key==='ArrowDown')y++;if(e.key==='ArrowLeft')x--;if(e.key==='ArrowRight')x++;hover=Math.max(0,Math.min(SIZE-1,y))*SIZE+Math.max(0,Math.min(SIZE-1,x));onHover(hover);});
+ canvas.addEventListener('keydown',e=>{if(!['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Enter'].includes(e.key))return;e.preventDefault();if(ultraPlacement==='moon'){let p=moonHitPosition(hover)||{x:3,y:3};if(e.key==='Enter'){onTile(moonHit(p.x,p.y));return;}if(e.key==='ArrowUp')p.y--;if(e.key==='ArrowDown')p.y++;if(e.key==='ArrowLeft')p.x--;if(e.key==='ArrowRight')p.x++;hover=moonHit(Math.max(0,Math.min(MOON_SIZE-1,p.x)),Math.max(0,Math.min(MOON_SIZE-1,p.y)));onHover(hover);return;}if(e.key==='Enter'&&(ultraHitId(hover)||hover===ISLAND_HIT)){onTile(hover);return;}if(hover<0)hover=(9+mapOffset(getState()))*(SIZE+1);if(e.key==='Enter'){onTile(hover);return;}let{x,y}=coords(hover);if(e.key==='ArrowUp')y--;if(e.key==='ArrowDown')y++;if(e.key==='ArrowLeft')x--;if(e.key==='ArrowRight')x++;hover=Math.max(0,Math.min(SIZE-1,y))*SIZE+Math.max(0,Math.min(SIZE-1,x));onHover(hover);});
  canvas.addEventListener('wheel',e=>{e.preventDefault();zoomTo(zoom*(e.deltaY>0?.92:1.08),point(e));},{passive:false});
- return{render,setUltraPlacement(id){cache=null;ultraPlacement=id;landmarkPlacement=null;selected=-1;hover=-1;canvas.style.cursor=id?'crosshair':cursorFor(tool);},focusMoon(){resize();const p=moonOrigin(getState());zoom=w<650?.7:1.1;panX=-(p.x-p.y)*halfW*zoom;panY=260*zoom-(p.x+p.y+9)*halfH*zoom;},focusUltra(id){resize();const site=ultraSites(getState()).find(v=>v.id===id);if(!site)return;groundView=false;hover=-1;selected=-1;zoom=w<650?.8:1.1;panX=-(site.x-site.y)*halfW*zoom;panY=260*zoom-(site.x+site.y+3)*halfH*zoom+50*zoom;},focus(i){const{x,y}=coords(i);zoom=w<650?1.1:1.5;panX=-(x-y)*halfW*zoom;panY=260*zoom-(x+y+1)*halfH*zoom;},burst:life.burst,visit:life.visit,setLandmarkPlacement(design,footprint){if(design)ultraPlacement=null;landmarkPlacement=design?{design,footprint:{...footprint}}:null;selected=-1;canvas.style.cursor=design?'crosshair':cursorFor(tool);},setTool(v,footprint={width:1,height:1}){if(ultraPlacement)cache=null;ultraPlacement=null;landmarkPlacement=null;tool=v;buildFootprint={...footprint};canvas.style.cursor=cursorFor(v);},setLayer(v){layer=v;},setGroundView(v){groundView=!!v;hover=-1;onHover(-1);},select(i){selected=i;},zoom(delta){zoomTo(zoom+delta);},home(){zoom=w<650?.64:Math.min(1,w/1120);panX=0;panY=(w<650?-55:-100)-mapOffset(getState())*2*halfH*zoom;},position:screen};
+ return{render,setUltraPlacement(id){cache=null;ultraPlacement=id;landmarkPlacement=null;selected=-1;hover=-1;canvas.style.cursor=id?'crosshair':cursorFor(tool);},focusIsland(){resize();const site=islandSite(getState());if(!site)return;groundView=false;hover=-1;selected=-1;zoom=Math.min(1,(w-40)/(42*halfW));const moon=moonOrigin(getState()),x=(moon.x+site.x+site.size)/2,y=(moon.y+site.y+site.size)/2;panX=-(x-y)*halfW*zoom;panY=260*zoom-(x+y)*halfH*zoom;},focusMoon(){resize();const p=moonOrigin(getState());zoom=w<650?.7:1.1;panX=-(p.x-p.y)*halfW*zoom;panY=260*zoom-(p.x+p.y+9)*halfH*zoom;},focusUltra(id){resize();const site=ultraSites(getState()).find(v=>v.id===id);if(!site)return;groundView=false;hover=-1;selected=-1;zoom=w<650?.8:1.1;panX=-(site.x-site.y)*halfW*zoom;panY=260*zoom-(site.x+site.y+3)*halfH*zoom+50*zoom;},focus(i){const{x,y}=coords(i);zoom=w<650?1.1:1.5;panX=-(x-y)*halfW*zoom;panY=260*zoom-(x+y+1)*halfH*zoom;const s=getState(),t=s.tiles[i];if(TYPES[t?.type]?.mountainOnly)panY+=(mountainElevation(s,x,y)+(t.type==='observatory'?buildingHeight(t.type,3)/2:0))*zoom;},burst:life.burst,visit:life.visit,setLandmarkPlacement(design,footprint){if(design)ultraPlacement=null;landmarkPlacement=design?{design,footprint:{...footprint}}:null;selected=-1;canvas.style.cursor=design?'crosshair':cursorFor(tool);},setTool(v,footprint={width:1,height:1}){if(ultraPlacement)cache=null;ultraPlacement=null;landmarkPlacement=null;tool=v;buildFootprint={...footprint};canvas.style.cursor=cursorFor(v);},setLayer(v){layer=v;},setGroundView(v){groundView=!!v;hover=-1;onHover(-1);},select(i){selected=i;},zoom(delta){zoomTo(zoom+delta);},home(){zoom=w<650?.64:Math.min(1,w/1120);panX=0;panY=(w<650?-55:-100)-mapOffset(getState())*2*halfH*zoom;},position:screen};
 }

@@ -2,6 +2,7 @@
 import {L,localized} from './i18n.js';
 import {TYPES,coords,neighbors,developmentQuote,assetValue} from './engine.js';
 import {buildRichEvent} from './events.js';
+import {buildingVariant} from './building-variant.js';
 const NAMES=[L('Kangho Baek'),L('Jian Seo'),L('Doyun Han'),L('Yunseo Choi'),L('Taeo Kang')];
 const money=n=>'₲'+Math.round(n).toLocaleString('en-US');
 export function ensureRival(s){
@@ -24,7 +25,7 @@ export function advanceRival(s,playerWealth){
   if(c!==undefined){r.target=c;const{x,y}=coords(c);s.log.unshift(L`⚑ Rival ${r.name} · eyeing a ${TYPES[rivalTier(r)].name} lot at Street ${x+1}, Lot ${y+1}. Buying next month`);events.push({kind:'target',tile:c});}
  }else if(s.month>=r.nextBuy){
   const i=r.target,t=s.tiles[i];
-  if(i>=0&&t&&t.terrain==='land'&&!t.type&&!t.owner){const type=rivalTier(r),{x,y}=coords(i);Object.assign(t,{type,owner:'rival',level:1,tree:false,constructionCost:developmentQuote(s,i,type).construction});r.tiles.push(i);r.acquired++;s.log.unshift(L`⚑ Rival ${r.name} · broke ground on a ${TYPES[type].name} at Street ${x+1}, Lot ${y+1}`);events.push({kind:'bought',tile:i});}
+  if(i>=0&&t&&t.terrain==='land'&&!t.type&&!t.owner){const type=rivalTier(r),{x,y}=coords(i);Object.assign(t,{type,owner:'rival',level:1,tree:false,artVariant:buildingVariant(s.seed,i,s.month,type),constructionCost:developmentQuote(s,i,type).construction});r.tiles.push(i);r.acquired++;s.log.unshift(L`⚑ Rival ${r.name} · broke ground on a ${TYPES[type].name} at Street ${x+1}, Lot ${y+1}`);events.push({kind:'bought',tile:i});}
   else if(i>=0){r.preempted++;s.prestige=Math.max(0,(s.prestige||0)+5);s.log.unshift(L('✦ You secured the lot before the rival · Reputation +5'));events.push({kind:'preempted',tile:i});}
   r.target=-1;r.nextBuy=s.month+(s.month>=36?4:5);
  }
