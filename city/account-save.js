@@ -19,8 +19,8 @@ export function accountSaveClient({projectId,user,legacyClient,fetch:request=glo
   }catch{return{ok:false,error:'network'};}
  }
  const push=(save,revision)=>call('PATCH',revision?`?currentDocument.updateTime=${encodeURIComponent(revision)}`:'?currentDocument.exists=false',{fields:{save:{stringValue:JSON.stringify(save)}}});
- return{push,async load(){
-  const current=await call('GET');if(!current.ok||current.row||!legacyClient)return current;
+ return{push,async load({readOnly=false}={}){
+  const current=await call('GET');if(!current.ok||current.row||!legacyClient||readOnly)return current;
   // Older releases stored a Supabase save code under the Firebase account.
   try{
    const response=await request(url.replace('/playerSaves/','/players/'),{headers:{Authorization:`Bearer ${await user.getIdToken()}`},signal:AbortSignal.timeout(timeout)});
@@ -46,15 +46,18 @@ export function createAccountSave({storage,clientFor,getState,replaceState,newSt
  function read(uid){try{const r=JSON.parse(storage.get(accountBackupKey(uid)));return r&&remoteSave(r.save)?r:null;}catch{return null;}}
  const initial=read(owner);revision=initial?.revision??null;clean=initial?.clean===true&&JSON.stringify(initial.save)===JSON.stringify(getState());
  function remember(){if(!canSave())return;storage.set(accountBackupKey(owner),JSON.stringify({save:getState(),revision,clean}));storage.set(ACCOUNT_OWNER_KEY,owner);}
- function apply(save){if(JSON.stringify(save)===JSON.stringify(getState()))return;applying=true;try{replaceState(save);}finally{applying=false;lastJSON=JSON.stringify(getState());}}
+ function apply(save){if(canSave()&&JSON.stringify(save)===JSON.stringify(getState()))return true;applying=true;try{return replaceState(save)!==false;}finally{applying=false;lastJSON=JSON.stringify(getState());}}
  function schedule(delay=INTERVAL){timers.clear(timer);timer=timers.set(()=>ready?flush():connect(),delay);}
  function failure(reason){emit(reason==='invalid'?'invalid':reason==='setup'?'setup':'offline',reason);if(reason==='network')schedule(RETRY);}
  async function connect(){
-  if(!user||busy||!canSave())return;
+  if(!user||busy)return;
+  const recovering=!canSave();
   busy=true;const id=epoch;emit('checking');
-  const r=await client.load();if(id!==epoch)return;busy=false;
+  const r=await client.load(recovering?{readOnly:true}:undefined);if(id!==epoch)return;busy=false;
   if(!r.ok){failure(r.error);return;}
   const row=r.row,current=JSON.stringify(getState());
+  // An unreadable device slot must not prevent a read-only account recovery.
+  if(recovering){pending=row;if(row)emit('recovery');else emit('invalid');return;}
   // A timed-out write may already be committed. Recognize our own exact payload.
   if(row&&uncertainJSON===JSON.stringify(row.save))revision=row.revision;
   uncertainJSON=null;
@@ -86,7 +89,7 @@ export function createAccountSave({storage,clientFor,getState,replaceState,newSt
    if(user||local)remember();
    epoch++;timers.clear(timer);busy=false;pending=null;ready=false;uncertainJSON=null;
    const previousOwner=owner;user=next;owner=next?.uid||null;client=next?clientFor(next):null;
-   if(!canSave()){emit('invalid');return;}
+   if(!canSave()){if(next)await connect();else emit('invalid');return;}
    const backup=read(owner);
    // A guest game can become an account game, but an account game cannot become another account's game.
    if(next&&previousOwner===null&&local){revision=null;clean=false;}
@@ -107,12 +110,12 @@ export function createAccountSave({storage,clientFor,getState,replaceState,newSt
    if(!busy){emit('pending');schedule();}
   },
   async choose(which){
-   if(!pending||!user)return;
-   const row=pending;pending=null;revision=row.revision;ready=true;
-   if(which==='remote'){clean=true;local=true;apply(row.save);remember();emit('saved');}
-   else{clean=false;remember();await flush();}
+   if(!pending||!user||(!canSave()&&which!=='remote'))return;
+   const row=pending;
+   if(which==='remote'){if(!apply(row.save))return;pending=null;revision=row.revision;ready=true;clean=true;local=true;remember();emit('saved');}
+   else{pending=null;revision=row.revision;ready=true;clean=false;remember();await flush();}
   },
-  retry(){if(pending){emit('conflict');return;}if(clean)ready=false;return ready?flush():connect();}
+  retry(){if(pending){emit(canSave()?'conflict':'recovery');return;}if(clean)ready=false;return ready?flush():connect();}
  };
 }
 

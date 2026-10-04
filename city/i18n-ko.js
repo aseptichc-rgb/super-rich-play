@@ -2,6 +2,11 @@
 // Placeholders {0}, {1}, ... stand for the template's ${...} values in English order.
 // "context::Text" keys hold a second wording for L('Text','context').
 export default {
+"Account story available · Restore to continue":"계정 저장을 찾았습니다 · 복구하면 이어 할 수 있어요",
+"Restore your account story":"계정의 이야기 복구하기",
+"This device's save could not be read. Your account story is available. Restoring it keeps a separate copy of the unreadable device save.":"이 기기의 저장을 읽지 못했지만 계정의 이야기는 정상입니다. 복구할 때 읽지 못한 기기 저장은 별도로 보관합니다.",
+"Export unreadable device save":"읽지 못한 기기 저장 내보내기",
+"Could not preserve the device save. Export it before restoring your account story.":"기기 저장의 원본을 보관하지 못했습니다. 먼저 파일로 내보낸 뒤 계정의 이야기를 복구하세요.",
 "Finance the oven":"오븐 구매를 지원한다",
 "Help with the business plan":"사업 계획을 함께 검토한다",
 "A cousin's neighborhood bakery":"사촌의 동네 빵집",

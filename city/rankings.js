@@ -69,7 +69,7 @@ export function rankingsClient({projectId,user,fetch:request=globalThis.fetch,on
   // Only confirmed account saves enter the board. Ranking outages never block saving.
   wrap(client){return Object.fromEntries(['load','push'].map(key=>[key,async(...args)=>{
    const result=await client[key](...args);
-   if(result.ok&&result.row){const row=structuredClone(result.row);queue=queue.then(()=>publish(row)).then(()=>{error='';},e=>{error=e.message;});}
+   if(result.ok&&result.row&&!(key==='load'&&args[0]?.readOnly)){const row=structuredClone(result.row);queue=queue.then(()=>publish(row)).then(()=>{error='';},e=>{error=e.message;});}
    return result;
   }]));},
   async list(metric='wealth'){
