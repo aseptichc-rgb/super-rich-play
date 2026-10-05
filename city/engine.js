@@ -64,7 +64,7 @@ export const TYPES={
  cablecar:{name:L('Cable Car'),group:'property',icon:'🚠',cost:350000,upkeep:4500,color:'#dc8e56',shape:'cablecar',base:24000,staff:0,managed:true,mountainOnly:true,desc:L('A mountain-only cable car with lower and upper stations. Earns fares and adds 25% revenue to your observatories within 3 tiles · Runs automatically · Expands up to 3 tiers.')},
  marina:{name:L('Yacht Marina'),group:'property',icon:'🛥',cost:120000,upkeep:0,color:'#77b7b8',shape:'park',base:0,staff:0,unique:true,desc:L('Build on land beside the river to display every yacht you own.')},
  garage:{name:L('My Garage'),group:'property',icon:'🏎',cost:75000,upkeep:0,color:'#b3a486',shape:'shop',base:0,staff:0,unique:true,desc:L('Build a private garage to display every car you own.')},
- skyscraper:{name:L('Skyscraper'),group:'property',icon:'🌆',cost:150000,upkeep:1200,color:'#78aeb1',shape:'tower',base:9000,staff:0,managed:true,desc:L('A 3×3 skyscraper with no floor limit. Each floor costs 4% more than the one below. Rent, upkeep and visible height grow with the floor count.')},
+ skyscraper:{name:L('Skyscraper'),group:'property',icon:'🌆',cost:150000,upkeep:1200,color:'#78aeb1',shape:'tower',base:9000,staff:0,managed:true,desc:L('A 3×3 skyscraper with no floor limit. Each floor costs 4% more than the one below. Rent, upkeep, visible height and reputation grow with the floor count after completion. Global top-five builders earn extra reputation.')},
  ultra:{name:L('Trillion Club'),color:'#c8bb88'},
  extension:{name:L('Combined building lot'),color:'#c8bb88'},
  golf:{name:L('Golf Course'),group:'property',icon:'⛳',cost:1000000,upkeep:18000,color:'#78aa58',shape:'golf',base:100000,staff:0,managed:true,desc:L('A golf course with a clubhouse and full course. Green-fee income depends on location · Runs automatically · Expands up to 3 tiers.')},
@@ -397,6 +397,24 @@ export function developmentQuote(s,i,type,level=1,footprint=s.tiles[i]?.footprin
  return{loc,waterfront,mountain,site,score,demand,factor,cells,area,label:demand<.25?L('Low-demand location'):score>=.8?L('Prime location'):score>=.55?L('Popular location'):L('Value location'),floorBaseCost,construction,land,demolition,total:construction+land+demolition,revenue,cost,profit:revenue-cost,synergy,crowding,premium,cycle,attention,boost};
 }
 export const SKYSCRAPER_FLOOR_RATE=1.04;
+export const ROOFTOP_DECK_BONUS=.01;
+export function rooftopDeckQuote(s,i){
+ i=buildingAnchor(s,i);const t=s.tiles[i];
+ if(t?.type!=='skyscraper'||t.owner!=='player'||underConstruction(s,t))return null;
+ const revenue=developmentQuote(s,i,t.type,t.level).revenue;
+ return{installed:!!t.rooftopDeck,cost:upgradeCost(t),income:Math.round(revenue*ROOFTOP_DECK_BONUS)};
+}
+export function installRooftopDeck(s,i){return transaction(s,()=>{
+ i=buildingAnchor(s,i);const q=rooftopDeckQuote(s,i);
+ if(!q)return{ok:false,msg:L('Build a rooftop observation deck on a completed skyscraper you own.')};
+ if(q.installed)return{ok:false,msg:L('This skyscraper already has a rooftop observation deck.')};
+ const t=s.tiles[i];
+ if(!Number.isFinite(q.cost)||!Number.isFinite((t.assetLedger?.upgrades||0)+q.cost))return{ok:false,msg:L('This construction cost exceeds the numeric range.')};
+ if(s.mode!=='sandbox'&&s.money<q.cost)return{ok:false,msg:L('Not enough cash for the rooftop observation deck.')};
+ t.assetLedger??=assetLedger(s,i);t.assetLedger.buildingValue=buildingValue(s,t)+q.cost*.7*Math.pow(buildingArea(t),.15);t.assetLedger.valuationMonth=s.month;t.assetLedger.upgrades+=q.cost;
+ if(s.mode!=='sandbox')s.money-=q.cost;t.rooftopDeck=true;
+ const msg=L('Rooftop observation deck built · Monthly skyscraper revenue +1%.');s.log.unshift(msg);s.log=s.log.slice(0,25);return{ok:true,msg};
+});}
 export const skyscraperCostFactor=floors=>Math.expm1(floors*Math.log(SKYSCRAPER_FLOOR_RATE))/(SKYSCRAPER_FLOOR_RATE-1);
 export function upgradeCost(t){return t.type==='skyscraper'?Math.round(t.floorBaseCost*Math.pow(SKYSCRAPER_FLOOR_RATE,t.level)):Math.round((t.constructionCost??TYPES[t.type].cost)*.8*t.level);}
 // Game-only appreciation: annual 8%, with the legacy rate preserved before migration.
@@ -445,7 +463,7 @@ function installBillboardImpl(s,i){
 }
 export function businessReport(s,i,context={}){
  if(underConstruction(s,s.tiles[i]))return{billboard:0,revenue:0,cost:0,profit:0,occupancy:0,demand:0,wages:0,lease:0,maintenance:0,goods:0,marketing:0,loc:location(s,i),manage:0};
- if(TYPES[s.tiles[i].type]?.managed){const t=s.tiles[i],q=developmentQuote(s,i,t.type,t.level),billboard=t.billboard&&billboardEligible(t)?billboardIncome(q.revenue*(t.landmark?3:1),q.loc.footfall):0,revenue=q.revenue*(t.landmark?3:1)+billboard,cost=q.cost+(t.type==='university'?researchLevel(t)*UNIVERSITY.monthlyResearch:0);return{billboard,revenue,cost,profit:revenue-cost,occupancy:Math.round((60+q.score*40)*q.demand),demand:Math.round(q.demand*100),wages:0,lease:0,maintenance:cost,goods:0,marketing:0,loc:q.loc,manage:100,crowding:q.crowding};}
+ if(TYPES[s.tiles[i].type]?.managed){const t=s.tiles[i],q=developmentQuote(s,i,t.type,t.level),billboard=t.billboard&&billboardEligible(t)?billboardIncome(q.revenue*(t.landmark?3:1),q.loc.footfall):0,rooftopDeck=t.type==='skyscraper'&&t.rooftopDeck?Math.round(q.revenue*ROOFTOP_DECK_BONUS):0,revenue=q.revenue*(t.landmark?3:1)+billboard+rooftopDeck,cost=q.cost+(t.type==='university'?researchLevel(t)*UNIVERSITY.monthlyResearch:0);return{billboard,rooftopDeck,revenue,cost,profit:revenue-cost,occupancy:Math.round((60+q.score*40)*q.demand),demand:Math.round(q.demand*100),wages:0,lease:0,maintenance:cost,goods:0,marketing:0,loc:q.loc,manage:100,crowding:q.crowding};}
  const t=s.tiles[i],d=TYPES[t.type],loc=location(s,i),rental=['rental','condo','housing'].includes(t.type),businessCount=context.businessCount??s.tiles.filter(t=>t.owner==='player'&&TYPES[t.type]?.group==='business').length;
  const manage=clamp(s.plan.manage/Math.max(1,businessCount*28),.3,1.2),health=1-Math.max(0,s.stress-65)*.009;
  const price=t.price||100,quality=t.quality||1,staff=t.staff??d.staff,level=t.level;
@@ -651,6 +669,7 @@ function validSaveAt(s){
  if(!Array.isArray(s.tiles)||s.tiles.length!==SIZE*SIZE||!s.tiles.every(t=>t&&['land','water','mountain'].includes(t.terrain)&&(t.type===null||Object.hasOwn(TYPES,t.type))&&[null,'npc','player','rival'].includes(t.owner)&&Number.isSafeInteger(t.level)&&t.level>=1&&(t.type==='skyscraper'||t.level<=3)))return false;
  if(!s.tiles.every(t=>t.artVariant===undefined||(Number.isInteger(t.artVariant)&&t.artVariant>=1&&t.artVariant<=BUILDING_VARIANTS)))return false;
  if(!validUniversity(s))return false;
+ if(!s.tiles.every(t=>t.rooftopDeck===undefined||(t.type==='skyscraper'&&typeof t.rooftopDeck==='boolean')))return false;
  if(!s.tiles.every((t,i)=>{
   if(t.type==='skyscraper'&&(t.footprint?.width!==3||t.footprint?.height!==3||!Number.isFinite(t.floorBaseCost)||t.floorBaseCost<=0||!Number.isFinite(t.floorBaseCost*skyscraperCostFactor(t.level))))return false;
   if(TYPES[t.type]?.mountainOnly&&(t.terrain!=='mountain'||buildingArea(t)!==1||t.tenure!=='buy'))return false;

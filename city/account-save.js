@@ -39,13 +39,12 @@ export const ACCOUNT_OWNER_KEY='super-rich-account-owner-v1';
 export const accountBackupKey=uid=>'super-rich-account-backup-v1:'+(uid||'guest');
 const INTERVAL=3000,RETRY=30000;
 // Keep account backups separate from the legacy save slot. Never import another account's game.
-export function createAccountSave({storage,clientFor,getState,replaceState,newState,hasLocal=false,canSave=()=>true,onChange=()=>{},timers={set:(fn,ms)=>setTimeout(fn,ms),clear:id=>clearTimeout(id)}}){
- let owner=storage.get(ACCOUNT_OWNER_KEY)||null,user=null,client=null,epoch=0,busy=false,applying=false,ready=false,timer=null,pending=null,status='guest',error='',uncertainJSON=null,revision=null,clean=false,local=hasLocal,initialized=false,lastJSON=JSON.stringify(getState());
+export function createAccountSave({storage,clientFor,getState,replaceState,newState,hasLocal=false,getLocalSave=()=>null,canSave=()=>true,onChange=()=>{},timers={set:(fn,ms)=>setTimeout(fn,ms),clear:id=>clearTimeout(id)}}){
+ let owner=storage.get(ACCOUNT_OWNER_KEY)||null,user=null,client=null,epoch=0,busy=false,applying=false,ready=false,timer=null,pending=null,status='guest',error='',uncertainJSON=null,revision=null,clean=false,local=hasLocal,initialized=false,legacyChecked=false,lastJSON=JSON.stringify(getState());
  const snapshot=()=>({user,status,error,pending});
  const emit=(next,reason='')=>{status=next;error=reason;onChange(snapshot());};
  function read(uid){try{const r=JSON.parse(storage.get(accountBackupKey(uid)));return r&&remoteSave(r.save)?r:null;}catch{return null;}}
- const initial=read(owner);revision=initial?.revision??null;clean=initial?.clean===true&&JSON.stringify(initial.save)===JSON.stringify(getState());
- function remember(){if(!canSave())return;storage.set(accountBackupKey(owner),JSON.stringify({save:getState(),revision,clean}));storage.set(ACCOUNT_OWNER_KEY,owner);}
+ function remember(){if(!user||!canSave())return;storage.set(accountBackupKey(owner),JSON.stringify({save:getState(),revision,clean}));storage.set(ACCOUNT_OWNER_KEY,owner);}
  function apply(save){if(canSave()&&JSON.stringify(save)===JSON.stringify(getState()))return true;applying=true;try{return replaceState(save)!==false;}finally{applying=false;lastJSON=JSON.stringify(getState());}}
  function schedule(delay=INTERVAL){timers.clear(timer);timer=timers.set(()=>ready?flush():connect(),delay);}
  function failure(reason){emit(reason==='invalid'?'invalid':reason==='setup'?'setup':'offline',reason);if(reason==='network')schedule(RETRY);}
@@ -85,19 +84,25 @@ export function createAccountSave({storage,clientFor,getState,replaceState,newSt
   snapshot,flush,
   async setUser(next){
    if(initialized&&next?.uid===user?.uid)return;
+   const first=!initialized,previousUser=user;
    initialized=true;
-   if(user||local)remember();
+   remember();
    epoch++;timers.clear(timer);busy=false;pending=null;ready=false;uncertainJSON=null;
-   const previousOwner=owner;user=next;owner=next?.uid||null;client=next?clientFor(next):null;
-   if(!canSave()){if(next)await connect();else emit('invalid');return;}
+   const previousOwner=owner;user=next;client=next?clientFor(next):null;
+   if(!next){
+    if(previousUser||(first&&owner)){local=false;revision=null;clean=false;apply(newState());}
+    emit('guest');return;
+   }
+   owner=next.uid;
    const backup=read(owner);
-   // A guest game can become an account game, but an account game cannot become another account's game.
-   if(next&&previousOwner===null&&local){revision=null;clean=false;}
-   else if(backup){local=true;revision=backup.revision;clean=backup.clean===true;apply(remoteSave(backup.save));}
+   // Read old browser progress only after its owner signs in. Never save a guest game.
+   const legacy=!legacyChecked&&!backup&&(!previousOwner||previousOwner===owner)?getLocalSave():null;
+   legacyChecked=true;
+   if(!canSave()){await connect();return;}
+   if(backup){local=true;revision=backup.revision;clean=backup.clean===true;apply(remoteSave(backup.save));}
+   else if(legacy){local=true;revision=null;clean=false;apply(legacy);}
    else if(previousOwner!==owner&&previousOwner!==null){local=false;revision=null;clean=false;apply(newState());}
    else{revision=null;clean=false;}
-   storage.set(ACCOUNT_OWNER_KEY,owner);
-   if(!next){emit('guest');return;}
    remember();await connect();
   },
   afterSave(){

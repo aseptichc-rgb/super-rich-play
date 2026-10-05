@@ -93,6 +93,14 @@ export function drawBuildingArt(ctx,t,p,zoom){
    ctx.drawImage(image,0,sourceY,image.naturalWidth,image.naturalHeight-sourceY,bounds.x,insertY+bounds.repeatHeight,bounds.width,bounds.height-bounds.capHeight-bounds.repeatHeight);
   }
  }else ctx.drawImage(image,bounds.x,bounds.y,bounds.width,bounds.height);
+ if(t.type==='skyscraper'&&t.rooftopDeck){
+  // A glass viewing terrace crowns the tower; its size stays fixed as floors grow.
+  const x=bounds.x+bounds.width*.5,y=bounds.y+bounds.width*.10,rx=bounds.width*.14,ry=bounds.width*.045,h=8*zoom;
+  ctx.fillStyle='#456875';ctx.beginPath();ctx.ellipse(x,y,rx,ry,0,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#bde9edcc';ctx.fillRect(x-rx,y-h,rx*2,h);ctx.strokeStyle='#e4f7f5';ctx.lineWidth=zoom;ctx.strokeRect(x-rx,y-h,rx*2,h);
+  ctx.fillStyle='#e4f4ed';ctx.beginPath();ctx.ellipse(x,y-h,rx,ry,0,0,Math.PI*2);ctx.fill();ctx.stroke();
+  for(let n=-2;n<=2;n++){ctx.beginPath();ctx.moveTo(x+n*rx/3,y-h);ctx.lineTo(x+n*rx/3,y);ctx.stroke();}
+ }
  ctx.restore();
  return{...bounds,image,mirror};
 }

@@ -27,12 +27,15 @@ export const REPUTATION_TIERS=[
  {min:7000,name:L('President'),field:L('Politics'),relief:10,creative:1.2,ownerIncome:1.2,benefit:L('Creative +20% · Dividends +20% · Stress −10')}
 ];
 export const WORLD_SKYSCRAPER_FAME=100;
+export const SKYSCRAPER_FAME_PER_FLOOR=1,TOP_SKYSCRAPER_FAME=50;
+export function skyscraperFame(s){return (s.tiles||[]).reduce((sum,t)=>sum+(t.owner==='player'&&t.type==='skyscraper'&&!underConstruction(s,t)?t.level*SKYSCRAPER_FAME_PER_FLOOR:0),0);}
 export function tallestSkyscraperFloors(s){let floors=0;for(const t of s.tiles||[])if(t.owner==='player'&&t.type==='skyscraper'&&t.level>floors&&!underConstruction(s,t))floors=t.level;return floors;}
 // Server records are session data, never part of the player's save.
-export function setWorldSkyscraperFloors(s,floors){Object.defineProperty(s,'worldSkyscraperFloors',{value:floors,configurable:true,writable:true});}
+export function setWorldSkyscraperFloors(s,floors,topFiveFloors){Object.defineProperty(s,'worldSkyscraperFloors',{value:floors,configurable:true,writable:true});Object.defineProperty(s,'topFiveSkyscraperFloors',{value:topFiveFloors,configurable:true,writable:true});}
 export function worldSkyscraperFame(s){if(s.worldSkyscraperFloors===undefined)return 0;const floors=tallestSkyscraperFloors(s);return floors>0&&floors>=s.worldSkyscraperFloors?WORLD_SKYSCRAPER_FAME:0;}
-// Fame = owner base + owner activities + public giving + lifestyle prestige + current world skyscraper title.
-export function reputationSummary(s){const owned=s.empire?.owned||[],fame=owned.reduce((n,id)=>n+(OWNER_PERKS[id]?.fame||0),0)+(s.empire?.earnedFame||0)+(s.prestige||0)+worldSkyscraperFame(s),tier=REPUTATION_TIERS.filter(t=>fame>=t.min).at(-1);return{fame,tier,next:REPUTATION_TIERS.find(t=>t.min>fame),earned:REPUTATION_TIERS.filter(t=>fame>=t.min),monthly:owned.reduce((n,id)=>n+(OWNER_PERKS[id]?.monthly||0),0),creativeMultiplier:(owned.includes('broadcaster')?1.25:1)*tier.creative,ownerIncomeMultiplier:tier.ownerIncome,stressRelief:(owned.includes('club')?5:0)+tier.relief,premium:1+Math.min(300,Math.max(0,fame-acquisitionFame(s)))/1500,salvage:fame>=100};}
+export function topSkyscraperFame(s){if(s.mode==='sandbox'||s.topFiveSkyscraperFloors===undefined)return 0;const floors=tallestSkyscraperFloors(s);return floors>0&&floors>=s.topFiveSkyscraperFloors?TOP_SKYSCRAPER_FAME:0;}
+// Fame includes completed skyscraper floors and current world/top-five skyscraper titles.
+export function reputationSummary(s){const owned=s.empire?.owned||[],fame=owned.reduce((n,id)=>n+(OWNER_PERKS[id]?.fame||0),0)+(s.empire?.earnedFame||0)+(s.prestige||0)+skyscraperFame(s)+worldSkyscraperFame(s)+topSkyscraperFame(s),tier=REPUTATION_TIERS.filter(t=>fame>=t.min).at(-1);return{fame,tier,next:REPUTATION_TIERS.find(t=>t.min>fame),earned:REPUTATION_TIERS.filter(t=>fame>=t.min),monthly:owned.reduce((n,id)=>n+(OWNER_PERKS[id]?.monthly||0),0),creativeMultiplier:(owned.includes('broadcaster')?1.25:1)*tier.creative,ownerIncomeMultiplier:tier.ownerIncome,stressRelief:(owned.includes('club')?5:0)+tier.relief,premium:1+Math.min(300,Math.max(0,fame-acquisitionFame(s)-skyscraperFame(s)))/1500,salvage:fame>=100};}
 // Fame earned merely by buying assets or completing landmarks does not raise operating revenue; activity, giving and lifestyle fame do.
 function acquisitionFame(s){return Object.values(s.reputation?.assets||{}).reduce((n,v)=>n+v,0)+Object.values(s.empire?.landmarkFame||{}).reduce((n,v)=>n+v,0);}
 export function settleOwnerBenefits(s){const r=reputationSummary(s);if(!r.monthly&&!r.stressRelief)return;const e=ensureEmpire(s);e.earnedFame=(e.earnedFame||0)+r.monthly;s.stress=Math.max(0,s.stress-r.stressRelief);}
