@@ -447,7 +447,7 @@ export default {
 "Last Month Settlement shows the actual cash flow; the projection estimates the next month. Investment values can also change, so cash flow and net worth growth are different. Check this screen before spending more.":"지난달 정산에는 실제 현금흐름이, 예상 현금흐름에는 다음 달 전망이 표시돼요. 투자 자산의 시세도 변하므로 현금 수익과 순자산 증가는 다를 수 있어요. 다음 지출 전에 확인해 보세요.",
 "Give yourself time to rest":"쉬는 시간도 자산이에요",
 "Time & Life divides your monthly hours. Managed buildings need attention, and unused hours become rest. Watch stress as you trade and expand. More rest and experiences help you recover.":"시간 & 생활에서 한 달의 시간을 배분해요. 관리가 필요한 건물에는 경영 시간을 쓰고, 남는 시간은 휴식이 됩니다. 거래와 확장으로 스트레스가 쌓일 수 있으니 상태를 확인하세요. 휴식과 경험은 회복에 도움이 돼요.",
-"Enjoy the wealth you build":"부자 생활을 즐겨요",
+"Enjoy the wealth you build":"나의 부를 즐겨보세요.",
 "Choose travel, culture or a cruise here. Check the price before confirming: experiences spend cash and create memories. You can also explore your mansion, collections and the map at your own pace.":"여행·문화·크루즈를 골라 볼 수 있어요. 경험은 현금을 쓰고 추억을 남기므로 확정 전에 가격을 확인하세요. 저택과 소장품, 지도도 천천히 둘러보세요.",
 "You are ready to play":"이제 나만의 이야기를 만들어요",
 "Keep cash flow healthy, invest at your own pace, settle months and enjoy your life. Next, try selecting an empty lot on the map to compare a property contract. Nothing is purchased until you confirm. Open ? whenever you want this tour again.":"현금흐름을 확인하고, 여유 있게 투자하며, 한 달씩 보내고 생활을 즐겨 보세요. 다음에는 지도에서 빈 땅을 눌러 부동산 계약 조건을 살펴보세요. 확정하기 전에는 매입되지 않아요. 안내가 필요하면 상단 ?에서 튜토리얼을 다시 시작할 수 있어요.",
