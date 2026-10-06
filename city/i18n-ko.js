@@ -2,6 +2,24 @@
 // Placeholders {0}, {1}, ... stand for the template's ${...} values in English order.
 // "context::Text" keys hold a second wording for L('Text','context').
 export default {
+"Open your first hotel":"당신의 첫 호텔을 열어보세요.",
+"Build your first homes":"당신의 첫 주택을 지어보세요.",
+"We picked a suitable spot. One click turns this empty lot into your place.":"좋은 부지를 골라뒀어요. 버튼을 누르면 이곳에 내 건물이 생겨요.",
+"Projected monthly profit +{0}":"예상 월 이익 +{0}",
+"Open this hotel · {0}":"이 호텔 열기 · {0}",
+"The displayed cost buys the land and building. Next, collect your first month.":"표시된 비용으로 땅과 건물을 구매해요. 다음엔 첫 달 수익을 받아보세요.",
+"Your place is ready. Press once to collect a real month of income.":"이제 수익을 받아볼까요? 버튼을 누르면 한 달을 정산해요.",
+"You built a place and collected its first month. Now the city is yours to explore.":"직접 건물을 짓고 첫 달을 정산했어요. 이제 원하는 방식으로 도시를 키워보세요.",
+"Explore my city →":"내 도시 둘러보기 →",
+
+"Explore on my own":"자유롭게 둘러보기",
+"Build these homes · {0}":"주택 짓기 · {0}",
+"The doors are open. This place is yours.":"문을 열었어요. 이제 당신의 공간이에요!",
+"Projected profit {0} / month":"매달 예상 이익 {0}",
+"Collect my first month →":"첫 달 수익 받기 →",
+"This settles the whole city. Markets and costs can change the result.":"도시 전체가 한 달 정산돼요. 경기와 비용에 따라 실제 결과는 달라질 수 있어요.",
+"This offer changed. Review the refreshed prices before choosing.":"부지나 가격이 바뀌었어요. 새로 표시된 조건을 확인하고 선택해주세요.",
+
  "Current progress {0} / {1}":"현재 진행 {0} / {1}",
  "Complete a skyscraper before choosing this project.":"마천루를 완공한 다음 이 프로젝트를 선택하세요.",
  "Sign-in did not finish. Try again in your usual browser. You can keep playing with this device save.":"로그인이 완료되지 않았어요. 평소 쓰는 브라우저에서 다시 시도해보세요. 기기에 저장하며 계속 플레이할 수 있어요.",

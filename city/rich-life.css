@@ -30,15 +30,17 @@
 }
 @media(max-width:720px){.world-wrap .live-card{top:204px;width:270px;max-width:calc(100% - 32px);max-height:170px}}
 
-/* Show every private-office choice without an inner scrollbar. */
-.world-wrap .live-card:has(.rich-office){width:440px;max-height:none!important;overflow-y:visible}
+/* Keep private-office choices on the left, clear of the central map and dock. */
+@media(min-width:901px){
+ .world-wrap .live-card:has(.rich-office){width:min(300px,40%);overflow-y:auto;overscroll-behavior:contain}
+ .world-wrap .rich-office{grid-template-columns:minmax(0,1fr);padding:6px}
+ .world-wrap .rich-office button{padding:6px}
+}
 @media(min-width:901px) and (max-height:1000px){
  .world-wrap .world-title{display:none}
  .world-wrap .world-top{top:24px;max-width:calc(50% - 34px);flex-wrap:wrap}
  .world-wrap .layer-control{top:24px;right:80px;width:calc(50% - 80px)}
- .world-wrap .live-card:has(.rich-office){top:125px;width:calc(100% - 116px);max-width:none}
- .world-wrap .rich-office{grid-template-columns:repeat(4,minmax(0,1fr));padding:6px}
- .world-wrap .rich-office button{padding:6px}
+ .world-wrap .live-card:has(.rich-office){top:125px}
 }
 @media(min-width:1201px) and (max-height:1000px){
  .world-wrap .world-top{max-width:none}

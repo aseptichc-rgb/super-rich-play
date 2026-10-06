@@ -165,3 +165,23 @@ button{font-size:.875rem}
 .onboarding #live-card .rich-office,.onboarding #live-card .live-card-title,.onboarding #live-card>.mission-card,.onboarding #economy-status,.onboarding #election-status,.onboarding #stats>.stat-pair,.onboarding #stats>.economy-strip{display:none}
 .onboarding #live-card{max-height:none!important}.onboarding #tutorial-card{margin:0}.onboarding #build-dock{max-height:150px}.onboarding #build-items{display:none}.onboarding #wealth-growth,.onboarding #flex-entry{display:none}
 @media(max-width:719px){.mission-list>div{display:block}.mission-list small{display:block;margin-top:5px}.onboarding #live-card{position:absolute;top:72px;left:10px;right:10px;max-width:none;width:auto}.mission-card .button-row button{min-height:42px}.mission-option{padding:12px}}
+
+/* One visible action per tutorial stage; full controls return on finish or skip. */
+#app .game.onboarding{grid-template-columns:minmax(0,1fr)}
+#app .game.onboarding .live-card{width:360px;max-width:calc(100% - 68px);top:40px;left:30px}
+#app .game.onboarding #game-sidebar,#app .game.onboarding #build-dock,#app .game.onboarding #map-layers,#app .game.onboarding .map-tools,#app .game.onboarding .world-top,#app .game.onboarding .world-hint,#app .game.onboarding .month-progress,#app .game.onboarding .phase-label,#app .game.onboarding .mobile-nav{display:none}
+#app:has(.game.onboarding) .top-actions{visibility:hidden}
+#app .game.onboarding #world{pointer-events:none}
+#tutorial-card.first-move{padding:18px;background:linear-gradient(135deg,#f6f9e9,#e8f2df)}
+.first-move-option{padding:14px;border:1px solid #bed0ae;border-radius:12px;background:#ffffffb8;text-align:center;margin:12px 0}
+#tutorial-card .first-move-option img{display:block;width:116px;height:116px;margin:0 auto 6px;object-fit:contain}
+#tutorial-card .first-move-option strong{display:block;font-size:16px;color:#256143;margin-bottom:12px}
+#tutorial-card .first-move-option button{width:100%;font-size:14px;line-height:1.5;min-height:48px;padding:10px 7px;white-space:normal}
+#tutorial-card .first-move-hint{font-size:12px;line-height:1.6;margin-bottom:7px}
+#tutorial-card .first-move-skip{min-height:36px;padding:5px 0;border:0;background:none;color:#647561;box-shadow:none;font-size:12px;text-decoration:underline}
+.first-move-opening{display:flex;gap:12px;align-items:center;margin:12px 0;padding:12px;border-radius:12px;background:#fff8}
+#tutorial-card .first-move-opening img{width:88px;height:88px;object-fit:contain}
+.first-move-opening b,.first-move-opening strong{display:block;font-size:14px;line-height:1.6}
+.first-move-opening strong{color:#256143}
+#tutorial-card.first-move>small{display:block;font-size:11px;line-height:1.6;margin-top:8px;color:#647561}
+@media(max-width:719px){#app .game.onboarding .live-card{width:auto;max-width:none;left:8px;right:8px;top:14px}#tutorial-card.first-move{padding:14px}#tutorial-card .first-move-option img{width:100px;height:100px}}

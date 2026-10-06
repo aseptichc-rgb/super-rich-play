@@ -1,3 +1,4 @@
+import {propertyArt} from './property-art.js';
 import {L} from './i18n.js';
 import {missionProgress,missionStats,CONTRACT_IDS,contractQuote,contractProgress} from './missions.js';
 import {canBuild,developmentQuote,coords,hasRoadAccess} from './engine.js';
@@ -20,6 +21,15 @@ export function starterSites(s,a){
   if(best)result.push(best);
  }
  return result;
+}
+export function firstMoveChoices(s,sites){
+ const site=sites.find(x=>x.type==='hotel')||sites[0];if(!site)return '';
+ const {i,type,q}=site;
+ return `<h2 id="tutorial-title" tabindex="-1">${type==='hotel'?L('Open your first hotel'):L('Build your first homes')}</h2><p>${L('We picked a suitable spot. One click turns this empty lot into your place.')}</p><div class="first-move-option">${propertyArt(type,true).replace('loading="lazy"','loading="eager"')}<strong>${L`Projected monthly profit +${money(q.profit)}`}</strong><button class="primary" data-first-build="${i}" data-first-type="${type}" data-first-price="${q.total}">${type==='hotel'?L`Open this hotel · ${money(q.total)}`:L`Build these homes · ${money(q.total)}`}</button></div><p class="first-move-hint">${L('The displayed cost buys the land and building. Next, collect your first month.')}</p>`;
+}
+export function firstMoveOpening(s,a,i){
+ const t=s.tiles[i],r=a.reports[i];if(t?.owner!=='player'||!r||!['hotel','housing'].includes(t.type))return '';
+ return `<h2 id="tutorial-title" tabindex="-1">${L('The doors are open. This place is yours.')}</h2><div class="first-move-opening">${propertyArt(t.type,true)}<div><b>${t.type==='hotel'?L('My first hotel'):L('Homes for my neighborhood')}</b><strong>${L`Projected profit ${money(r.profit)} / month`}</strong></div></div><p>${L('Your place is ready. Press once to collect a real month of income.')}</p><button class="primary full" data-action="tutorial-next">${L('Collect my first month →')}</button><small>${L('This settles the whole city. Markets and costs can change the result.')}</small>`;
 }
 export function missionCard(s,a){
  const names=missionNames(),progress=missionProgress(s,a),next=progress.find(p=>!p.complete);
