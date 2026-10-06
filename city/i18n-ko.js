@@ -6,7 +6,7 @@ export default {
 "Build your first homes":"당신의 첫 주택을 지어보세요.",
 "We picked a suitable spot. One click turns this empty lot into your place.":"좋은 부지를 골라뒀어요. 버튼을 누르면 이곳에 내 건물이 생겨요.",
 "Projected monthly profit +{0}":"예상 월 이익 +{0}",
-"Open this hotel · {0}":"이 호텔 열기 · {0}",
+"Open this hotel · {0}":"이 호텔 건설하기 · {0}",
 "The displayed cost buys the land and building. Next, collect your first month.":"표시된 비용으로 땅과 건물을 구매해요. 다음엔 첫 달 수익을 받아보세요.",
 "Your place is ready. Press once to collect a real month of income.":"이제 수익을 받아볼까요? 버튼을 누르면 한 달을 정산해요.",
 "You built a place and collected its first month. Now the city is yours to explore.":"직접 건물을 짓고 첫 달을 정산했어요. 이제 원하는 방식으로 도시를 키워보세요.",
