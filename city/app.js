@@ -100,7 +100,7 @@ import {startShift,resolveOrder,ordersFor} from './activity.js';
 import {PATHS,projectQuote,startProject,archiveProject} from './projects.js';
 import {createAudio} from './audio.js';
 const audio=createAudio();
-import {TYPES,STOCKS,MILESTONES,PROPERTY_TAX_RATE,analyze,build,sellAsset,demolishAsset,upgrade,installBillboard,installRooftopDeck,trade,setPlan,tick,chooseEvent,eventShortfall,validSave,migrateSave,coords,landPrice,location,assetValue,mountainSite,canBuild,parcelQuote,buyParcel,buildingAnchor,developmentImpacts,buildingName,expandMap,fillMap,useMap,index,mapOffset} from './engine.js';
+import {TYPES,STOCKS,MILESTONES,PROPERTY_TAX_RATE,analyze,build,sellAsset,demolishAsset,upgrade,upgradeCost,installBillboard,installRooftopDeck,trade,setPlan,tick,chooseEvent,eventShortfall,validSave,migrateSave,coords,landPrice,location,assetValue,mountainSite,canBuild,parcelQuote,buyParcel,buildingAnchor,developmentImpacts,buildingName,expandMap,fillMap,useMap,index,mapOffset} from './engine.js';
 import {createRenderer} from './render.js';
 import {createRichGame as createGame,RICH_GOALS,lifestyleDialog,experienceScene,enjoyExperience} from './rich-life.js';
 import {createPlayTimer} from './play-time.js';
@@ -437,6 +437,19 @@ $('#app').addEventListener('click',e=>{
  if(b.dataset.action==='trial-restart'){openDialog('trial-restart',`<h2>${L('Restart this challenge only')}</h2><p>${L('Your main city stays saved. This replaces only the separate challenge attempt.')}</p><button class="primary" data-action="trial-confirm-restart">${L('Restart this challenge only')}</button>`);return;}
  if(b.dataset.action==='trial-confirm-restart'){state=fillMap(createTrial());selected=-1;speed=0;closeDialog();changed();renderDock();renderer.home();return;}
  if(b.dataset.action==='missions'){openDialog('missions',missionsDialog(state,analysis));return;}
+ if(b.dataset.missionTool){
+  if(!['citypark','skyscraper'].includes(b.dataset.missionTool)||tutorial.active)return;
+  noteAction();closeDialog();selectTool(b.dataset.missionTool);buildFootprint=b.dataset.missionTool==='skyscraper'?{width:3,height:3}:{width:1,height:1};buildFloors=1;renderer.setTool(tool,buildFootprint);
+  if($('.game').classList.contains('menus-collapsed'))$('[data-action="toggle-menus"]').click();
+  $('#world').scrollIntoView({block:'center'});toast(L('Choose empty land to review the construction price. No money has been spent.'));return;
+ }
+ if(b.dataset.missionManage){
+  if(!['upgrade','skyscraper'].includes(b.dataset.missionManage)||tutorial.active)return;
+  const candidates=analysis.owned.filter(({t})=>!t.construction&&!t.landmark&&!['plot','university','marina','garage'].includes(t.type)&&(b.dataset.missionManage==='skyscraper'?t.type==='skyscraper':t.type!=='skyscraper'&&t.level<3));
+  const site=candidates.sort((x,y)=>upgradeCost(x.t)-upgradeCost(y.t))[0];
+  if(!site){toast(L('No completed building is ready to expand. Review your properties first.'));return;}
+  noteAction();closeDialog();selectTool('inspect');selected=site.i;renderer.select(selected);renderer.focus(selected);inspectAsset(selected);return;
+ }
  if(b.dataset.firstBuild!==undefined){
   if(!tutorial.active||tutorial.step.id!=='build'||modal)return;
   const site=starterSites(state,analysis).find(x=>x.i===Number(b.dataset.firstBuild)&&x.type===b.dataset.firstType&&x.q.total===Number(b.dataset.firstPrice));

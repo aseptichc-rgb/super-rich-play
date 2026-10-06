@@ -1,13 +1,19 @@
 // Optional save fields. Missions use the normal city; they never reset assets or grant cash.
-export const MISSION_IDS=['first-build','first-settlement','first-profit','district','reserve','wealth','landmark','tourism','cashflow','redevelopment','skyline'];
 export const CONTRACT_IDS=['tourism','cashflow','redevelopment','skyline'];
+export const MISSION_STAGES=[
+ ['first-build','first-settlement','first-profit'],
+ ['second-build','first-upgrade','first-park','third-build','profit-three','reserve-one','reserve-two','district','income-ten'],
+ ['profit-six','wealth-quarter','wealth-half','wealth','fifth-build','skyscraper-start','first-skyscraper','tower-five','reserve'],
+ ['profit-twelve','wealth-five','wealth-ten','landmark']
+];
+export const MISSION_IDS=[...MISSION_STAGES.flat(),...CONTRACT_IDS];
 export function missionStats(s,a){
  const owned=s.tiles.filter(t=>t.owner==='player'&&t.type!=='plot'),ready=owned.filter(t=>!t.construction);
  const reports=a.owned.filter(({t})=>t.type!=='plot').map(({i})=>({t:s.tiles[i],r:a.reports[i]}));
  const tourism=reports.filter(({t})=>['hotel','resort','golf','themepark','observatory','cablecar'].includes(t.type)||t.purpose==='growth').reduce((n,{r})=>n+Math.max(0,r?.revenue||0),0);
  const traffic=reports.length?reports.reduce((n,{r})=>n+(r?.loc?.footfall||0),0)/reports.length:0;
  const reserve=Math.max(10000,Math.ceil((Math.max(0,a.expense)+Math.max(0,a.living)+Math.max(0,a.interest)+Math.max(0,a.tuition))*3));
- return{owned:owned.length,parks:ready.filter(t=>t.type==='citypark').length,landmarks:ready.filter(t=>t.landmark||['hq','monument'].includes(t.type)).length,floors:Math.max(0,...ready.filter(t=>t.type==='skyscraper').map(t=>t.level)),tourism,traffic,reserve,net:a.net,wealth:a.wealth};
+ return{owned:owned.length,parks:ready.filter(t=>t.type==='citypark').length,upgraded:ready.filter(t=>t.level>1&&(t.assetLedger?.upgrades||0)>0).length,skyscrapers:owned.filter(t=>t.type==='skyscraper').length,completedTowers:ready.filter(t=>t.type==='skyscraper').length,landmarks:ready.filter(t=>t.landmark||['hq','monument'].includes(t.type)).length,floors:Math.max(0,...ready.filter(t=>t.type==='skyscraper').map(t=>t.level)),tourism,traffic,reserve,net:a.net,wealth:a.wealth};
 }
 export function ensureMissions(s,a){
  if(s.concept!=='rich-life')return null;
@@ -25,9 +31,27 @@ export function missionProgress(s,a){
   {id:'first-build',value:m.built,target:1},
   {id:'first-settlement',value:m.firstBuildMonth!==null&&s.month>m.firstBuildMonth?1:0,target:1},
   {id:'first-profit',value:m.positiveMonths,target:1},
+  {id:'second-build',value:m.built,target:2},
+  {id:'first-upgrade',value:x.upgraded,target:1},
+  {id:'first-park',value:Math.max(0,x.parks-m.baseline.parks),target:1},
+  {id:'third-build',value:m.built,target:3},
+  {id:'profit-three',value:m.positiveMonths,target:3},
+  {id:'reserve-one',value:s.money,target:Math.ceil(x.reserve/3)},
+  {id:'reserve-two',value:s.money,target:Math.ceil(x.reserve*2/3)},
   {id:'district',value:Math.min(3,Math.max(0,x.owned-m.baseline.owned-Math.max(0,x.parks-m.baseline.parks)))+(x.parks>m.baseline.parks?1:0),target:4},
-  {id:'reserve',value:s.money,target:x.reserve},
+  {id:'income-ten',value:Math.max(0,x.net),target:10000},
+  {id:'profit-six',value:m.positiveMonths,target:6},
+  {id:'wealth-quarter',value:x.wealth,target:2250000},
+  {id:'wealth-half',value:x.wealth,target:2500000},
   {id:'wealth',value:x.wealth,target:3000000},
+  {id:'fifth-build',value:m.built,target:5},
+  {id:'skyscraper-start',value:x.skyscrapers,target:1},
+  {id:'first-skyscraper',value:x.completedTowers,target:1},
+  {id:'tower-five',value:x.floors,target:5},
+  {id:'reserve',value:s.money,target:x.reserve},
+  {id:'profit-twelve',value:m.positiveMonths,target:12},
+  {id:'wealth-five',value:x.wealth,target:5000000},
+  {id:'wealth-ten',value:x.wealth,target:10000000},
   {id:'landmark',value:x.landmarks,target:1}
  ].map(p=>({...p,complete:m.completed.some(c=>c.id===p.id)}));
 }
