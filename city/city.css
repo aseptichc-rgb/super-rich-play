@@ -157,3 +157,11 @@ button{font-size:.875rem}
 @keyframes tutorial-next-pulse{0%,100%{transform:translateX(0)}50%{transform:translateX(3px)}}
 #dialog #tutorial-card{margin:18px 0}
 @media(max-width:900px),(max-width:1100px) and (max-height:500px){#tutorial-card{margin:8px;padding:12px}#tutorial-card h2{font-size:1rem}#tutorial-card p{font-size:.8125rem}}
+
+/* Guided first build and optional city projects. */
+.mission-card,.mission-cash{padding:15px;border:1px solid #ccd9c9;border-radius:14px;background:#f4f8ec;margin:0 0 12px;color:#28493b}
+.mission-card h3,.mission-cash h3{margin:7px 0;font-size:17px}.mission-card p,.mission-cash p{font-size:13px;line-height:1.55;margin:8px 0}.mission-card .button-row,.mission-cash .button-row{flex-wrap:wrap}.mission-card small{display:block;margin-top:8px;color:#607466}
+.mission-option{padding:16px;margin:12px 0;border:1px solid #d3deca;border-radius:12px;background:#f6f8f0}.mission-option p{line-height:1.6}.mission-list>div{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid #dbe3d3}.mission-list small{color:#687864}.settlement-result{padding:20px;background:#eaf3df;border-radius:12px}.settlement-result strong{font-size:30px}
+.onboarding #live-card .rich-office,.onboarding #live-card .live-card-title,.onboarding #live-card>.mission-card,.onboarding #economy-status,.onboarding #election-status,.onboarding #stats>.stat-pair,.onboarding #stats>.economy-strip{display:none}
+.onboarding #live-card{max-height:none!important}.onboarding #tutorial-card{margin:0}.onboarding #build-dock{max-height:150px}.onboarding #build-items{display:none}.onboarding #wealth-growth,.onboarding #flex-entry{display:none}
+@media(max-width:719px){.mission-list>div{display:block}.mission-list small{display:block;margin-top:5px}.onboarding #live-card{position:absolute;top:72px;left:10px;right:10px;max-width:none;width:auto}.mission-card .button-row button{min-height:42px}.mission-option{padding:12px}}

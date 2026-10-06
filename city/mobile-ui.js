@@ -24,7 +24,7 @@ export function setupMobileUI(){
  game.addEventListener('keydown',e=>{if(media.matches&&e.key==='Escape'&&!document.querySelector('dialog[open]')){show('map',true);e.stopPropagation();}});
  // The desktop sidebar's close control also returns to the map on a phone.
  game.addEventListener('click',e=>{if(media.matches&&e.target.closest('[data-action="toggle-sidebar"]')){e.stopPropagation();show('map',true);}},true);
- media.addEventListener('change',()=>show(document.querySelector('#tutorial-card')?'assets':'map'));
+ media.addEventListener('change',()=>show('map'));
  show();
  return {get active(){return media.matches;},show(panel){if(media.matches)show(panel);},close(){if(media.matches)show();}};
 }

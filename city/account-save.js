@@ -39,7 +39,7 @@ export const ACCOUNT_OWNER_KEY='super-rich-account-owner-v1';
 export const accountBackupKey=uid=>'super-rich-account-backup-v1:'+(uid||'guest');
 const INTERVAL=3000,RETRY=30000;
 // Keep account backups separate from the legacy save slot. Never import another account's game.
-export function createAccountSave({storage,clientFor,getState,replaceState,newState,hasLocal=false,getLocalSave=()=>null,canSave=()=>true,onChange=()=>{},timers={set:(fn,ms)=>setTimeout(fn,ms),clear:id=>clearTimeout(id)}}){
+export function createAccountSave({storage,clientFor,getState,replaceState,newState,hasLocal=false,getLocalSave=()=>null,getGuestSave=null,canSave=()=>true,onChange=()=>{},timers={set:(fn,ms)=>setTimeout(fn,ms),clear:id=>clearTimeout(id)}}){
  let owner=storage.get(ACCOUNT_OWNER_KEY)||null,user=null,client=null,epoch=0,busy=false,applying=false,ready=false,timer=null,pending=null,status='guest',error='',uncertainJSON=null,revision=null,clean=false,local=hasLocal,initialized=false,legacyChecked=false,lastJSON=JSON.stringify(getState());
  const snapshot=()=>({user,status,error,pending});
  const emit=(next,reason='')=>{status=next;error=reason;onChange(snapshot());};
@@ -95,12 +95,13 @@ export function createAccountSave({storage,clientFor,getState,replaceState,newSt
    }
    owner=next.uid;
    const backup=read(owner);
-   // Read old browser progress only after its owner signs in. Never save a guest game.
+   // Legacy account progress stays owner-bound. Guest progress uses a separate explicit slot.
    const legacy=!legacyChecked&&!backup&&(!previousOwner||previousOwner===owner)?getLocalSave():null;
    legacyChecked=true;
    if(!canSave()){await connect();return;}
    if(backup){local=true;revision=backup.revision;clean=backup.clean===true;apply(remoteSave(backup.save));}
    else if(legacy){local=true;revision=null;clean=false;apply(legacy);}
+   else if(!previousUser&&getGuestSave){const guest=getGuestSave();local=!!guest;revision=null;clean=false;if(guest)apply(guest);}
    else if(previousOwner!==owner&&previousOwner!==null){local=false;revision=null;clean=false;apply(newState());}
    else{revision=null;clean=false;}
    remember();await connect();

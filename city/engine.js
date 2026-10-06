@@ -1,4 +1,7 @@
+import {validTrial} from './trial.js';
 import {underConstruction,startConstruction,settleConstruction,validConstruction,constructionNotice} from './building-progress.js';
+import {ensureMissions,updateMissions,recordMissionInvestment,validMissions} from './missions.js';
+import {purposeReport,validPurposes} from './building-purpose.js';
 import {BUILDING_VARIANTS,buildingVariant} from './building-variant.js';
 import {advanceUniversityRisk,validUniversityRisk,nationalizeRiotAssets} from './university-riot.js';
 import {researchLevel,UNIVERSITY,validUniversity} from './university.js';
@@ -412,7 +415,7 @@ export function installRooftopDeck(s,i){return transaction(s,()=>{
  if(!Number.isFinite(q.cost)||!Number.isFinite((t.assetLedger?.upgrades||0)+q.cost))return{ok:false,msg:L('This construction cost exceeds the numeric range.')};
  if(s.mode!=='sandbox'&&s.money<q.cost)return{ok:false,msg:L('Not enough cash for the rooftop observation deck.')};
  t.assetLedger??=assetLedger(s,i);t.assetLedger.buildingValue=buildingValue(s,t)+q.cost*.7*Math.pow(buildingArea(t),.15);t.assetLedger.valuationMonth=s.month;t.assetLedger.upgrades+=q.cost;
- if(s.mode!=='sandbox')s.money-=q.cost;t.rooftopDeck=true;
+ if(s.mode!=='sandbox'){s.money-=q.cost;recordMissionInvestment(s,q.cost);}t.rooftopDeck=true;
  const msg=L('Rooftop observation deck built · Monthly skyscraper revenue +1%.');s.log.unshift(msg);s.log=s.log.slice(0,25);return{ok:true,msg};
 });}
 export const skyscraperCostFactor=floors=>Math.expm1(floors*Math.log(SKYSCRAPER_FLOOR_RATE))/(SKYSCRAPER_FLOOR_RATE-1);
@@ -463,7 +466,7 @@ function installBillboardImpl(s,i){
 }
 export function businessReport(s,i,context={}){
  if(underConstruction(s,s.tiles[i]))return{billboard:0,revenue:0,cost:0,profit:0,occupancy:0,demand:0,wages:0,lease:0,maintenance:0,goods:0,marketing:0,loc:location(s,i),manage:0};
- if(TYPES[s.tiles[i].type]?.managed){const t=s.tiles[i],q=developmentQuote(s,i,t.type,t.level),billboard=t.billboard&&billboardEligible(t)?billboardIncome(q.revenue*(t.landmark?3:1),q.loc.footfall):0,rooftopDeck=t.type==='skyscraper'&&t.rooftopDeck?Math.round(q.revenue*ROOFTOP_DECK_BONUS):0,revenue=q.revenue*(t.landmark?3:1)+billboard+rooftopDeck,cost=q.cost+(t.type==='university'?researchLevel(t)*UNIVERSITY.monthlyResearch:0);return{billboard,rooftopDeck,revenue,cost,profit:revenue-cost,occupancy:Math.round((60+q.score*40)*q.demand),demand:Math.round(q.demand*100),wages:0,lease:0,maintenance:cost,goods:0,marketing:0,loc:q.loc,manage:100,crowding:q.crowding};}
+ if(TYPES[s.tiles[i].type]?.managed){const t=s.tiles[i],q=developmentQuote(s,i,t.type,t.level),billboard=t.billboard&&billboardEligible(t)?billboardIncome(q.revenue*(t.landmark?3:1),q.loc.footfall):0,rooftopDeck=t.type==='skyscraper'&&t.rooftopDeck?Math.round(q.revenue*ROOFTOP_DECK_BONUS):0,revenue=q.revenue*(t.landmark?3:1)+billboard+rooftopDeck,cost=q.cost+(t.type==='university'?researchLevel(t)*UNIVERSITY.monthlyResearch:0);const purpose=purposeReport(t,revenue,cost,cycleFactor(s));return{billboard,rooftopDeck,revenue:purpose.revenue,cost:purpose.cost,profit:purpose.revenue-purpose.cost,occupancy:Math.round((60+q.score*40)*q.demand),demand:Math.round(q.demand*100),wages:0,lease:0,maintenance:purpose.cost,goods:0,marketing:0,loc:q.loc,manage:100,crowding:q.crowding};}
  const t=s.tiles[i],d=TYPES[t.type],loc=location(s,i),rental=['rental','condo','housing'].includes(t.type),businessCount=context.businessCount??s.tiles.filter(t=>t.owner==='player'&&TYPES[t.type]?.group==='business').length;
  const manage=clamp(s.plan.manage/Math.max(1,businessCount*28),.3,1.2),health=1-Math.max(0,s.stress-65)*.009;
  const price=t.price||100,quality=t.quality||1,staff=t.staff??d.staff,level=t.level;
@@ -599,7 +602,7 @@ function fireSale(s){
 function repayDebt(s){if(!(s.debt>0)||!(s.money>0))return 0;const pay=Math.min(s.debt,Math.floor(s.money*.5));if(pay<=0)return 0;s.debt-=pay;s.money-=pay;if(!s.debt){s.log.unshift(L('✓ Debt fully repaid'));s.log=s.log.slice(0,25);}return pay;}
 const nearPlayer=(s,i)=>{const p=coords(i);return s.tiles.some((t,k)=>t.owner==='player'&&Math.hypot(coords(k).x-p.x,coords(k).y-p.y)<=4);};
 export function tick(s){
- checkHealth(s);if(lifeEnded(s))return analyze(s);
+ checkHealth(s);if(lifeEnded(s)||s.trial&&s.month>=s.trial.months)return analyze(s);
  const admitted=hospitalized(s),plan=s.plan,event=s.event,shift=s.shift;
  if(admitted){s.plan={work:0,manage:0,learn:0,create:0,inspect:0,curate:0};s.event=null;s.shift=null;}
  settling.add(s);
@@ -621,7 +624,7 @@ function settlePropertyTax(s,a){
  return paid;
 }
 function tickMonth(s){
- if(s.event||s.shift||lifeEnded(s))return analyze(s);ensureEconomy(s);ensureElection(s);const previousMarket=marketFactor(s),rich=s.concept==='rich-life',chapterBefore=rich?chapterOf(s).n:0,tilesBefore=rich?s.tiles.map(t=>({...t})):null;s.growthStartMonth??=s.month;const a=analyze(s);for(const {t,i} of a.owned){t.assetLedger??=assetLedger(s,i);t.assetLedger.operating+=a.reports[i]?.profit||0;}s.money+=a.net;advanceProjects(s);if(s.empire){s.empire.acquiredMonths??={};for(const id of s.empire.owned)s.empire.acquiredMonths[id]??=s.month;}settleCompound(s);if(rich)s.signatureMultiplier=signatureGrowth(s).next;s.month++;settleConstruction(s);const propertyTaxPaid=settlePropertyTax(s,a),corporateTaxPaid=settleAcquisitions(s,a.acquisitions.income),election=advanceElection(s);
+ if(s.event||s.shift||lifeEnded(s))return analyze(s);ensureMissions(s,analyze(s));ensureEconomy(s);ensureElection(s);const previousMarket=marketFactor(s),rich=s.concept==='rich-life',chapterBefore=rich?chapterOf(s).n:0,tilesBefore=rich?s.tiles.map(t=>({...t})):null;s.growthStartMonth??=s.month;const a=analyze(s);for(const {t,i} of a.owned){t.assetLedger??=assetLedger(s,i);t.assetLedger.operating+=a.reports[i]?.profit||0;}s.money+=a.net;advanceProjects(s);if(s.empire){s.empire.acquiredMonths??={};for(const id of s.empire.owned)s.empire.acquiredMonths[id]??=s.month;}settleCompound(s);if(rich)s.signatureMultiplier=signatureGrowth(s).next;s.month++;settleConstruction(s);const propertyTaxPaid=settlePropertyTax(s,a),corporateTaxPaid=settleAcquisitions(s,a.acquisitions.income),election=advanceElection(s);
  const crashed=advanceEconomy(s);
  advanceNeighborhood(s);
  advanceVentures(s);advanceStartups(s);
@@ -640,6 +643,7 @@ function tickMonth(s){
  const development=rich?developmentImpacts(s,tilesBefore).filter(e=>e.owner!=='player'&&(Math.abs(e.land)>=.001||e.rent)&&(e.assets||nearPlayer(s,e.tile))):[];
  s.lastReport={development,rareShock,election,compoundIncome:compoundSummary(s).last,compoundReinvested:s.compound?.auto?compoundSummary(s).last:0,compoundShock:s.compound?.lastShock||null,dividends:a.investment.dividends,companyIncome:a.acquisitions.income,corporateTaxPaid,ownerIncome:a.empire.income,luxuryMaintenance:a.lifestyleCosts.maintenance,creative:a.creative.income,month:s.month,wage:a.wage,revenue:a.revenue,expense:a.expense,living:a.living,tuition:a.tuition,interest:a.interest,bonus:a.bonus,propertyTaxPaid,net:a.net-propertyTaxPaid-corporateTaxPaid-(riot?.lostCash||0),economy:economyReport(s).label,pending,rival:rivalEvents,fireSale:crisis?.items?.length?crisis.items:null,restructure:!!crisis?.restructure,broker};
  const after=analyze(s);s.highestWealth=Math.max(s.highestWealth,after.wealth);
+ if(rich)updateMissions(s,after,{settlement:true});
  for(const m of rich?RICH_GOALS:MILESTONES)if(after.wealth>=m.wealth&&!s.milestones.includes(m.wealth)){s.milestones.push(m.wealth);s.log.unshift(L`✦ ${m.name} reached! Net worth ₲${m.wealth.toLocaleString()}`);}
  if(rich){const chapter=chapterOf(s);if(chapter.n>chapterBefore){s.lastReport.chapterUp=chapter.n;s.log.unshift(L`✦ CHAPTER ${chapter.n} · ${chapter.name} begins! ${chapter.unlocks[0]} unlocked`);}
   if(!s.ending&&(s.month>=120||s.highestWealth>=300000000)){s.ending=endingReport(s,after);s.log.unshift(L`✦ Legacy ending · Grade ${s.ending.grade} · ${s.ending.score.toLocaleString('en-US')} pts`);}}
@@ -654,7 +658,7 @@ export function validSave(s){
  return onMap(s,()=>validSaveAt(s));
 }
 function validSaveAt(s){
- if(!validPlayTime(s)||!validUniversityRisk(s))return false;
+ if(!validPlayTime(s)||!validUniversityRisk(s)||!validMissions(s)||!validPurposes(s)||!validTrial(s))return false;
  if(!validHealth(s)||!validEconomy(s)||!validLongShocks(s)||!validElection(s)||!validLandmarks(s))return false;
  if(s?.signatureMultiplier!==undefined&&(!Number.isFinite(s.signatureMultiplier)||s.signatureMultiplier<1||s.signatureMultiplier>SIGNATURE_GROWTH.maxMultiplier))return false;
  if(s?.propertyTax!==undefined&&(!s.propertyTax||typeof s.propertyTax!=='object'||Array.isArray(s.propertyTax)||!Number.isFinite(s.propertyTax.accrued)||Math.abs(s.propertyTax.accrued)>1e15))return false;
@@ -687,14 +691,14 @@ function validSaveAt(s){
  if(s.lastReport&&!['month','wage','revenue','expense','living','tuition','interest','bonus','net'].every(k=>Number.isFinite(s.lastReport[k])))return false;return true;
 }
 
-export function buyParcel(s,...args){return transaction(s,()=>buyParcelImpl(s,...args));}
+export function buyParcel(s,...args){return transaction(s,()=>{const before=s.money,r=buyParcelImpl(s,...args);if(r.ok)recordMissionInvestment(s,before-s.money);return r;});}
 
-export function build(s,...args){return transaction(s,()=>{const result=buildImpl(s,...args);if(result.ok){const months=startConstruction(s,s.tiles[args[0]]);if(months){result.msg=constructionNotice(months);s.log[0]=TYPES[s.tiles[args[0]].type].name+' · '+result.msg;}}return result;});}
+export function build(s,...args){return transaction(s,()=>{const hadMissions=!!s.missions;ensureMissions(s,analyze(s));const before=s.money,result=buildImpl(s,...args);if(result.ok){recordMissionInvestment(s,before-s.money,true);const months=startConstruction(s,s.tiles[args[0]]);if(months){result.msg=constructionNotice(months);s.log[0]=TYPES[s.tiles[args[0]].type].name+' · '+result.msg;}}else if(!hadMissions)delete s.missions;return result;});}
 
 export function sellAsset(s,...args){return transaction(s,()=>sellAssetImpl(s,...args));}
 
 export function demolishAsset(s,...args){return transaction(s,()=>demolishAssetImpl(s,...args));}
 
-export function upgrade(s,...args){if(['marina','garage'].includes(s.tiles[args[0]]?.type))return{ok:false,msg:L('Display buildings cannot be expanded.')};return transaction(s,()=>upgradeImpl(s,...args));}
+export function upgrade(s,...args){if(['marina','garage'].includes(s.tiles[args[0]]?.type))return{ok:false,msg:L('Display buildings cannot be expanded.')};return transaction(s,()=>{const before=s.money,r=upgradeImpl(s,...args);if(r.ok)recordMissionInvestment(s,before-s.money);return r;});}
 
-export function installBillboard(s,...args){return transaction(s,()=>installBillboardImpl(s,...args));}
+export function installBillboard(s,...args){return transaction(s,()=>{const before=s.money,r=installBillboardImpl(s,...args);if(r.ok)recordMissionInvestment(s,before-s.money);return r;});}

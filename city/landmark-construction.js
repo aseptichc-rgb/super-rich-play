@@ -1,4 +1,5 @@
 import {startConstruction,constructionNotice} from './building-progress.js';
+import {recordMissionInvestment} from './missions.js';
 import {L} from './i18n.js';
 import {build,canBuild,developmentQuote,footprintCells,coords,SIZE} from './engine.js';
 import {validLandmark} from './landmarks.js';
@@ -33,7 +34,7 @@ export function buildLandmark(s,i,design,footprint){
  const error=landmarkBuildError(s,i,design,footprint);if(error)return {ok:false,msg:error};
  const previousLog=[...s.log],q=landmarkQuote(s,i,design.type,footprint),result=build(s,i,design.type,'buy',footprint);if(!result.ok)return result;
  const t=s.tiles[i],extra=q.construction-q.baseConstruction;
- if(s.mode!=='sandbox')s.money-=extra;
+ if(s.mode!=='sandbox'){s.money-=extra;recordMissionInvestment(s,extra);}
  t.constructionCost=q.construction;t.assetLedger.initial+=extra;t.assetLedger.buildingValue*=100;t.landmark={...design};
  startConstruction(s,t);t.construction.fame=q.fame;
  s.log=[design.name+' · '+constructionNotice(t.construction.months),...previousLog].slice(0,25);

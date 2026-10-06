@@ -4,7 +4,7 @@ A browser economy game where you are already rich: grow your assets, race a riva
 
 **▶ Play:** https://aseptichc-rgb.github.io/super-rich-play/ · **▶ 한국어로 플레이:** https://aseptichc-rgb.github.io/super-rich-play/?lang=ko
 
-- Runs in any desktop or mobile browser with no install. Saving requires Google sign-in. Unsigned play is an unsaved preview.
+- Play immediately in any desktop or mobile browser. Your city saves on this device; connect Google to continue across devices.
 - English and Korean. The game follows your browser language; switch any time with the 한 / EN button in the top bar or in Settings. Your save carries over.
 - All in-game money (₲) and investment results are fictional and unrelated to real money. Nothing here is financial advice.
 
